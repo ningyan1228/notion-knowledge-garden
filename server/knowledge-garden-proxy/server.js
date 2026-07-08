@@ -22,11 +22,13 @@ const FIELDS = {
   pinned: ["Pinned", "\u7f6e\u9876"],
   slug: ["Slug", "slug", "\u8def\u5f84"],
   created: ["Created", "\u521b\u5efa\u65f6\u95f4"],
-  updated: ["Updated", "\u66f4\u65b0\u65f6\u95f4"]
+  updated: ["Updated", "\u66f4\u65b0\u65f6\u95f4"],
+  studyMinutes: ["Study Minutes", "Reading Minutes", "\u5b66\u4e60\u65f6\u957f", "\u9605\u8bfb\u65f6\u95f4", "\u5b66\u4e60\u5206\u949f", "\u65f6\u957f"]
 };
 
 let cachedAt = 0;
 let cachedPages = null;
+let cachedDatabaseProperties = null;
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -182,6 +184,7 @@ async function createNotionNote(input) {
   const pinned = Boolean(input?.pinned);
   const status = cleanText(input?.status) || (published ? "完成" : "进行中");
   const content = cleanText(input?.content);
+  const studyMinutes = Number(input?.studyMinutes || 0);
 
   const properties = {
     "标题": { title: richTextChunks(title) },
@@ -196,6 +199,8 @@ async function createNotionNote(input) {
 
   if (category) properties["分类"] = { select: { name: category } };
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
+  const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
+  if (studyMinutesProperty) properties[studyMinutesProperty] = { number: studyMinutes };
   if (cover && /^https?:\/\//i.test(cover)) {
     properties["封面"] = {
       files: [{ name: "cover", type: "external", external: { url: cover } }]
@@ -388,6 +393,7 @@ function normalizeNote(page) {
     status: optionProp(pick(props, FIELDS.status)),
     created: dateProp(pick(props, FIELDS.created)) || page.created_time || "",
     updated: dateProp(pick(props, FIELDS.updated)) || page.last_edited_time || "",
+    studyMinutes: numberProp(pick(props, FIELDS.studyMinutes)),
     pinned: checkboxProp(pick(props, FIELDS.pinned)),
     notionUrl: page.url || ""
   };
@@ -503,8 +509,30 @@ function checkboxProp(prop) {
   return Boolean(prop?.checkbox);
 }
 
+function numberProp(prop) {
+  return Number(prop?.number || 0);
+}
+
 function dateProp(prop) {
   return prop?.date?.start || prop?.created_time || prop?.last_edited_time || "";
+}
+
+async function optionalDatabaseProperty(names, type) {
+  try {
+    const props = await getDatabaseProperties();
+    const name = names.find((item) => props[item]);
+    if (!name) return "";
+    return !type || props[name]?.type === type ? name : "";
+  } catch {
+    return "";
+  }
+}
+
+async function getDatabaseProperties() {
+  if (cachedDatabaseProperties) return cachedDatabaseProperties;
+  const database = await notionRequest(`databases/${extractNotionId(requiredEnv("NOTION_DATABASE_ID"))}`, "GET");
+  cachedDatabaseProperties = database.properties || {};
+  return cachedDatabaseProperties;
 }
 
 function coverUrl(page, prop) {

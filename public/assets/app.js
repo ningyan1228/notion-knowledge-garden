@@ -57,14 +57,25 @@ const elements = {
   growthNotes: document.querySelector("#growthNotes"),
   growthHours: document.querySelector("#growthHours"),
   growthTopics: document.querySelector("#growthTopics"),
+  monthlyTrend: document.querySelector("#monthlyTrend"),
+  monthlyTrendText: document.querySelector("#monthlyTrendText"),
+  topTopics: document.querySelector("#topTopics"),
   heatmapMonths: document.querySelector("#heatmapMonths"),
   knowledgeGraph: document.querySelector("#knowledgeGraph"),
   graphHint: document.querySelector("#graphHint"),
+  graphResetButton: document.querySelector("#graphResetButton"),
+  graphFullscreenButton: document.querySelector("#graphFullscreenButton"),
   topicMap: document.querySelector("#topicMap"),
   tagCloud: document.querySelector("#tagCloud"),
   recentList: document.querySelector("#recentList"),
+  weeklySummary: document.querySelector("#weeklySummary"),
+  pinnedList: document.querySelector("#pinnedList"),
+  inspirationList: document.querySelector("#inspirationList"),
   quickWriteButton: document.querySelector("#quickWriteButton"),
   randomNoteButton: document.querySelector("#randomNoteButton"),
+  focusWriteButton: document.querySelector("#focusWriteButton"),
+  focusRandomButton: document.querySelector("#focusRandomButton"),
+  focusMapButton: document.querySelector("#focusMapButton"),
   searchInput: document.querySelector("#searchInput"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
@@ -85,7 +96,11 @@ const elements = {
   detailTitle: document.querySelector("#detailTitle"),
   detailSummary: document.querySelector("#detailSummary"),
   detailTags: document.querySelector("#detailTags"),
-  detailContent: document.querySelector("#detailContent")
+  detailContent: document.querySelector("#detailContent"),
+  detailToc: document.querySelector("#detailToc"),
+  relatedNotes: document.querySelector("#relatedNotes"),
+  previousNote: document.querySelector("#previousNote"),
+  nextNote: document.querySelector("#nextNote")
 };
 
 let knowledgeChart = null;
@@ -114,6 +129,11 @@ elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true
 elements.writerButton?.addEventListener("click", openWriter);
 elements.quickWriteButton?.addEventListener("click", openWriter);
 elements.randomNoteButton?.addEventListener("click", openRandomNote);
+elements.focusWriteButton?.addEventListener("click", openWriter);
+elements.focusRandomButton?.addEventListener("click", openRandomNote);
+elements.focusMapButton?.addEventListener("click", scrollToKnowledgeMap);
+elements.graphResetButton?.addEventListener("click", resetGraphFilters);
+elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
@@ -126,6 +146,7 @@ document.querySelectorAll("[data-close-writer]").forEach((node) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    closeKnowledgeGraphFullscreen();
     closeDetail();
     closeWriter();
   }
@@ -171,6 +192,9 @@ async function createNoteFromWriter(event) {
     slug: String(formData.get("slug") || "").trim(),
     summary: String(formData.get("summary") || "").trim(),
     category: String(formData.get("category") || "").trim(),
+    cover: String(formData.get("cover") || "").trim(),
+    status: String(formData.get("status") || "").trim(),
+    studyMinutes: Number(formData.get("studyMinutes") || 0),
     tags: splitTags(String(formData.get("tags") || "")),
     content: String(formData.get("content") || "").trim(),
     published: formData.get("published") === "on",
@@ -284,6 +308,7 @@ function render() {
 function renderWorkbench(notes) {
   renderKnowledgeGraph(notes);
   renderGrowthMap(notes);
+  renderFocusPanel(notes);
   renderTopicMap(notes);
   renderTagCloud(notes);
   renderRecentList(notes);
@@ -293,20 +318,24 @@ function renderGrowthMap(notes) {
   if (!elements.heatmapMonths) return;
 
   const year = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
   const contributionCounts = buildContributionCounts(notes, year);
   const totalEvents = Object.values(contributionCounts).reduce((sum, count) => sum + count, 0);
-  const topics = unique(notes.map((note) => note.category).filter(Boolean));
-  const trackedMinutes = notes.reduce((sum, note) => sum + (Number(note.studyMinutes) || 0), 0);
+  const yearNotes = notes.filter((note) => dateKey(note.created || note.updated).startsWith(`${year}-`));
+  const topics = unique(yearNotes.map((note) => note.category).filter(Boolean));
+  const trackedMinutes = yearNotes.reduce((sum, note) => sum + (Number(note.studyMinutes) || 0), 0);
   const estimatedHours = trackedMinutes > 0
     ? trackedMinutes / 60
-    : Math.max(totalEvents * 0.5, notes.length * 0.5);
+    : Math.max(totalEvents * 0.5, yearNotes.length * 0.5);
 
   elements.growthYear.textContent = String(year);
-  elements.growthNotes.textContent = `${totalEvents || notes.length}次`;
+  elements.growthNotes.textContent = `${yearNotes.length || notes.length}篇`;
   elements.growthHours.textContent = trackedMinutes > 0
     ? `${formatNumber(estimatedHours)}小时`
     : `约${formatNumber(estimatedHours)}小时`;
   elements.growthTopics.textContent = `${topics.length}个`;
+  renderMonthlyTrend(notes, contributionCounts, year, currentMonth, trackedMinutes > 0);
+  renderTopTopics(yearNotes.length ? yearNotes : notes);
 
   elements.heatmapMonths.innerHTML = "";
   for (let month = 0; month < 12; month += 1) {
@@ -337,6 +366,51 @@ function renderGrowthMap(notes) {
   }
 }
 
+function renderMonthlyTrend(notes, contributionCounts, year, currentMonth, hasTrackedMinutes) {
+  if (!elements.monthlyTrend || !elements.monthlyTrendText) return;
+
+  const currentPrefix = `${year}-${pad2(currentMonth + 1)}-`;
+  const lastMonthDate = new Date(year, currentMonth - 1, 1);
+  const lastPrefix = `${lastMonthDate.getFullYear()}-${pad2(lastMonthDate.getMonth() + 1)}-`;
+  const currentEvents = sumCountsByPrefix(contributionCounts, currentPrefix);
+  const lastEvents = sumCountsByPrefix(contributionCounts, lastPrefix);
+  const currentNotes = notes.filter((note) => dateKey(note.created || note.updated).startsWith(currentPrefix));
+  const currentMinutes = currentNotes.reduce((sum, note) => sum + (Number(note.studyMinutes) || 0), 0);
+  const currentHours = hasTrackedMinutes ? currentMinutes / 60 : currentEvents * 0.5;
+  const delta = currentEvents - lastEvents;
+
+  elements.monthlyTrend.textContent = delta > 0 ? `+${delta}` : String(delta);
+  elements.monthlyTrendText.textContent = `本月 ${currentEvents} 次学习记录，${hasTrackedMinutes ? "累计" : "估算"} ${formatNumber(currentHours)} 小时。`;
+}
+
+function renderTopTopics(notes) {
+  if (!elements.topTopics) return;
+  elements.topTopics.innerHTML = "";
+
+  const entries = Object.entries(countValues(notes.map((note) => note.category).filter(Boolean)))
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"))
+    .slice(0, 4);
+
+  if (!entries.length) {
+    elements.topTopics.append(emptyInline("暂无主题数据"));
+    return;
+  }
+
+  for (const [topic, count] of entries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "top-topic";
+    button.innerHTML = `<span>${escapeHtml(topic)}</span><strong>${count}</strong>`;
+    button.addEventListener("click", () => {
+      state.category = topic;
+      elements.categoryFilter.value = topic;
+      render();
+      scrollToNotes();
+    });
+    elements.topTopics.append(button);
+  }
+}
+
 function buildContributionCounts(notes, year) {
   const counts = {};
   const seen = new Set();
@@ -355,6 +429,49 @@ function buildContributionCounts(notes, year) {
   return counts;
 }
 
+function renderFocusPanel(notes) {
+  if (!elements.weeklySummary) return;
+
+  const recentNotes = [...notes].sort((a, b) => compareDate(b.updated, a.updated));
+  const weeklyNotes = recentNotes.filter((note) => isWithinDays(note.updated || note.created, 7));
+  const weeklyTopics = unique(weeklyNotes.map((note) => note.category).filter(Boolean));
+  const pinnedNotes = recentNotes.filter((note) => note.pinned).slice(0, 3);
+
+  if (weeklyNotes.length) {
+    const topicText = weeklyTopics.length ? `，覆盖 ${weeklyTopics.slice(0, 3).join("、")} ${weeklyTopics.length > 3 ? "等" : ""}主题` : "";
+    elements.weeklySummary.textContent = `本周更新 ${weeklyNotes.length} 篇笔记${topicText}。可以先复盘最近的灵感，再补上摘要和标签。`;
+  } else if (notes.length) {
+    elements.weeklySummary.textContent = "本周还没有新的公开笔记。可以从一条灵感开始，给这个星期留下一点痕迹。";
+  } else {
+    elements.weeklySummary.textContent = "知识花园还在等待第一粒种子。先写一篇笔记，之后这里会自动生成本周摘要。";
+  }
+
+  renderFocusList(elements.pinnedList, pinnedNotes.length ? pinnedNotes : recentNotes.slice(0, 2), "暂无置顶笔记");
+  renderFocusList(elements.inspirationList, recentNotes.slice(0, 3), "暂无最近灵感");
+}
+
+function renderFocusList(container, notes, emptyText) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!notes.length) {
+    container.append(emptyInline(emptyText));
+    return;
+  }
+
+  for (const note of notes) {
+    const button = document.createElement("button");
+    button.className = "focus-item";
+    button.type = "button";
+    button.innerHTML = `
+      <strong>${escapeHtml(note.title)}</strong>
+      <span>${escapeHtml(note.category || "未分类")} · ${escapeHtml(formatDate(note.updated || note.created) || "-")}</span>
+    `;
+    button.addEventListener("click", () => openDetail(note));
+    container.append(button);
+  }
+}
+
 function renderKnowledgeGraph(notes) {
   if (!elements.knowledgeGraph) return;
   if (!window.echarts) {
@@ -370,11 +487,13 @@ function renderKnowledgeGraph(notes) {
       if (data.kind === "category") {
         state.category = data.value;
         elements.categoryFilter.value = data.value;
+        elements.graphHint.textContent = `已筛选分类：${data.value}`;
         render();
         scrollToNotes();
       } else if (data.kind === "tag") {
         state.tag = data.value;
         elements.tagFilter.value = data.value;
+        elements.graphHint.textContent = `已筛选标签：${data.value}`;
         render();
         scrollToNotes();
       } else if (data.kind === "note") {
@@ -426,6 +545,38 @@ function renderKnowledgeGraph(notes) {
       }
     ]
   });
+}
+
+function resetGraphFilters() {
+  state.category = "all";
+  state.tag = "all";
+  if (elements.categoryFilter) elements.categoryFilter.value = "all";
+  if (elements.tagFilter) elements.tagFilter.value = "all";
+  if (elements.graphHint) elements.graphHint.textContent = "点击节点进入对应知识";
+  render();
+  scrollToNotes();
+}
+
+function toggleKnowledgeGraphFullscreen() {
+  const panel = elements.knowledgeGraph?.closest(".graph-panel");
+  if (!panel) return;
+  const isFullscreen = panel.classList.toggle("graph-fullscreen");
+  document.body.classList.toggle("graph-open", isFullscreen);
+  elements.graphFullscreenButton.textContent = isFullscreen ? "退出全屏" : "全屏";
+  elements.graphFullscreenButton.setAttribute("aria-expanded", String(isFullscreen));
+  setTimeout(() => knowledgeChart?.resize(), 180);
+}
+
+function closeKnowledgeGraphFullscreen() {
+  const panel = elements.knowledgeGraph?.closest(".graph-panel");
+  if (!panel?.classList.contains("graph-fullscreen")) return;
+  panel.classList.remove("graph-fullscreen");
+  document.body.classList.remove("graph-open");
+  if (elements.graphFullscreenButton) {
+    elements.graphFullscreenButton.textContent = "全屏";
+    elements.graphFullscreenButton.setAttribute("aria-expanded", "false");
+  }
+  setTimeout(() => knowledgeChart?.resize(), 180);
 }
 
 function buildKnowledgeGraph(notes) {
@@ -688,7 +839,10 @@ function renderDetail(note) {
   elements.detailTitle.textContent = note.title;
   elements.detailSummary.textContent = note.summary || "";
   renderTags(elements.detailTags, note.tags || []);
-  renderBlocks(elements.detailContent, note.content || []);
+  const headings = renderBlocks(elements.detailContent, note.content || []);
+  renderToc(headings);
+  renderRelatedNotes(note);
+  renderDetailNavigation(note);
 }
 
 function renderTags(container, tags) {
@@ -703,53 +857,158 @@ function renderTags(container, tags) {
 
 function renderBlocks(container, blocks) {
   container.innerHTML = "";
+  const headings = [];
   if (!blocks.length) {
     const empty = document.createElement("p");
     empty.textContent = "这篇笔记暂时没有可展示的正文。";
     container.append(empty);
-    return;
+    return headings;
   }
 
-  for (const block of blocks) {
-    container.append(renderBlock(block));
+  let activeList = null;
+  let activeListType = "";
+
+  for (const [index, block] of blocks.entries()) {
+    const type = block.type || "paragraph";
+    if (type === "bulleted_list_item" || type === "numbered_list_item") {
+      const listTag = type === "numbered_list_item" ? "ol" : "ul";
+      if (!activeList || activeListType !== listTag) {
+        activeList = document.createElement(listTag);
+        activeListType = listTag;
+        container.append(activeList);
+      }
+      const item = document.createElement("li");
+      item.textContent = block.text || "";
+      activeList.append(item);
+      continue;
+    }
+
+    activeList = null;
+    activeListType = "";
+    container.append(renderBlock(block, headings, index));
   }
+
+  return headings;
 }
 
-function renderBlock(block) {
+function renderBlock(block, headings = [], index = 0) {
   const type = block.type || "paragraph";
   if (type === "divider") return document.createElement("hr");
-  if (type === "bulleted_list_item" || type === "numbered_list_item") {
-    const list = document.createElement(type === "numbered_list_item" ? "ol" : "ul");
-    const item = document.createElement("li");
-    item.textContent = block.text || "";
-    list.append(item);
-    return list;
-  }
   if (type === "quote" || type === "callout") {
     const quote = document.createElement("blockquote");
     quote.textContent = block.text || "";
     return quote;
   }
   if (type === "code") {
+    const figure = document.createElement("figure");
+    figure.className = "code-card";
+    const caption = document.createElement("figcaption");
+    caption.textContent = block.language || "code";
     const pre = document.createElement("pre");
     const code = document.createElement("code");
     code.textContent = block.text || "";
     pre.append(code);
-    return pre;
+    figure.append(caption, pre);
+    return figure;
   }
   if (type === "heading_1" || type === "heading_2") {
     const heading = document.createElement("h2");
     heading.textContent = block.text || "";
+    heading.id = headingId(block.text, index);
+    headings.push({ id: heading.id, text: block.text || "", level: 2 });
     return heading;
   }
   if (type === "heading_3") {
     const heading = document.createElement("h3");
     heading.textContent = block.text || "";
+    heading.id = headingId(block.text, index);
+    headings.push({ id: heading.id, text: block.text || "", level: 3 });
     return heading;
   }
   const paragraph = document.createElement("p");
   paragraph.textContent = block.text || "";
   return paragraph;
+}
+
+function renderToc(headings) {
+  if (!elements.detailToc) return;
+  elements.detailToc.innerHTML = "";
+
+  if (!headings.length) {
+    elements.detailToc.append(emptyInline("这篇笔记还没有标题层级"));
+    return;
+  }
+
+  for (const heading of headings.slice(0, 12)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = heading.level === 3 ? "toc-child" : "";
+    button.textContent = heading.text;
+    button.addEventListener("click", () => {
+      document.getElementById(heading.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    elements.detailToc.append(button);
+  }
+}
+
+function renderRelatedNotes(currentNote) {
+  if (!elements.relatedNotes) return;
+  elements.relatedNotes.innerHTML = "";
+
+  const related = state.notes
+    .filter((note) => note.id !== currentNote.id)
+    .map((note) => ({
+      note,
+      score: relatedScore(currentNote, note)
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || compareDate(b.note.updated, a.note.updated))
+    .slice(0, 3)
+    .map((item) => item.note);
+
+  if (!related.length) {
+    elements.relatedNotes.append(emptyInline("暂无相关笔记"));
+    return;
+  }
+
+  for (const note of related) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "related-item";
+    button.innerHTML = `
+      <strong>${escapeHtml(note.title)}</strong>
+      <span>${escapeHtml(note.category || "未分类")} · ${escapeHtml(formatDate(note.updated) || "-")}</span>
+    `;
+    button.addEventListener("click", () => openDetail(note));
+    elements.relatedNotes.append(button);
+  }
+}
+
+function renderDetailNavigation(currentNote) {
+  const ordered = [...state.notes].sort((a, b) => compareDate(b.updated, a.updated));
+  const index = ordered.findIndex((note) => note.id === currentNote.id || note.slug === currentNote.slug);
+  const previous = index > 0 ? ordered[index - 1] : null;
+  const next = index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null;
+
+  bindNavButton(elements.previousNote, previous, "上一篇");
+  bindNavButton(elements.nextNote, next, "下一篇");
+}
+
+function bindNavButton(button, note, fallbackText) {
+  if (!button) return;
+  button.disabled = !note;
+  button.textContent = note ? `${fallbackText}：${compactLabel(note.title)}` : fallbackText;
+  button.onclick = note ? () => openDetail(note) : null;
+}
+
+function relatedScore(source, target) {
+  let score = 0;
+  if (source.category && source.category === target.category) score += 3;
+  const sourceTags = new Set(source.tags || []);
+  for (const tag of target.tags || []) {
+    if (sourceTags.has(tag)) score += 2;
+  }
+  return score;
 }
 
 function openPanel() {
@@ -831,6 +1090,12 @@ function countValues(values) {
   }, {});
 }
 
+function sumCountsByPrefix(counts, prefix) {
+  return Object.entries(counts).reduce((sum, [key, count]) => {
+    return key.startsWith(prefix) ? sum + count : sum;
+  }, 0);
+}
+
 function emptyInline(text) {
   const empty = document.createElement("p");
   empty.className = "inline-empty";
@@ -840,6 +1105,32 @@ function emptyInline(text) {
 
 function scrollToNotes() {
   document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function scrollToKnowledgeMap() {
+  elements.knowledgeGraph?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function headingId(text, index) {
+  return `heading-${index}-${slugifyText(text) || "section"}`;
+}
+
+function slugifyText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function isWithinDays(value, days) {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
 }
 
 function escapeHtml(value) {
