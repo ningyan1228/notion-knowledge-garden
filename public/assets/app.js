@@ -40,7 +40,7 @@ const sampleNotes = [
     slug: "reading-note-review",
     summary: "把划线、想法和问题放回主题网络，形成能被再次使用的材料。",
     category: "阅读",
-    tags: ["读书", "主题卡片", "知识花园"],
+    tags: ["读书", "主题卡片", "朝夕拾光"],
     cover: "https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=1200&q=80",
     created: "2026-06-28",
     updated: "2026-07-05",
@@ -199,7 +199,7 @@ function setWriterStatus(message, isError = false) {
 }
 
 async function loadNotes({ refresh = false } = {}) {
-  setStatus("正在读取知识花园...");
+  setStatus("正在读取朝夕拾光...");
   elements.refreshButton.disabled = true;
 
   try {

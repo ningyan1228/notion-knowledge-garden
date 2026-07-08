@@ -3,26 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>个人知识花园</title>
-    <meta name="description" content="把 Notion 里的公开笔记整理成个人知识花园。" />
+    <title>朝夕拾光</title>
+    <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <link rel="stylesheet" href="assets/styles.css" />
     <script src="assets/config.js"></script>
     <script defer src="assets/app.js"></script>
   </head>
   <body>
     <main class="page-shell">
+      <header class="topbar">
+        <a class="brand-mark" href="#">朝夕拾光</a>
+        <span>收集每天的灵感与知识碎片</span>
+      </header>
+
       <section class="hero">
         <div class="hero-copy">
-          <span class="eyebrow">Notion Knowledge Garden</span>
-          <h1>个人知识花园</h1>
-          <p>把 Notion 里的公开笔记整理成个人知识花园。</p>
+          <span class="eyebrow">记录思考，沉淀成长</span>
+          <h1>朝夕拾光</h1>
+          <p>收集每天的灵感与知识碎片。收集灵感，记录思考，沉淀属于自己的知识世界。</p>
           <div class="hero-actions">
             <button class="button secondary" type="button" id="writerButton">写笔记</button>
             <button class="button primary" type="button" id="refreshButton">刷新笔记</button>
             <a class="button ghost" href="#notes">浏览全部</a>
           </div>
         </div>
-        <div class="hero-visual" aria-label="知识花园横幅">
+        <div class="hero-visual" aria-label="朝夕拾光横幅">
           <div class="garden-card large">
             <span>Capture</span>
             <strong>灵感采集</strong>
@@ -84,7 +89,13 @@
         </label>
       </section>
 
-      <div class="status-line" id="statusLine">正在读取知识花园...</div>
+      <div class="section-head">
+        <div>
+          <span>Notes</span>
+          <h2>公开笔记</h2>
+        </div>
+        <p class="status-line" id="statusLine">正在读取朝夕拾光...</p>
+      </div>
 
       <section class="notes-grid" id="notes" aria-live="polite"></section>
     </main>
