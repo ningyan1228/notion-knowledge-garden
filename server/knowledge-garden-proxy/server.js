@@ -20,7 +20,7 @@ const FIELDS = {
   status: ["Status", "\u72b6\u6001"],
   published: ["Published", "\u662f\u5426\u516c\u5f00", "\u516c\u5f00"],
   pinned: ["Pinned", "\u7f6e\u9876"],
-  slug: ["Slug", "slug", "\u8def\u5f84"],
+  slug: ["Slug", "slug", "\u77ed\u94fe\u63a5", "\u8def\u5f84"],
   created: ["Created", "\u521b\u5efa\u65f6\u95f4"],
   updated: ["Updated", "\u66f4\u65b0\u65f6\u95f4"],
   studyMinutes: ["Study Minutes", "Reading Minutes", "\u5b66\u4e60\u65f6\u957f", "\u9605\u8bfb\u65f6\u95f4", "\u5b66\u4e60\u5206\u949f", "\u65f6\u957f"]
@@ -191,12 +191,13 @@ async function createNotionNote(input) {
     "摘要": { rich_text: richTextChunks(summary) },
     "是否公开": { checkbox: published },
     "置顶": { checkbox: pinned },
-    "Slug": { rich_text: richTextChunks(slug) },
     "状态": { status: { name: status } },
     "创建时间": { date: { start: today } },
     "更新时间": { date: { start: today } }
   };
 
+  const slugProperty = await optionalDatabaseProperty(FIELDS.slug, "rich_text");
+  if (slugProperty) properties[slugProperty] = { rich_text: richTextChunks(slug) };
   if (category) properties["分类"] = { select: { name: category } };
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";

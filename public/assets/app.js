@@ -26,7 +26,7 @@ const sampleNotes = [
     id: "sample-2",
     title: "Notion 数据库字段设计",
     slug: "notion-database-fields",
-    summary: "为公开笔记准备 Title、Summary、Category、Tags、Published、Slug 等字段。",
+    summary: "为公开笔记准备标题、摘要、分类、标签、公开状态、短链接等字段。",
     category: "Notion",
     tags: ["数据库", "发布", "结构"],
     cover: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80",
