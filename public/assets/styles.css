@@ -319,6 +319,148 @@ h1 {
   letter-spacing: 0;
 }
 
+.garden-workbench {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1.15fr repeat(3, minmax(0, 0.85fr));
+  gap: 14px;
+}
+
+.module-card {
+  min-height: 178px;
+  border: 1px solid rgba(217, 226, 223, 0.92);
+  border-radius: 22px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 253, 247, 0.86);
+  box-shadow: var(--soft-shadow);
+}
+
+.module-feature,
+.module-wander {
+  justify-content: space-between;
+}
+
+.module-feature {
+  color: #f7fbf7;
+  background:
+    linear-gradient(145deg, rgba(20, 92, 75, 0.96), rgba(35, 63, 78, 0.94)),
+    var(--night);
+}
+
+.module-wander {
+  background:
+    linear-gradient(145deg, rgba(255, 253, 247, 0.94), rgba(238, 246, 242, 0.92));
+}
+
+.module-kicker,
+.module-heading span {
+  color: var(--leaf-dark);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.module-feature .module-kicker {
+  color: #b9e8d8;
+}
+
+.module-card h2 {
+  margin-top: 8px;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.module-card p {
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.module-feature p {
+  color: rgba(247, 251, 247, 0.74);
+}
+
+.module-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.module-heading strong {
+  font-size: 17px;
+}
+
+.topic-map,
+.tag-cloud,
+.recent-list {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.topic-pill,
+.cloud-tag,
+.recent-item {
+  border: 1px solid rgba(44, 138, 112, 0.18);
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.topic-pill,
+.cloud-tag {
+  min-height: 34px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.topic-pill strong {
+  color: var(--leaf-dark);
+  font-size: 13px;
+}
+
+.cloud-tag {
+  color: var(--leaf-dark);
+  font-size: 13px;
+}
+
+.recent-list {
+  flex-direction: column;
+}
+
+.recent-item {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 14px;
+  padding: 9px 10px;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.recent-item span {
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.recent-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-empty {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .toolbar {
   margin-top: 16px;
   border-radius: 20px;
@@ -700,7 +842,8 @@ textarea:focus {
 
 @media (max-width: 920px) {
   .hero,
-  .toolbar {
+  .toolbar,
+  .garden-workbench {
     grid-template-columns: 1fr;
   }
 

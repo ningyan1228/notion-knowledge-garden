@@ -53,6 +53,11 @@ const elements = {
   totalCategories: document.querySelector("#totalCategories"),
   totalTags: document.querySelector("#totalTags"),
   lastUpdated: document.querySelector("#lastUpdated"),
+  topicMap: document.querySelector("#topicMap"),
+  tagCloud: document.querySelector("#tagCloud"),
+  recentList: document.querySelector("#recentList"),
+  quickWriteButton: document.querySelector("#quickWriteButton"),
+  randomNoteButton: document.querySelector("#randomNoteButton"),
   searchInput: document.querySelector("#searchInput"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
@@ -98,6 +103,8 @@ elements.sortSelect.addEventListener("change", (event) => {
 
 elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true }));
 elements.writerButton?.addEventListener("click", openWriter);
+elements.quickWriteButton?.addEventListener("click", openWriter);
+elements.randomNoteButton?.addEventListener("click", openRandomNote);
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
@@ -256,7 +263,100 @@ function fillSelect(select, label, values) {
 function render() {
   const notes = filteredNotes();
   renderStats(state.notes);
+  renderWorkbench(state.notes);
   renderGrid(notes);
+}
+
+function renderWorkbench(notes) {
+  renderTopicMap(notes);
+  renderTagCloud(notes);
+  renderRecentList(notes);
+}
+
+function renderTopicMap(notes) {
+  if (!elements.topicMap) return;
+  elements.topicMap.innerHTML = "";
+  const counts = countValues(notes.map((note) => note.category).filter(Boolean));
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"));
+
+  if (!entries.length) {
+    elements.topicMap.append(emptyInline("暂无分类"));
+    return;
+  }
+
+  for (const [category, count] of entries.slice(0, 8)) {
+    const button = document.createElement("button");
+    button.className = "topic-pill";
+    button.type = "button";
+    button.innerHTML = `<span>${escapeHtml(category)}</span><strong>${count}</strong>`;
+    button.addEventListener("click", () => {
+      state.category = category;
+      elements.categoryFilter.value = category;
+      render();
+      scrollToNotes();
+    });
+    elements.topicMap.append(button);
+  }
+}
+
+function renderTagCloud(notes) {
+  if (!elements.tagCloud) return;
+  elements.tagCloud.innerHTML = "";
+  const counts = countValues(notes.flatMap((note) => note.tags));
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"));
+
+  if (!entries.length) {
+    elements.tagCloud.append(emptyInline("暂无标签"));
+    return;
+  }
+
+  for (const [tag, count] of entries.slice(0, 14)) {
+    const button = document.createElement("button");
+    button.className = "cloud-tag";
+    button.type = "button";
+    button.textContent = `${tag} ${count}`;
+    button.addEventListener("click", () => {
+      state.tag = tag;
+      elements.tagFilter.value = tag;
+      render();
+      scrollToNotes();
+    });
+    elements.tagCloud.append(button);
+  }
+}
+
+function renderRecentList(notes) {
+  if (!elements.recentList) return;
+  elements.recentList.innerHTML = "";
+  const recent = [...notes]
+    .sort((a, b) => compareDate(b.updated, a.updated))
+    .slice(0, 3);
+
+  if (!recent.length) {
+    elements.recentList.append(emptyInline("暂无更新"));
+    return;
+  }
+
+  for (const note of recent) {
+    const button = document.createElement("button");
+    button.className = "recent-item";
+    button.type = "button";
+    button.innerHTML = `
+      <span>${escapeHtml(formatDate(note.updated) || "-")}</span>
+      <strong>${escapeHtml(note.title)}</strong>
+    `;
+    button.addEventListener("click", () => openDetail(note));
+    elements.recentList.append(button);
+  }
+}
+
+function openRandomNote() {
+  if (!state.notes.length) {
+    setStatus("还没有可以漫游的公开笔记。");
+    return;
+  }
+  const note = state.notes[Math.floor(Math.random() * state.notes.length)];
+  openDetail(note);
 }
 
 function filteredNotes() {
@@ -463,6 +563,35 @@ function formatDate(value) {
 
 function unique(values) {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+}
+
+function countValues(values) {
+  return values.reduce((counts, value) => {
+    const key = String(value || "").trim();
+    if (!key) return counts;
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function emptyInline(text) {
+  const empty = document.createElement("p");
+  empty.className = "inline-empty";
+  empty.textContent = text;
+  return empty;
+}
+
+function scrollToNotes() {
+  document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function setStatus(message) {
