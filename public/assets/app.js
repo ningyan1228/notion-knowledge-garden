@@ -53,6 +53,11 @@ const elements = {
   totalCategories: document.querySelector("#totalCategories"),
   totalTags: document.querySelector("#totalTags"),
   lastUpdated: document.querySelector("#lastUpdated"),
+  growthYear: document.querySelector("#growthYear"),
+  growthNotes: document.querySelector("#growthNotes"),
+  growthHours: document.querySelector("#growthHours"),
+  growthTopics: document.querySelector("#growthTopics"),
+  heatmapMonths: document.querySelector("#heatmapMonths"),
   knowledgeGraph: document.querySelector("#knowledgeGraph"),
   graphHint: document.querySelector("#graphHint"),
   topicMap: document.querySelector("#topicMap"),
@@ -244,6 +249,7 @@ function normalizeNotes(notes) {
     cover: String(note.cover || ""),
     created: String(note.created || ""),
     updated: String(note.updated || note.created || ""),
+    studyMinutes: Number(note.studyMinutes || note.readingMinutes || 0),
     pinned: Boolean(note.pinned),
     content: Array.isArray(note.content) ? note.content : []
   }));
@@ -277,9 +283,76 @@ function render() {
 
 function renderWorkbench(notes) {
   renderKnowledgeGraph(notes);
+  renderGrowthMap(notes);
   renderTopicMap(notes);
   renderTagCloud(notes);
   renderRecentList(notes);
+}
+
+function renderGrowthMap(notes) {
+  if (!elements.heatmapMonths) return;
+
+  const year = new Date().getFullYear();
+  const contributionCounts = buildContributionCounts(notes, year);
+  const totalEvents = Object.values(contributionCounts).reduce((sum, count) => sum + count, 0);
+  const topics = unique(notes.map((note) => note.category).filter(Boolean));
+  const trackedMinutes = notes.reduce((sum, note) => sum + (Number(note.studyMinutes) || 0), 0);
+  const estimatedHours = trackedMinutes > 0
+    ? trackedMinutes / 60
+    : Math.max(totalEvents * 0.5, notes.length * 0.5);
+
+  elements.growthYear.textContent = String(year);
+  elements.growthNotes.textContent = `${totalEvents || notes.length}次`;
+  elements.growthHours.textContent = trackedMinutes > 0
+    ? `${formatNumber(estimatedHours)}小时`
+    : `约${formatNumber(estimatedHours)}小时`;
+  elements.growthTopics.textContent = `${topics.length}个`;
+
+  elements.heatmapMonths.innerHTML = "";
+  for (let month = 0; month < 12; month += 1) {
+    const monthRow = document.createElement("article");
+    monthRow.className = "heatmap-month";
+
+    const monthLabel = document.createElement("span");
+    monthLabel.className = "heatmap-month-label";
+    monthLabel.textContent = monthName(month);
+
+    const cells = document.createElement("div");
+    cells.className = "heatmap-cells";
+
+    const totalDays = daysInMonth(year, month);
+    for (let day = 1; day <= totalDays; day += 1) {
+      const key = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+      const count = contributionCounts[key] || 0;
+      const cell = document.createElement("button");
+      cell.className = `heat-cell level-${heatLevel(count)}`;
+      cell.type = "button";
+      cell.title = `${year}年${month + 1}月${day}日：${count} 次学习记录`;
+      cell.setAttribute("aria-label", cell.title);
+      cells.append(cell);
+    }
+
+    monthRow.append(monthLabel, cells);
+    elements.heatmapMonths.append(monthRow);
+  }
+}
+
+function buildContributionCounts(notes, year) {
+  const counts = {};
+  const seen = new Set();
+
+  for (const note of notes) {
+    for (const value of [note.created, note.updated]) {
+      const key = dateKey(value);
+      if (!key || !key.startsWith(`${year}-`)) continue;
+      const eventKey = `${note.id}:${key}`;
+      if (seen.has(eventKey)) continue;
+      seen.add(eventKey);
+      counts[key] = (counts[key] || 0) + 1;
+    }
+  }
+
+  return counts;
 }
 
 function renderKnowledgeGraph(notes) {
@@ -711,6 +784,38 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function dateKey(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function monthName(monthIndex) {
+  return ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"][monthIndex];
+}
+
+function daysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function heatLevel(count) {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count === 3) return 3;
+  return 4;
+}
+
+function formatNumber(value) {
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : number.toFixed(1);
 }
 
 function unique(values) {
