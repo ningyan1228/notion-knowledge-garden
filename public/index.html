@@ -17,6 +17,7 @@
           <h1>个人知识花园</h1>
           <p>把 Notion 里的公开笔记整理成个人知识花园。</p>
           <div class="hero-actions">
+            <button class="button secondary" type="button" id="writerButton">写笔记</button>
             <button class="button primary" type="button" id="refreshButton">刷新笔记</button>
             <a class="button ghost" href="#notes">浏览全部</a>
           </div>
@@ -87,6 +88,65 @@
 
       <section class="notes-grid" id="notes" aria-live="polite"></section>
     </main>
+
+    <aside class="writer" id="writerPanel" aria-hidden="true">
+      <div class="writer-backdrop" data-close-writer></div>
+      <article class="writer-card" role="dialog" aria-modal="true" aria-labelledby="writerTitle">
+        <button class="icon-button close-button" type="button" aria-label="关闭" data-close-writer>×</button>
+        <div class="writer-body">
+          <div class="detail-meta">
+            <span>同步到 Notion</span>
+            <span>新建笔记</span>
+          </div>
+          <h2 id="writerTitle">写一篇新笔记</h2>
+          <form id="writerForm" class="writer-form">
+            <label class="full">
+              <span>管理密码</span>
+              <input id="writerToken" name="token" type="password" autocomplete="current-password" required />
+            </label>
+            <label>
+              <span>标题</span>
+              <input id="writerNoteTitle" name="title" type="text" required />
+            </label>
+            <label>
+              <span>Slug</span>
+              <input id="writerSlug" name="slug" type="text" placeholder="my-note-slug" />
+            </label>
+            <label class="full">
+              <span>摘要</span>
+              <textarea id="writerSummary" name="summary" rows="3"></textarea>
+            </label>
+            <label>
+              <span>分类</span>
+              <input id="writerCategory" name="category" type="text" placeholder="随笔" />
+            </label>
+            <label>
+              <span>标签</span>
+              <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
+            </label>
+            <label class="full">
+              <span>正文</span>
+              <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
+            </label>
+            <div class="writer-options full">
+              <label>
+                <input id="writerPublished" name="published" type="checkbox" checked />
+                <span>公开到网站</span>
+              </label>
+              <label>
+                <input id="writerPinned" name="pinned" type="checkbox" />
+                <span>置顶</span>
+              </label>
+            </div>
+            <div class="writer-actions full">
+              <button class="button primary" type="submit">发布到 Notion</button>
+              <button class="button ghost" type="button" data-close-writer>取消</button>
+            </div>
+            <p class="writer-status full" id="writerStatus"></p>
+          </form>
+        </div>
+      </article>
+    </aside>
 
     <aside class="detail" id="detailPanel" aria-hidden="true">
       <div class="detail-backdrop" data-close-detail></div>

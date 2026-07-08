@@ -58,6 +58,11 @@ const elements = {
   tagFilter: document.querySelector("#tagFilter"),
   sortSelect: document.querySelector("#sortSelect"),
   refreshButton: document.querySelector("#refreshButton"),
+  writerButton: document.querySelector("#writerButton"),
+  writerPanel: document.querySelector("#writerPanel"),
+  writerForm: document.querySelector("#writerForm"),
+  writerToken: document.querySelector("#writerToken"),
+  writerStatus: document.querySelector("#writerStatus"),
   statusLine: document.querySelector("#statusLine"),
   grid: document.querySelector("#notes"),
   template: document.querySelector("#noteCardTemplate"),
@@ -92,16 +97,106 @@ elements.sortSelect.addEventListener("change", (event) => {
 });
 
 elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true }));
+elements.writerButton?.addEventListener("click", openWriter);
+elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
   node.addEventListener("click", closeDetail);
 });
 
+document.querySelectorAll("[data-close-writer]").forEach((node) => {
+  node.addEventListener("click", closeWriter);
+});
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeDetail();
+  if (event.key === "Escape") {
+    closeDetail();
+    closeWriter();
+  }
 });
 
 loadNotes();
+
+function openWriter() {
+  elements.writerPanel?.setAttribute("aria-hidden", "false");
+  if (elements.writerToken) {
+    elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
+  }
+  if (elements.writerStatus) elements.writerStatus.textContent = "";
+  document.body.style.overflow = "hidden";
+}
+
+function closeWriter() {
+  elements.writerPanel?.setAttribute("aria-hidden", "true");
+  if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") {
+    document.body.style.overflow = "";
+  }
+}
+
+async function createNoteFromWriter(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const formData = new FormData(form);
+  const token = String(formData.get("token") || "").trim();
+  const title = String(formData.get("title") || "").trim();
+
+  if (!token || !title) {
+    setWriterStatus("请先填写管理密码和标题。", true);
+    return;
+  }
+
+  const payload = {
+    title,
+    slug: String(formData.get("slug") || "").trim(),
+    summary: String(formData.get("summary") || "").trim(),
+    category: String(formData.get("category") || "").trim(),
+    tags: splitTags(String(formData.get("tags") || "")),
+    content: String(formData.get("content") || "").trim(),
+    published: formData.get("published") === "on",
+    pinned: formData.get("pinned") === "on"
+  };
+
+  submitButton.disabled = true;
+  setWriterStatus("正在同步到 Notion...");
+
+  try {
+    const response = await fetch(`${apiBase}/api/admin/notes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "创建笔记失败");
+
+    localStorage.setItem("kgAdminToken", token);
+    form.reset();
+    elements.writerToken.value = token;
+    document.querySelector("#writerPublished").checked = true;
+    setWriterStatus(`已同步：${data.note?.title || title}`);
+    await loadNotes({ refresh: true });
+  } catch (error) {
+    setWriterStatus(error instanceof Error ? error.message : "创建笔记失败", true);
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+function splitTags(value) {
+  return value
+    .split(/[,，、\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function setWriterStatus(message, isError = false) {
+  if (!elements.writerStatus) return;
+  elements.writerStatus.textContent = message;
+  elements.writerStatus.dataset.error = isError ? "true" : "false";
+}
 
 async function loadNotes({ refresh = false } = {}) {
   setStatus("正在读取知识花园...");

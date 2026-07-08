@@ -49,6 +49,23 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/admin/notes") {
+      if (!isAdminRequest(req)) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const input = await readJsonBody(req);
+      const page = await createNotionNote(input);
+      cachedPages = null;
+      cachedAt = 0;
+
+      sendJson(res, 201, {
+        note: normalizeNote(page)
+      });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/notes") {
       const force = url.searchParams.get("refresh") === "1";
       const pages = await getPublishedPages(force);
@@ -151,6 +168,184 @@ async function listBlocks(blockId) {
   return blocks;
 }
 
+async function createNotionNote(input) {
+  const title = cleanText(input?.title);
+  if (!title) throw new Error("Missing title");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const summary = cleanText(input?.summary);
+  const category = cleanText(input?.category);
+  const tags = normalizeTags(input?.tags);
+  const slug = cleanText(input?.slug) || slugify(title);
+  const cover = cleanText(input?.cover);
+  const published = Boolean(input?.published);
+  const pinned = Boolean(input?.pinned);
+  const status = cleanText(input?.status) || (published ? "完成" : "进行中");
+  const content = cleanText(input?.content);
+
+  const properties = {
+    "标题": { title: richTextChunks(title) },
+    "摘要": { rich_text: richTextChunks(summary) },
+    "是否公开": { checkbox: published },
+    "置顶": { checkbox: pinned },
+    "Slug": { rich_text: richTextChunks(slug) },
+    "状态": { status: { name: status } },
+    "创建时间": { date: { start: today } },
+    "更新时间": { date: { start: today } }
+  };
+
+  if (category) properties["分类"] = { select: { name: category } };
+  if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
+  if (cover && /^https?:\/\//i.test(cover)) {
+    properties["封面"] = {
+      files: [{ name: "cover", type: "external", external: { url: cover } }]
+    };
+  }
+
+  return notionRequest("pages", "POST", {
+    parent: { database_id: extractNotionId(requiredEnv("NOTION_DATABASE_ID")) },
+    properties,
+    children: markdownToBlocks(content || summary || title)
+  });
+}
+
+function markdownToBlocks(markdown) {
+  const blocks = [];
+  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+  let paragraph = [];
+  let inCode = false;
+  let codeLines = [];
+
+  const flushParagraph = () => {
+    const text = paragraph.join("\n").trim();
+    paragraph = [];
+    if (text) {
+      for (const part of splitText(text)) {
+        blocks.push(paragraphBlock(part));
+      }
+    }
+  };
+
+  const flushCode = () => {
+    const text = codeLines.join("\n");
+    codeLines = [];
+    blocks.push({
+      object: "block",
+      type: "code",
+      code: {
+        rich_text: richTextChunks(text),
+        language: "plain text"
+      }
+    });
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+
+    if (line.trim().startsWith("```")) {
+      if (inCode) flushCode();
+      else flushParagraph();
+      inCode = !inCode;
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      continue;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      blocks.push({ object: "block", type: "divider", divider: {} });
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      const type = `heading_${heading[1].length}`;
+      blocks.push({
+        object: "block",
+        type,
+        [type]: { rich_text: richTextChunks(heading[2]) }
+      });
+      continue;
+    }
+
+    const quote = trimmed.match(/^>\s+(.+)$/);
+    if (quote) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "quote",
+        quote: { rich_text: richTextChunks(quote[1]) }
+      });
+      continue;
+    }
+
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "bulleted_list_item",
+        bulleted_list_item: { rich_text: richTextChunks(bullet[1]) }
+      });
+      continue;
+    }
+
+    const numbered = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    if (numbered) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "numbered_list_item",
+        numbered_list_item: { rich_text: richTextChunks(numbered[1]) }
+      });
+      continue;
+    }
+
+    paragraph.push(line);
+  }
+
+  if (inCode) flushCode();
+  flushParagraph();
+
+  return blocks.slice(0, 90);
+}
+
+function paragraphBlock(text) {
+  return {
+    object: "block",
+    type: "paragraph",
+    paragraph: { rich_text: richTextChunks(text) }
+  };
+}
+
+function richTextChunks(value) {
+  const text = String(value || "");
+  if (!text) return [];
+  return splitText(text, 1900).map((content) => ({
+    type: "text",
+    text: { content }
+  }));
+}
+
+function splitText(value, size = 1900) {
+  const text = String(value || "");
+  const chunks = [];
+  for (let index = 0; index < text.length; index += size) {
+    chunks.push(text.slice(index, index + size));
+  }
+  return chunks.length ? chunks : [""];
+}
+
 async function notionRequest(path, method, body) {
   const token = requiredEnv("NOTION_TOKEN");
   const response = await fetch(`https://api.notion.com/v1/${path}`, {
@@ -244,6 +439,42 @@ function blockText(block) {
   return "";
 }
 
+function isAdminRequest(req) {
+  const expected = requiredEnv("ADMIN_TOKEN");
+  const authorization = String(req.headers.authorization || "");
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const headerToken = String(req.headers["x-admin-token"] || "").trim();
+  return Boolean(expected && (bearer === expected || headerToken === expected));
+}
+
+async function readJsonBody(req) {
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 1024 * 1024) throw new Error("Request body too large");
+    chunks.push(chunk);
+  }
+
+  if (!chunks.length) return {};
+  const text = Buffer.concat(chunks).toString("utf8");
+  return JSON.parse(text);
+}
+
+function cleanText(value) {
+  return String(value || "").trim();
+}
+
+function normalizeTags(value) {
+  if (Array.isArray(value)) return value.map(cleanText).filter(Boolean).slice(0, 12);
+  return String(value || "")
+    .split(/[,，、\n]/)
+    .map(cleanText)
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 function isPublished(page) {
   return checkboxProp(pick(page.properties || {}, FIELDS.published));
 }
@@ -320,8 +551,8 @@ function setCors(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token");
 }
 
 function sendJson(res, status, data) {
