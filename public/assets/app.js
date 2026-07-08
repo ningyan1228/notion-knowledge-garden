@@ -4,10 +4,29 @@ const state = {
   notes: [],
   detailCache: new Map(),
   query: "",
+  type: "all",
   category: "all",
   tag: "all",
   sort: "updated"
 };
+
+const NOTE_TYPES = ["笔记", "日记", "灵感", "复盘"];
+const CATEGORY_OPTIONS = [
+  "常识",
+  "书单",
+  "工作记录",
+  "收益详情",
+  "学习笔记",
+  "编程",
+  "读书",
+  "GitHub 开源项目",
+  "ChatGPT",
+  "项目",
+  "教程科普",
+  "Codex",
+  "服务器与域名",
+  "Bybit"
+];
 
 const sampleNotes = [
   {
@@ -20,6 +39,7 @@ const sampleNotes = [
     cover: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
     created: "2026-07-01",
     updated: "2026-07-08",
+    type: "笔记",
     pinned: true
   },
   {
@@ -32,6 +52,7 @@ const sampleNotes = [
     cover: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80",
     created: "2026-07-02",
     updated: "2026-07-07",
+    type: "笔记",
     pinned: false
   },
   {
@@ -44,6 +65,7 @@ const sampleNotes = [
     cover: "https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=1200&q=80",
     created: "2026-06-28",
     updated: "2026-07-05",
+    type: "复盘",
     pinned: false
   }
 ];
@@ -71,12 +93,18 @@ const elements = {
   weeklySummary: document.querySelector("#weeklySummary"),
   pinnedList: document.querySelector("#pinnedList"),
   inspirationList: document.querySelector("#inspirationList"),
+  dailyMood: document.querySelector("#dailyMood"),
+  dailyKeywords: document.querySelector("#dailyKeywords"),
+  dailyCount: document.querySelector("#dailyCount"),
+  dailyWriteButton: document.querySelector("#dailyWriteButton"),
+  diaryList: document.querySelector("#diaryList"),
   quickWriteButton: document.querySelector("#quickWriteButton"),
   randomNoteButton: document.querySelector("#randomNoteButton"),
   focusWriteButton: document.querySelector("#focusWriteButton"),
   focusRandomButton: document.querySelector("#focusRandomButton"),
   focusMapButton: document.querySelector("#focusMapButton"),
   searchInput: document.querySelector("#searchInput"),
+  typeFilter: document.querySelector("#typeFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
   sortSelect: document.querySelector("#sortSelect"),
@@ -85,6 +113,8 @@ const elements = {
   writerPanel: document.querySelector("#writerPanel"),
   writerForm: document.querySelector("#writerForm"),
   writerToken: document.querySelector("#writerToken"),
+  writerTypeSelect: document.querySelector("#writerTypeSelect"),
+  writerPublished: document.querySelector("#writerPublished"),
   writerStatus: document.querySelector("#writerStatus"),
   statusLine: document.querySelector("#statusLine"),
   grid: document.querySelector("#notes"),
@@ -110,6 +140,11 @@ elements.searchInput.addEventListener("input", (event) => {
   render();
 });
 
+elements.typeFilter?.addEventListener("change", (event) => {
+  state.type = event.target.value;
+  render();
+});
+
 elements.categoryFilter.addEventListener("change", (event) => {
   state.category = event.target.value;
   render();
@@ -126,15 +161,17 @@ elements.sortSelect.addEventListener("change", (event) => {
 });
 
 elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true }));
-elements.writerButton?.addEventListener("click", openWriter);
-elements.quickWriteButton?.addEventListener("click", openWriter);
+elements.writerButton?.addEventListener("click", () => openWriter("笔记"));
+elements.quickWriteButton?.addEventListener("click", () => openWriter("灵感"));
+elements.dailyWriteButton?.addEventListener("click", () => openWriter("日记"));
 elements.randomNoteButton?.addEventListener("click", openRandomNote);
-elements.focusWriteButton?.addEventListener("click", openWriter);
+elements.focusWriteButton?.addEventListener("click", () => openWriter("笔记"));
 elements.focusRandomButton?.addEventListener("click", openRandomNote);
 elements.focusMapButton?.addEventListener("click", scrollToKnowledgeMap);
 elements.graphResetButton?.addEventListener("click", resetGraphFilters);
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
+elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
   node.addEventListener("click", closeDetail);
@@ -158,13 +195,25 @@ window.addEventListener("resize", () => {
   knowledgeChart?.resize();
 });
 
-function openWriter() {
+function openWriter(preferredType = "笔记") {
   elements.writerPanel?.setAttribute("aria-hidden", "false");
+  const nextType = NOTE_TYPES.includes(preferredType) ? preferredType : "笔记";
+  if (elements.writerTypeSelect) elements.writerTypeSelect.value = nextType;
+  updateWriterPrivacyDefault();
   if (elements.writerToken) {
     elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
   }
   if (elements.writerStatus) elements.writerStatus.textContent = "";
   document.body.style.overflow = "hidden";
+}
+
+function updateWriterPrivacyDefault() {
+  if (!elements.writerTypeSelect || !elements.writerPublished) return;
+  if (elements.writerTypeSelect.value === "日记") {
+    elements.writerPublished.checked = false;
+  } else {
+    elements.writerPublished.checked = true;
+  }
 }
 
 function closeWriter() {
@@ -189,6 +238,7 @@ async function createNoteFromWriter(event) {
 
   const payload = {
     title,
+    type: String(formData.get("type") || "笔记").trim(),
     slug: String(formData.get("slug") || "").trim(),
     summary: String(formData.get("summary") || "").trim(),
     category: String(formData.get("category") || "").trim(),
@@ -219,8 +269,9 @@ async function createNoteFromWriter(event) {
     localStorage.setItem("kgAdminToken", token);
     form.reset();
     elements.writerToken.value = token;
-    document.querySelector("#writerPublished").checked = true;
-    setWriterStatus(`已同步：${data.note?.title || title}`);
+    if (elements.writerTypeSelect) elements.writerTypeSelect.value = "笔记";
+    if (elements.writerPublished) elements.writerPublished.checked = true;
+    setWriterStatus(`已同步：${data.note?.title || title}${payload.published ? "" : "。未公开内容只保存在 Notion。"}`);
     await loadNotes({ refresh: true });
   } catch (error) {
     setWriterStatus(error instanceof Error ? error.message : "创建笔记失败", true);
@@ -268,6 +319,7 @@ function normalizeNotes(notes) {
     title: String(note.title || "未命名笔记"),
     slug: String(note.slug || note.id || ""),
     summary: String(note.summary || ""),
+    type: NOTE_TYPES.includes(String(note.type || "").trim()) ? String(note.type).trim() : "笔记",
     category: String(note.category || "未分类"),
     tags: Array.isArray(note.tags) ? note.tags.map(String).filter(Boolean) : [],
     cover: String(note.cover || ""),
@@ -280,14 +332,18 @@ function normalizeNotes(notes) {
 }
 
 function hydrateFilters() {
+  const currentType = elements.typeFilter?.value || "all";
   const currentCategory = elements.categoryFilter.value;
   const currentTag = elements.tagFilter.value;
-  const categories = unique(state.notes.map((note) => note.category).filter(Boolean));
+  const types = unique([...NOTE_TYPES, ...state.notes.map((note) => note.type).filter(Boolean)]);
+  const categories = unique([...CATEGORY_OPTIONS, ...state.notes.map((note) => note.category).filter(Boolean)]);
   const tags = unique(state.notes.flatMap((note) => note.tags));
 
+  if (elements.typeFilter) fillSelect(elements.typeFilter, "全部类型", types);
   fillSelect(elements.categoryFilter, "全部分类", categories);
   fillSelect(elements.tagFilter, "全部标签", tags);
 
+  if (types.includes(currentType)) elements.typeFilter.value = currentType;
   if (categories.includes(currentCategory)) elements.categoryFilter.value = currentCategory;
   if (tags.includes(currentTag)) elements.tagFilter.value = currentTag;
 }
@@ -308,6 +364,8 @@ function render() {
 function renderWorkbench(notes) {
   renderKnowledgeGraph(notes);
   renderGrowthMap(notes);
+  renderDailyPanel(notes);
+  renderDiarySection(notes);
   renderFocusPanel(notes);
   renderTopicMap(notes);
   renderTagCloud(notes);
@@ -427,6 +485,51 @@ function buildContributionCounts(notes, year) {
   }
 
   return counts;
+}
+
+function renderDailyPanel(notes) {
+  const today = dateKey(new Date());
+  const todayNotes = notes.filter((note) => dateKey(note.created || note.updated) === today);
+  const todayDiaries = todayNotes.filter(isDiary);
+  const keywords = unique(todayNotes.flatMap((note) => note.tags).filter(Boolean)).slice(0, 3);
+
+  if (elements.dailyMood) {
+    elements.dailyMood.textContent = todayDiaries.length ? "已留下今天" : "等待记录";
+  }
+  if (elements.dailyKeywords) {
+    elements.dailyKeywords.textContent = keywords.length ? keywords.join("、") : "暂无关键词";
+  }
+  if (elements.dailyCount) {
+    elements.dailyCount.textContent = `${todayNotes.length} 条`;
+  }
+}
+
+function renderDiarySection(notes) {
+  if (!elements.diaryList) return;
+  elements.diaryList.innerHTML = "";
+
+  const diaries = notes
+    .filter(isDiary)
+    .sort((a, b) => compareDate(b.updated || b.created, a.updated || a.created))
+    .slice(0, 6);
+
+  if (!diaries.length) {
+    elements.diaryList.append(emptyInline("还没有公开的拾光日记。私密日记会留在 Notion，不会显示在这里。"));
+    return;
+  }
+
+  for (const note of diaries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "diary-entry";
+    button.innerHTML = `
+      <span>${escapeHtml(formatDate(note.updated || note.created) || "今日")}</span>
+      <strong>${escapeHtml(note.title)}</strong>
+      <p>${escapeHtml(note.summary || "这一天也被好好收起来了。")}</p>
+    `;
+    button.addEventListener("click", () => openDetail(note));
+    elements.diaryList.append(button);
+  }
 }
 
 function renderFocusPanel(notes) {
@@ -738,11 +841,12 @@ function openRandomNote() {
 function filteredNotes() {
   const query = state.query;
   return [...state.notes]
+    .filter((note) => state.type === "all" || note.type === state.type)
     .filter((note) => state.category === "all" || note.category === state.category)
     .filter((note) => state.tag === "all" || note.tags.includes(state.tag))
     .filter((note) => {
       if (!query) return true;
-      return [note.title, note.summary, note.category, ...note.tags].join(" ").toLowerCase().includes(query);
+      return [note.title, note.summary, note.type, note.category, ...note.tags].join(" ").toLowerCase().includes(query);
     })
     .sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -793,7 +897,7 @@ function createCard(note) {
     cover.alt = `${note.title} 封面`;
     cover.hidden = false;
   }
-  category.textContent = note.category;
+  category.textContent = `${note.type || "笔记"} · ${note.category}`;
   date.textContent = formatDate(note.updated);
   title.textContent = note.title;
   summary.textContent = note.summary || "这篇笔记还没有摘要。";
@@ -834,7 +938,7 @@ function renderDetail(note) {
     elements.detailCover.hidden = true;
   }
 
-  elements.detailCategory.textContent = note.category || "未分类";
+  elements.detailCategory.textContent = `${note.type || "笔记"} · ${note.category || "未分类"}`;
   elements.detailUpdated.textContent = formatDate(note.updated);
   elements.detailTitle.textContent = note.title;
   elements.detailSummary.textContent = note.summary || "";
@@ -1003,6 +1107,7 @@ function bindNavButton(button, note, fallbackText) {
 
 function relatedScore(source, target) {
   let score = 0;
+  if (source.type && source.type === target.type) score += 1;
   if (source.category && source.category === target.category) score += 3;
   const sourceTags = new Set(source.tags || []);
   for (const tag of target.tags || []) {
@@ -1131,6 +1236,10 @@ function isWithinDays(value, days) {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
+}
+
+function isDiary(note) {
+  return note?.type === "日记";
 }
 
 function escapeHtml(value) {

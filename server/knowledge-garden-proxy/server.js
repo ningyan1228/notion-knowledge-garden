@@ -16,6 +16,7 @@ const FIELDS = {
   summary: ["Summary", "\u6458\u8981", "Description", "\u7b80\u4ecb"],
   category: ["Category", "\u5206\u7c7b", "Folder", "\u680f\u76ee"],
   tags: ["Tags", "\u6807\u7b7e", "Keywords", "\u5173\u952e\u8bcd"],
+  type: ["Type", "\u7c7b\u578b", "Kind", "\u5185\u5bb9\u7c7b\u578b"],
   cover: ["Cover", "\u5c01\u9762", "Banner", "\u6a2a\u5e45\u56fe"],
   status: ["Status", "\u72b6\u6001"],
   published: ["Published", "\u662f\u5426\u516c\u5f00", "\u516c\u5f00"],
@@ -176,6 +177,7 @@ async function createNotionNote(input) {
 
   const today = new Date().toISOString().slice(0, 10);
   const summary = cleanText(input?.summary);
+  const noteType = cleanText(input?.type) || "笔记";
   const category = cleanText(input?.category);
   const tags = normalizeTags(input?.tags);
   const slug = cleanText(input?.slug) || slugify(title);
@@ -198,6 +200,8 @@ async function createNotionNote(input) {
 
   const slugProperty = await optionalDatabaseProperty(FIELDS.slug, "rich_text");
   if (slugProperty) properties[slugProperty] = { rich_text: richTextChunks(slug) };
+  const typeProperty = await optionalDatabaseProperty(FIELDS.type, "select");
+  if (typeProperty) properties[typeProperty] = { select: { name: noteType } };
   if (category) properties["分类"] = { select: { name: category } };
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
@@ -388,6 +392,7 @@ function normalizeNote(page) {
     title,
     slug: slug || slugify(title) || page.id,
     summary: textProp(pick(props, FIELDS.summary)),
+    type: optionProp(pick(props, FIELDS.type)) || "笔记",
     category: optionProp(pick(props, FIELDS.category)) || "\u672a\u5206\u7c7b",
     tags: multiSelectProp(pick(props, FIELDS.tags)),
     cover: coverUrl(page, pick(props, FIELDS.cover)),

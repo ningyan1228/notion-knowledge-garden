@@ -105,6 +105,7 @@ button {
 .hero-visual,
 .toolbar,
 .growth-map,
+.diary-section,
 .detail-card,
 .writer-card {
   border: 1px solid rgba(217, 226, 223, 0.82);
@@ -454,7 +455,7 @@ body.graph-open {
 .garden-workbench {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: 1.15fr repeat(3, minmax(0, 0.85fr));
+  grid-template-columns: 1.1fr repeat(4, minmax(0, 0.8fr));
   gap: 14px;
 }
 
@@ -470,6 +471,7 @@ body.graph-open {
 }
 
 .module-feature,
+.module-daily,
 .module-wander {
   justify-content: space-between;
 }
@@ -493,6 +495,11 @@ body.graph-open {
 .module-wander {
   background:
     linear-gradient(145deg, rgba(255, 253, 247, 0.94), rgba(238, 246, 242, 0.92));
+}
+
+.module-daily {
+  background:
+    linear-gradient(145deg, rgba(255, 253, 247, 0.96), rgba(239, 248, 244, 0.9));
 }
 
 .module-kicker,
@@ -593,6 +600,34 @@ body.graph-open {
 
 .recent-item strong {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-record {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.daily-record div {
+  border: 1px solid rgba(44, 138, 112, 0.14);
+  border-radius: 14px;
+  padding: 10px 11px;
+  display: grid;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.daily-record span {
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.daily-record strong {
+  overflow: hidden;
+  color: var(--ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -714,6 +749,58 @@ body.graph-open {
   grid-template-columns: minmax(230px, 0.78fr) minmax(0, 1.32fr);
   gap: 18px;
   box-shadow: var(--soft-shadow);
+}
+
+.diary-section {
+  margin-top: 16px;
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: var(--soft-shadow);
+}
+
+.diary-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.diary-entry {
+  min-height: 158px;
+  border: 1px solid rgba(44, 138, 112, 0.16);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: inherit;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 247, 0.96), rgba(245, 241, 232, 0.92));
+  text-align: left;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.diary-entry:hover {
+  border-color: rgba(44, 138, 112, 0.32);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 44px rgba(31, 42, 52, 0.1);
+}
+
+.diary-entry span {
+  color: var(--leaf-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.diary-entry strong {
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.diary-entry p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .growth-intro {
@@ -936,7 +1023,7 @@ button.heat-cell:hover {
   border-radius: 20px;
   padding: 16px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 0.45fr));
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(130px, 0.38fr));
   gap: 12px;
   box-shadow: var(--soft-shadow);
 }
@@ -1463,6 +1550,7 @@ textarea:focus {
   .hero,
   .toolbar,
   .growth-map,
+  .diary-grid,
   .garden-workbench {
     grid-template-columns: 1fr;
   }

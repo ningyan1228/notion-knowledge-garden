@@ -78,6 +78,27 @@
           </div>
           <button class="button primary" type="button" id="quickWriteButton">记录灵感</button>
         </article>
+        <article class="module-card module-daily">
+          <div class="module-heading">
+            <span>Daily</span>
+            <strong>今日记录</strong>
+          </div>
+          <div class="daily-record">
+            <div>
+              <span>今日心情</span>
+              <strong id="dailyMood">等待记录</strong>
+            </div>
+            <div>
+              <span>今日关键词</span>
+              <strong id="dailyKeywords">暂无关键词</strong>
+            </div>
+            <div>
+              <span>今天写了</span>
+              <strong id="dailyCount">0 条</strong>
+            </div>
+          </div>
+          <button class="button primary" type="button" id="dailyWriteButton">写今日拾光</button>
+        </article>
         <article class="module-card">
           <div class="module-heading">
             <span>Topics</span>
@@ -180,10 +201,27 @@
         </div>
       </section>
 
+      <section class="diary-section" id="diaries" aria-label="拾光日记">
+        <div class="section-head">
+          <div>
+            <span>Daily Journal</span>
+            <h2>拾光日记</h2>
+          </div>
+          <p class="status-line">只展示你勾选公开的日记，私密日记会留在 Notion。</p>
+        </div>
+        <div class="diary-grid" id="diaryList"></div>
+      </section>
+
       <section class="toolbar" aria-label="筛选工具">
         <label class="search-box">
           <span>搜索</span>
           <input id="searchInput" type="search" placeholder="标题、摘要、标签" autocomplete="off" />
+        </label>
+        <label>
+          <span>类型</span>
+          <select id="typeFilter">
+            <option value="all">全部类型</option>
+          </select>
         </label>
         <label>
           <span>分类</span>
@@ -242,6 +280,15 @@
               <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
             </label>
             <label>
+              <span>类型</span>
+              <select id="writerTypeSelect" name="type">
+                <option value="笔记">笔记</option>
+                <option value="日记">日记</option>
+                <option value="灵感">灵感</option>
+                <option value="复盘">复盘</option>
+              </select>
+            </label>
+            <label>
               <span>状态</span>
               <select id="writerStatusSelect" name="status">
                 <option value="进行中">进行中</option>
@@ -263,7 +310,22 @@
             </label>
             <label>
               <span>分类</span>
-              <input id="writerCategory" name="category" type="text" placeholder="随笔" />
+              <select id="writerCategory" name="category">
+                <option value="常识">常识</option>
+                <option value="书单">书单</option>
+                <option value="工作记录">工作记录</option>
+                <option value="收益详情">收益详情</option>
+                <option value="学习笔记">学习笔记</option>
+                <option value="编程">编程</option>
+                <option value="读书">读书</option>
+                <option value="GitHub 开源项目">GitHub 开源项目</option>
+                <option value="ChatGPT">ChatGPT</option>
+                <option value="项目">项目</option>
+                <option value="教程科普">教程科普</option>
+                <option value="Codex">Codex</option>
+                <option value="服务器与域名">服务器与域名</option>
+                <option value="Bybit">Bybit</option>
+              </select>
             </label>
             <label>
               <span>标签</span>
