@@ -1,0 +1,9 @@
+{
+  "name": "notion-knowledge-garden",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:js": "node --check public/assets/app.js"
+  }
+}

@@ -1,0 +1,21 @@
+services:
+  knowledge-garden-proxy:
+    build: .
+    container_name: knowledge-garden-proxy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VIRTUAL_HOST: knowledge-api.gjsx.uno
+      LETSENCRYPT_HOST: knowledge-api.gjsx.uno
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      PORT: 3000
+      SERVICE_NAME: knowledge-garden-proxy
+    expose:
+      - "3000"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
