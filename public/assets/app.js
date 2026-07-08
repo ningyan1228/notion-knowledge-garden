@@ -53,6 +53,8 @@ const elements = {
   totalCategories: document.querySelector("#totalCategories"),
   totalTags: document.querySelector("#totalTags"),
   lastUpdated: document.querySelector("#lastUpdated"),
+  knowledgeGraph: document.querySelector("#knowledgeGraph"),
+  graphHint: document.querySelector("#graphHint"),
   topicMap: document.querySelector("#topicMap"),
   tagCloud: document.querySelector("#tagCloud"),
   recentList: document.querySelector("#recentList"),
@@ -80,6 +82,8 @@ const elements = {
   detailTags: document.querySelector("#detailTags"),
   detailContent: document.querySelector("#detailContent")
 };
+
+let knowledgeChart = null;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -123,6 +127,10 @@ document.addEventListener("keydown", (event) => {
 });
 
 loadNotes();
+
+window.addEventListener("resize", () => {
+  knowledgeChart?.resize();
+});
 
 function openWriter() {
   elements.writerPanel?.setAttribute("aria-hidden", "false");
@@ -268,9 +276,153 @@ function render() {
 }
 
 function renderWorkbench(notes) {
+  renderKnowledgeGraph(notes);
   renderTopicMap(notes);
   renderTagCloud(notes);
   renderRecentList(notes);
+}
+
+function renderKnowledgeGraph(notes) {
+  if (!elements.knowledgeGraph) return;
+  if (!window.echarts) {
+    elements.knowledgeGraph.textContent = "知识地图组件加载中...";
+    return;
+  }
+
+  const graph = buildKnowledgeGraph(notes);
+  if (!knowledgeChart) {
+    knowledgeChart = window.echarts.init(elements.knowledgeGraph, null, { renderer: "canvas" });
+    knowledgeChart.on("click", (params) => {
+      const data = params.data || {};
+      if (data.kind === "category") {
+        state.category = data.value;
+        elements.categoryFilter.value = data.value;
+        render();
+        scrollToNotes();
+      } else if (data.kind === "tag") {
+        state.tag = data.value;
+        elements.tagFilter.value = data.value;
+        render();
+        scrollToNotes();
+      } else if (data.kind === "note") {
+        const note = state.notes.find((item) => item.id === data.noteId || item.slug === data.noteId);
+        if (note) openDetail(note);
+      }
+    });
+  }
+
+  knowledgeChart.setOption({
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "item",
+      formatter: (params) => params.data?.tooltip || params.name
+    },
+    animationDurationUpdate: 500,
+    series: [
+      {
+        type: "graph",
+        layout: "force",
+        roam: true,
+        draggable: true,
+        top: 8,
+        bottom: 8,
+        left: 8,
+        right: 8,
+        force: {
+          repulsion: 170,
+          edgeLength: [54, 118],
+          gravity: 0.08
+        },
+        lineStyle: {
+          color: "rgba(214, 235, 226, 0.42)",
+          width: 1.2,
+          curveness: 0.08
+        },
+        label: {
+          show: true,
+          color: "#f7fbf7",
+          fontWeight: 700,
+          formatter: "{b}"
+        },
+        emphasis: {
+          focus: "adjacency",
+          lineStyle: { width: 2.5, color: "#b9e8d8" }
+        },
+        data: graph.nodes,
+        links: graph.links
+      }
+    ]
+  });
+}
+
+function buildKnowledgeGraph(notes) {
+  const nodes = new Map();
+  const links = [];
+  const addNode = (id, node) => {
+    if (!nodes.has(id)) nodes.set(id, { id, ...node });
+  };
+  const addLink = (source, target) => {
+    if (source !== target) links.push({ source, target });
+  };
+
+  addNode("root", {
+    name: "朝夕拾光",
+    kind: "root",
+    value: "root",
+    symbolSize: 58,
+    tooltip: "朝夕拾光：你的知识中心",
+    itemStyle: { color: "#31a17d", shadowBlur: 18, shadowColor: "rgba(49, 161, 125, 0.45)" },
+    label: { fontSize: 15 }
+  });
+
+  const categoryCounts = countValues(notes.map((note) => note.category).filter(Boolean));
+  const tagCounts = countValues(notes.flatMap((note) => note.tags));
+
+  for (const note of notes.slice(0, 36)) {
+    const category = note.category || "未分类";
+    const categoryId = `category:${category}`;
+    addNode(categoryId, {
+      name: category,
+      kind: "category",
+      value: category,
+      symbolSize: 34 + Math.min((categoryCounts[category] || 1) * 4, 18),
+      tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
+      itemStyle: { color: "#c68a3a" }
+    });
+    addLink("root", categoryId);
+
+    const noteId = `note:${note.id}`;
+    addNode(noteId, {
+      name: compactLabel(note.title),
+      kind: "note",
+      noteId: note.id,
+      symbolSize: note.pinned ? 34 : 28,
+      tooltip: `笔记：${note.title}`,
+      itemStyle: { color: note.pinned ? "#f0d39d" : "#dce8e4" },
+      label: { color: note.pinned ? "#fff4d8" : "#f7fbf7", fontSize: 11 }
+    });
+    addLink(categoryId, noteId);
+
+    for (const tag of note.tags.slice(0, 5)) {
+      const tagId = `tag:${tag}`;
+      addNode(tagId, {
+        name: tag,
+        kind: "tag",
+        value: tag,
+        symbolSize: 24 + Math.min((tagCounts[tag] || 1) * 3, 14),
+        tooltip: `标签：${tag} / ${tagCounts[tag] || 1} 次`,
+        itemStyle: { color: "#6f9fd2" },
+        label: { fontSize: 11 }
+      });
+      addLink(categoryId, tagId);
+      addLink(tagId, noteId);
+    }
+  }
+
+  return {
+    nodes: [...nodes.values()],
+    links
+  };
 }
 
 function renderTopicMap(notes) {
@@ -592,6 +744,11 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function compactLabel(value) {
+  const text = String(value || "").trim();
+  return text.length > 8 ? `${text.slice(0, 8)}…` : text;
 }
 
 function setStatus(message) {

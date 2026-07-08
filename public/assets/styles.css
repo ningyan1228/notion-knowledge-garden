@@ -237,6 +237,14 @@ h1 {
   background-position: center;
 }
 
+.hero-visual.graph-panel {
+  display: flex;
+  min-height: 430px;
+  flex-direction: column;
+  align-content: initial;
+  padding: 24px;
+}
+
 .hero-visual::before {
   content: "";
   position: absolute;
@@ -244,6 +252,91 @@ h1 {
   background:
     linear-gradient(180deg, transparent 6%, rgba(19, 31, 38, 0.74)),
     linear-gradient(90deg, rgba(19, 31, 38, 0.42), transparent 58%);
+}
+
+.graph-header,
+.knowledge-graph,
+.graph-legend {
+  position: relative;
+  z-index: 1;
+}
+
+.graph-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  color: #f7fbf7;
+}
+
+.graph-header span {
+  color: rgba(185, 232, 216, 0.78);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.graph-header strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 26px;
+}
+
+.graph-header p {
+  max-width: 180px;
+  color: rgba(247, 251, 247, 0.62);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.knowledge-graph {
+  min-height: 0;
+  flex: 1;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(185, 232, 216, 0.12), transparent 34%),
+    rgba(13, 27, 31, 0.22);
+}
+
+.graph-legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: rgba(247, 251, 247, 0.68);
+  font-size: 12px;
+}
+
+.graph-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graph-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.legend-root {
+  background: #31a17d;
+}
+
+.legend-topic {
+  background: #c68a3a;
+}
+
+.legend-tag {
+  background: #6f9fd2;
+}
+
+.legend-note {
+  background: #dce8e4;
 }
 
 .garden-card {

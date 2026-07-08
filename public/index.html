@@ -7,6 +7,7 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <link rel="stylesheet" href="assets/styles.css" />
     <script src="assets/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
     <script defer src="assets/app.js"></script>
   </head>
   <body>
@@ -27,18 +28,20 @@
             <a class="button ghost" href="#notes">浏览全部</a>
           </div>
         </div>
-        <div class="hero-visual" aria-label="朝夕拾光横幅">
-          <div class="garden-card large">
-            <span>Capture</span>
-            <strong>灵感采集</strong>
+        <div class="hero-visual graph-panel" aria-label="知识地图">
+          <div class="graph-header">
+            <div>
+              <span>Knowledge Map</span>
+              <strong>知识星图</strong>
+            </div>
+            <p id="graphHint">点击节点进入对应知识</p>
           </div>
-          <div class="garden-card">
-            <span>Connect</span>
-            <strong>主题连接</strong>
-          </div>
-          <div class="garden-card">
-            <span>Review</span>
-            <strong>持续生长</strong>
+          <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
+          <div class="graph-legend" aria-hidden="true">
+            <span><i class="legend-root"></i>中心</span>
+            <span><i class="legend-topic"></i>分类</span>
+            <span><i class="legend-tag"></i>标签</span>
+            <span><i class="legend-note"></i>笔记</span>
           </div>
         </div>
       </section>
