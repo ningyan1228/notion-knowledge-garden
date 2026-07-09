@@ -16,6 +16,7 @@ const state = {
   editingNote: null,
   query: "",
   type: "all",
+  visibility: "all",
   category: "all",
   tag: "all",
   sort: "updated",
@@ -118,6 +119,7 @@ const elements = {
   focusMapButton: document.querySelector("#focusMapButton"),
   searchInput: document.querySelector("#searchInput"),
   typeFilter: document.querySelector("#typeFilter"),
+  visibilityFilter: document.querySelector("#visibilityFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
   sortSelect: document.querySelector("#sortSelect"),
@@ -185,6 +187,12 @@ elements.searchInput.addEventListener("input", (event) => {
 
 elements.typeFilter?.addEventListener("change", (event) => {
   state.type = event.target.value;
+  resetNoteList();
+  render();
+});
+
+elements.visibilityFilter?.addEventListener("change", (event) => {
+  state.visibility = event.target.value;
   resetNoteList();
   render();
 });
@@ -666,7 +674,7 @@ async function createNoteFromWriter(event) {
       if (elements.writerPublished) elements.writerPublished.checked = true;
     }
     state.detailCache.clear();
-    setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。未公开内容只保存在 Notion。"}`);
+    setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}`);
     await loadNotes({ refresh: true });
   } catch (error) {
     setWriterStatus(error instanceof Error ? error.message : "保存笔记失败", true);
@@ -704,7 +712,7 @@ async function loadNotes({ refresh = false } = {}) {
       updateCurrentUserLabel();
     }
     state.notes = normalizeNotes(data.notes);
-    setStatus(`已载入 ${state.notes.length} 篇公开笔记${data.cached ? "，来自缓存" : ""}`);
+    setStatus(`已载入 ${state.notes.length} 篇可查看笔记${data.cached ? "，来自缓存" : ""}`);
   } catch (error) {
     state.notes = normalizeNotes(sampleNotes);
     setStatus(`API 暂不可用，正在展示示例数据。${error instanceof Error ? error.message : ""}`);
@@ -1262,6 +1270,11 @@ function filteredNotes() {
   const query = state.query;
   return [...state.notes]
     .filter((note) => state.type === "all" || note.type === state.type)
+    .filter((note) => {
+      if (state.visibility === "public") return note.published || note.visibility === "公开";
+      if (state.visibility === "private") return !note.published && note.visibility !== "公开";
+      return true;
+    })
     .filter((note) => state.category === "all" || note.category === state.category)
     .filter((note) => state.tag === "all" || note.tags.includes(state.tag))
     .filter((note) => {
@@ -1292,7 +1305,7 @@ function renderGrid(notes) {
   if (!notes.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "没有匹配的公开笔记。";
+    empty.textContent = state.visibility === "private" ? "没有匹配的私密笔记。" : "没有匹配的笔记。";
     elements.grid.append(empty);
     renderNoteListActions(0, 0);
     return;

@@ -25,7 +25,7 @@
           </a>
           <nav class="mac-nav">
             <a href="#today">今日</a>
-            <a href="#notes">公开笔记</a>
+            <a href="#notes">我的笔记</a>
             <a href="#diaries">拾光日记</a>
             <a href="#growthMap">成长热力</a>
             <a href="#knowledgeGraph">知识星图</a>
@@ -250,6 +250,14 @@
           </select>
         </label>
         <label>
+          <span>可见性</span>
+          <select id="visibilityFilter">
+            <option value="all">全部笔记</option>
+            <option value="public">公开</option>
+            <option value="private">私密</option>
+          </select>
+        </label>
+        <label>
           <span>分类</span>
           <select id="categoryFilter">
             <option value="all">全部分类</option>
@@ -274,7 +282,7 @@
       <div class="section-head">
         <div>
           <span>Notes</span>
-          <h2>公开笔记</h2>
+          <h2>我的笔记</h2>
         </div>
         <p class="status-line" id="statusLine">正在读取朝夕拾光...</p>
       </div>
