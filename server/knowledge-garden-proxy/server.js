@@ -10,6 +10,7 @@ const ALLOWED_ORIGINS = new Set(
     .map((origin) => origin.trim())
     .filter(Boolean)
 );
+const SITE_PASSWORD = String(process.env.SITE_PASSWORD || "").trim();
 
 const FIELDS = {
   title: ["Title", "\u6807\u9898", "Name", "\u540d\u79f0"],
@@ -105,6 +106,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/notes") {
+      if (!isSiteAccessRequest(req)) {
+        sendJson(res, 401, { error: "访问密码不正确", requiresAccess: true });
+        return;
+      }
+
       const force = url.searchParams.get("refresh") === "1";
       const pages = await getPublishedPages(force);
       const notes = pages.map(normalizeNote).filter((note) => note.title);
@@ -119,6 +125,11 @@ const server = http.createServer(async (req, res) => {
 
     const detailMatch = url.pathname.match(/^\/api\/notes\/([^/]+)$/);
     if (req.method === "GET" && detailMatch) {
+      if (!isSiteAccessRequest(req)) {
+        sendJson(res, 401, { error: "访问密码不正确", requiresAccess: true });
+        return;
+      }
+
       const key = decodeURIComponent(detailMatch[1]);
       const page = await findPublishedPage(key);
       if (!page) {
@@ -702,6 +713,12 @@ function isAdminRequest(req) {
   return Boolean(expected && (bearer === expected || headerToken === expected));
 }
 
+function isSiteAccessRequest(req) {
+  if (!SITE_PASSWORD) return true;
+  const headerPassword = String(req.headers["x-site-password"] || "").trim();
+  return headerPassword === SITE_PASSWORD;
+}
+
 async function readJsonBody(req) {
   const chunks = [];
   let size = 0;
@@ -829,7 +846,7 @@ function setCors(req, res) {
   }
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token,X-Site-Password");
 }
 
 function sendJson(res, status, data) {

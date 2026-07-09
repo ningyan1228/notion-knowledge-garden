@@ -1,4 +1,10 @@
 const apiBase = String(window.KG_CONFIG?.apiBase || "").replace(/\/$/, "");
+const sitePasswordSessionKey = "kgSitePassword";
+const sitePasswordLocalKey = "kgSitePasswordRemembered";
+let siteAccessPassword =
+  sessionStorage.getItem(sitePasswordSessionKey) ||
+  localStorage.getItem(sitePasswordLocalKey) ||
+  "";
 
 const state = {
   notes: [],
@@ -151,7 +157,12 @@ const elements = {
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
   previousNote: document.querySelector("#previousNote"),
-  nextNote: document.querySelector("#nextNote")
+  nextNote: document.querySelector("#nextNote"),
+  siteLock: document.querySelector("#siteLock"),
+  sitePasswordForm: document.querySelector("#sitePasswordForm"),
+  sitePasswordInput: document.querySelector("#sitePasswordInput"),
+  sitePasswordRemember: document.querySelector("#sitePasswordRemember"),
+  sitePasswordError: document.querySelector("#sitePasswordError")
 };
 
 let knowledgeChart = null;
@@ -206,6 +217,7 @@ elements.collapseNotes?.addEventListener("click", () => {
   document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
+elements.sitePasswordForm?.addEventListener("submit", unlockSite);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
@@ -232,11 +244,81 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-loadNotes();
+bootSite();
 
 window.addEventListener("resize", () => {
   knowledgeChart?.resize();
 });
+
+function bootSite() {
+  if (siteAccessPassword) {
+    hideSiteLock();
+    loadNotes();
+    return;
+  }
+
+  showSiteLock();
+  hydrateFilters();
+  render();
+}
+
+async function unlockSite(event) {
+  event.preventDefault();
+  const password = elements.sitePasswordInput?.value.trim() || "";
+  if (!password) {
+    showSiteLock("请输入访问密码。");
+    return;
+  }
+
+  siteAccessPassword = password;
+  persistSitePassword(password, Boolean(elements.sitePasswordRemember?.checked));
+  hideSiteLock();
+  await loadNotes();
+}
+
+function showSiteLock(message = "") {
+  elements.siteLock?.classList.add("is-visible");
+  elements.siteLock?.setAttribute("aria-hidden", "false");
+  if (elements.sitePasswordError) elements.sitePasswordError.textContent = message;
+  window.setTimeout(() => elements.sitePasswordInput?.focus(), 60);
+}
+
+function hideSiteLock() {
+  elements.siteLock?.classList.remove("is-visible");
+  elements.siteLock?.setAttribute("aria-hidden", "true");
+  if (elements.sitePasswordError) elements.sitePasswordError.textContent = "";
+}
+
+function persistSitePassword(password, remember) {
+  sessionStorage.setItem(sitePasswordSessionKey, password);
+  if (remember) {
+    localStorage.setItem(sitePasswordLocalKey, password);
+  } else {
+    localStorage.removeItem(sitePasswordLocalKey);
+  }
+}
+
+function clearSitePassword(message = "访问密码不正确，请重新输入。") {
+  siteAccessPassword = "";
+  sessionStorage.removeItem(sitePasswordSessionKey);
+  localStorage.removeItem(sitePasswordLocalKey);
+  if (elements.sitePasswordInput) elements.sitePasswordInput.value = "";
+  showSiteLock(message);
+}
+
+function siteHeaders(headers = {}) {
+  return siteAccessPassword
+    ? { ...headers, "X-Site-Password": siteAccessPassword }
+    : headers;
+}
+
+async function readJsonResponse(response) {
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401 && data?.requiresAccess) {
+    clearSitePassword(data.error || "访问密码不正确，请重新输入。");
+  }
+  return data;
+}
 
 function openWriter(preferredType = "笔记") {
   state.editingNote = null;
@@ -332,10 +414,10 @@ async function uploadPastedImage(event, altText) {
     const dataUrl = await readFileAsDataUrl(file);
     const response = await fetch(`${apiBase}/api/admin/uploads`, {
       method: "POST",
-      headers: {
+      headers: siteHeaders({
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
-      },
+      }),
       body: JSON.stringify({
         filename: file.name || "pasted-image.png",
         mimeType: file.type,
@@ -408,10 +490,10 @@ async function createNoteFromWriter(event) {
   try {
     const response = await fetch(noteId ? `${apiBase}/api/admin/notes/${encodeURIComponent(noteId)}` : `${apiBase}/api/admin/notes`, {
       method: noteId ? "PUT" : "POST",
-      headers: {
+      headers: siteHeaders({
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
-      },
+      }),
       body: JSON.stringify(payload)
     });
     const data = await response.json();
@@ -452,8 +534,10 @@ async function loadNotes({ refresh = false } = {}) {
   elements.refreshButton.disabled = true;
 
   try {
-    const response = await fetch(`${apiBase}/api/notes${refresh ? "?refresh=1" : ""}`);
-    const data = await response.json();
+    const response = await fetch(`${apiBase}/api/notes${refresh ? "?refresh=1" : ""}`, {
+      headers: siteHeaders()
+    });
+    const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "读取笔记失败");
     state.notes = normalizeNotes(data.notes);
     setStatus(`已载入 ${state.notes.length} 篇公开笔记${data.cached ? "，来自缓存" : ""}`);
@@ -1095,8 +1179,10 @@ async function openDetail(note) {
 }
 
 async function fetchDetail(key) {
-  const response = await fetch(`${apiBase}/api/notes/${encodeURIComponent(key)}`);
-  const data = await response.json();
+  const response = await fetch(`${apiBase}/api/notes/${encodeURIComponent(key)}`, {
+    headers: siteHeaders()
+  });
+  const data = await readJsonResponse(response);
   if (!response.ok) throw new Error(data.error || "读取详情失败");
   return data;
 }

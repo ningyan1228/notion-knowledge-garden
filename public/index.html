@@ -287,6 +287,30 @@
       </div>
     </main>
 
+    <aside class="site-lock" id="siteLock" aria-hidden="true">
+      <div class="site-lock-backdrop"></div>
+      <form class="site-lock-card" id="sitePasswordForm" autocomplete="off">
+        <div class="mac-window-dots" aria-hidden="true">
+          <i class="mac-dot red"></i>
+          <i class="mac-dot yellow"></i>
+          <i class="mac-dot green"></i>
+        </div>
+        <span class="site-lock-kicker">Private Knowledge Garden</span>
+        <h2>进入朝夕拾光</h2>
+        <p>这个网站已经开启访问密码。输入密码后，本次浏览会保持解锁。</p>
+        <label>
+          <span>访问密码</span>
+          <input id="sitePasswordInput" type="password" placeholder="输入访问密码" autocomplete="current-password" required />
+        </label>
+        <label class="site-lock-remember">
+          <input id="sitePasswordRemember" type="checkbox" />
+          <span>在这台电脑上记住密码</span>
+        </label>
+        <button class="button primary" type="submit">进入网站</button>
+        <p class="site-lock-error" id="sitePasswordError" aria-live="polite"></p>
+      </form>
+    </aside>
+
     <aside class="writer" id="writerPanel" aria-hidden="true">
       <div class="writer-backdrop" data-close-writer></div>
       <article class="writer-card" role="dialog" aria-modal="true" aria-labelledby="writerTitle">
