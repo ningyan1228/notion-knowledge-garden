@@ -346,7 +346,12 @@ async function buildNoteProperties(input, options = {}) {
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
   if (studyMinutesProperty) properties[studyMinutesProperty] = { number: studyMinutes };
-  if (cover && /^https?:\/\//i.test(cover)) {
+  const uploadedCover = cover.match(/^notion-upload:([a-f0-9-]+)$/i);
+  if (uploadedCover) {
+    properties["封面"] = {
+      files: [{ name: "cover", type: "file_upload", file_upload: { id: uploadedCover[1] } }]
+    };
+  } else if (cover && /^https?:\/\//i.test(cover)) {
     properties["封面"] = {
       files: [{ name: "cover", type: "external", external: { url: cover } }]
     };

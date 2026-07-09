@@ -210,7 +210,10 @@ elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
 elements.detailEditButton?.addEventListener("click", () => {
-  if (state.currentDetailNote) openEditor(state.currentDetailNote);
+  if (!state.currentDetailNote) return;
+  const note = state.currentDetailNote;
+  closeDetail();
+  openEditor(note);
 });
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {

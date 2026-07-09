@@ -1228,6 +1228,10 @@ textarea:focus {
   display: none;
 }
 
+.writer {
+  z-index: 26;
+}
+
 .detail[aria-hidden="false"],
 .writer[aria-hidden="false"] {
   display: block;
