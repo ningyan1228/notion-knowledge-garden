@@ -147,6 +147,7 @@ const elements = {
   writerCategory: document.querySelector("#writerCategory"),
   writerTags: document.querySelector("#writerTags"),
   writerContent: document.querySelector("#writerContent"),
+  writerFormatToolbar: document.querySelector(".writer-format-toolbar"),
   writerContentFile: document.querySelector("#writerContentFile"),
   writerContentUploadButton: document.querySelector("#writerContentUploadButton"),
   writerPublished: document.querySelector("#writerPublished"),
@@ -239,6 +240,8 @@ elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 elements.sitePasswordForm?.addEventListener("submit", unlockSite);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
+elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
+elements.writerFormatToolbar?.addEventListener("click", handleFormatToolbarClick);
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
 elements.writerCoverUploadButton?.addEventListener("click", () => elements.writerCoverFile?.click());
 elements.writerContentUploadButton?.addEventListener("click", () => elements.writerContentFile?.click());
@@ -445,6 +448,89 @@ async function handleWriterPaste(event) {
 
   insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+function handleFormatToolbarClick(event) {
+  const button = event.target.closest("[data-format]");
+  if (!button || !elements.writerContent) return;
+  const format = button.dataset.format || "";
+  applyWriterFormat(format, button.dataset.color || "");
+}
+
+function handleWriterContentKeydown(event) {
+  const isShortcut = event.ctrlKey || event.metaKey;
+  if (!isShortcut) return;
+
+  if (event.key.toLowerCase() === "b") {
+    event.preventDefault();
+    applyWriterFormat("bold");
+    return;
+  }
+
+  if (event.altKey && ["1", "2", "3"].includes(event.key)) {
+    event.preventDefault();
+    applyWriterFormat(`h${event.key}`);
+  }
+}
+
+function applyWriterFormat(format, color = "") {
+  const textarea = elements.writerContent;
+  if (!textarea) return;
+
+  if (format === "bold") {
+    wrapSelection(textarea, "**", "**", "加粗文字");
+  } else if (format === "quote") {
+    prefixSelectedLines(textarea, "> ");
+  } else if (format === "bullet") {
+    prefixSelectedLines(textarea, "- ");
+  } else if (format === "code") {
+    wrapBlockSelection(textarea, "```\n", "\n```", "代码内容");
+  } else if (["h1", "h2", "h3"].includes(format)) {
+    prefixSelectedLines(textarea, `${"#".repeat(Number(format.slice(1)))} `, /^(#{1,6}\s*)/);
+  } else if (format === "color" && color) {
+    wrapSelection(textarea, `{${color}:`, "}", "彩色文字");
+  }
+
+  textarea.focus();
+}
+
+function wrapSelection(textarea, before, after, fallback) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const selected = textarea.value.slice(start, end) || fallback;
+  const next = `${before}${selected}${after}`;
+  textarea.value = `${textarea.value.slice(0, start)}${next}${textarea.value.slice(end)}`;
+  textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+}
+
+function wrapBlockSelection(textarea, before, after, fallback) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const selected = textarea.value.slice(start, end).trim() || fallback;
+  const next = `${before}${selected}${after}`;
+  textarea.value = `${textarea.value.slice(0, start)}${next}${textarea.value.slice(end)}`;
+  textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+}
+
+function prefixSelectedLines(textarea, prefix, replacePattern = null) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const value = textarea.value;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const lineEndIndex = value.indexOf("\n", end);
+  const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+  const selected = value.slice(lineStart, lineEnd) || "";
+  const lines = selected.split("\n");
+  const next = lines
+    .map((line) => {
+      const clean = replacePattern ? line.replace(replacePattern, "") : line;
+      if (!clean.trim()) return clean;
+      return clean.startsWith(prefix) ? clean : `${prefix}${clean}`;
+    })
+    .join("\n");
+
+  textarea.value = `${value.slice(0, lineStart)}${next}${value.slice(lineEnd)}`;
+  textarea.setSelectionRange(lineStart, lineStart + next.length);
 }
 
 async function handleCoverPaste(event) {
@@ -1311,8 +1397,11 @@ function filteredNotes() {
   return [...state.notes]
     .filter((note) => state.type === "all" || note.type === state.type)
     .filter((note) => {
-      if (state.visibility === "public") return note.published || note.visibility === "公开";
+      const isPublic = note.published || note.visibility === "公开";
+      const isMine = String(note.userId || "") === String(currentUser?.id || currentUser?.username || "");
+      if (state.visibility === "public") return isPublic;
       if (state.visibility === "private") return !note.published && note.visibility !== "公开";
+      if (state.visibility === "others-public") return isPublic && !isMine;
       return true;
     })
     .filter((note) => state.category === "all" || note.category === state.category)
@@ -1345,7 +1434,9 @@ function renderGrid(notes) {
   if (!notes.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = state.visibility === "private" ? "没有匹配的私密笔记。" : "没有匹配的笔记。";
+    empty.textContent = state.visibility === "private"
+      ? "没有匹配的私密笔记。"
+      : state.visibility === "others-public" ? "没有其他用户公开的匹配笔记。" : "没有匹配的笔记。";
     elements.grid.append(empty);
     renderNoteListActions(0, 0);
     return;
@@ -1472,7 +1563,7 @@ function renderBlocks(container, blocks) {
         container.append(activeList);
       }
       const item = document.createElement("li");
-      item.textContent = block.text || "";
+      appendRichText(item, block);
       activeList.append(item);
       continue;
     }
@@ -1505,7 +1596,7 @@ function renderBlock(block, headings = [], index = 0) {
   }
   if (type === "quote" || type === "callout") {
     const quote = document.createElement("blockquote");
-    quote.textContent = block.text || "";
+    appendRichText(quote, block);
     return quote;
   }
   if (type === "code") {
@@ -1522,26 +1613,48 @@ function renderBlock(block, headings = [], index = 0) {
   }
   if (type === "heading_1" || type === "heading_2") {
     const heading = document.createElement("h2");
-    heading.textContent = block.text || "";
+    appendRichText(heading, block);
     heading.id = headingId(block.text, index);
     headings.push({ id: heading.id, text: block.text || "", level: 2 });
     return heading;
   }
   if (type === "heading_3") {
     const heading = document.createElement("h3");
-    heading.textContent = block.text || "";
+    appendRichText(heading, block);
     heading.id = headingId(block.text, index);
     headings.push({ id: heading.id, text: block.text || "", level: 3 });
     return heading;
   }
   const paragraph = document.createElement("p");
-  paragraph.textContent = block.text || "";
+  appendRichText(paragraph, block);
   return paragraph;
+}
+
+function appendRichText(container, block) {
+  const parts = Array.isArray(block.richText) && block.richText.length
+    ? block.richText
+    : [{ text: block.text || "" }];
+  for (const part of parts) {
+    const span = document.createElement(part.code ? "code" : "span");
+    span.textContent = part.text || "";
+    if (part.bold) span.classList.add("rt-bold");
+    if (part.italic) span.classList.add("rt-italic");
+    if (part.underline) span.classList.add("rt-underline");
+    if (part.strikethrough) span.classList.add("rt-strike");
+    const color = normalizeRichColor(part.color);
+    if (color) span.classList.add(`rt-${color}`);
+    container.append(span);
+  }
+}
+
+function normalizeRichColor(color) {
+  const value = String(color || "").replace(/_background$/i, "").toLowerCase();
+  return ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"].includes(value) ? value : "";
 }
 
 function blocksToMarkdown(blocks) {
   return (blocks || []).map((block, index) => {
-    const text = block.text || "";
+    const text = richBlockToMarkdown(block);
     if (block.type === "heading_1") return `# ${text}`;
     if (block.type === "heading_2") return `## ${text}`;
     if (block.type === "heading_3") return `### ${text}`;
@@ -1556,6 +1669,18 @@ function blocksToMarkdown(blocks) {
     }
     return text;
   }).filter(Boolean).join("\n\n");
+}
+
+function richBlockToMarkdown(block) {
+  if (!Array.isArray(block.richText) || !block.richText.length) return block.text || "";
+  return block.richText.map((part) => {
+    let value = part.text || "";
+    const color = normalizeRichColor(part.color);
+    if (color) value = `{${color}:${value}}`;
+    if (part.code) value = `\`${value}\``;
+    if (part.bold) value = `**${value}**`;
+    return value;
+  }).join("");
 }
 
 function renderToc(headings) {

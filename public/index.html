@@ -228,6 +228,7 @@
             <option value="all">全部笔记</option>
             <option value="public">公开</option>
             <option value="private">私密</option>
+            <option value="others-public">他人公开</option>
           </select>
         </label>
         <label>
@@ -380,6 +381,26 @@
             </label>
             <label class="full">
               <span>正文</span>
+              <div class="writer-format-toolbar" aria-label="正文格式工具栏">
+                <div class="writer-format-group" aria-label="文字样式">
+                  <button class="format-button" type="button" data-format="bold">B</button>
+                  <button class="format-button" type="button" data-format="quote">引用</button>
+                  <button class="format-button" type="button" data-format="bullet">列表</button>
+                  <button class="format-button" type="button" data-format="code">代码</button>
+                </div>
+                <div class="writer-format-group" aria-label="标题级别">
+                  <button class="format-button" type="button" data-format="h1">H1</button>
+                  <button class="format-button" type="button" data-format="h2">H2</button>
+                  <button class="format-button" type="button" data-format="h3">H3</button>
+                </div>
+                <div class="writer-format-group color-group" aria-label="文字颜色">
+                  <button class="format-button color-dot green" type="button" data-format="color" data-color="green" aria-label="绿色文字"></button>
+                  <button class="format-button color-dot blue" type="button" data-format="color" data-color="blue" aria-label="蓝色文字"></button>
+                  <button class="format-button color-dot red" type="button" data-format="color" data-color="red" aria-label="红色文字"></button>
+                  <button class="format-button color-dot yellow" type="button" data-format="color" data-color="yellow" aria-label="黄色文字"></button>
+                  <button class="format-button color-dot purple" type="button" data-format="color" data-color="purple" aria-label="紫色文字"></button>
+                </div>
+              </div>
               <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>

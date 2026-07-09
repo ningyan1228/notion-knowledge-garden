@@ -658,10 +658,108 @@ function paragraphBlock(text) {
 function richTextChunks(value) {
   const text = String(value || "");
   if (!text) return [];
-  return splitText(text, 1900).map((content) => ({
-    type: "text",
-    text: { content }
-  }));
+  return parseInlineRichText(text);
+}
+
+function parseInlineRichText(value, baseAnnotations = {}) {
+  const text = String(value || "");
+  const chunks = [];
+  let index = 0;
+
+  const pushText = (content, annotations = {}) => {
+    if (!content) return;
+    for (const part of splitText(content, 1900)) {
+      chunks.push({
+        type: "text",
+        text: { content: part },
+        annotations: {
+          bold: Boolean(annotations.bold),
+          italic: Boolean(annotations.italic),
+          strikethrough: Boolean(annotations.strikethrough),
+          underline: Boolean(annotations.underline),
+          code: Boolean(annotations.code),
+          color: annotations.color || "default"
+        }
+      });
+    }
+  };
+
+  while (index < text.length) {
+    const rest = text.slice(index);
+    const boldEnd = rest.startsWith("**") ? text.indexOf("**", index + 2) : -1;
+    if (boldEnd !== -1) {
+      chunks.push(...parseInlineRichText(text.slice(index + 2, boldEnd), { ...baseAnnotations, bold: true }));
+      index = boldEnd + 2;
+      continue;
+    }
+
+    const codeEnd = rest.startsWith("`") ? text.indexOf("`", index + 1) : -1;
+    if (codeEnd !== -1) {
+      pushText(text.slice(index + 1, codeEnd), { ...baseAnnotations, code: true });
+      index = codeEnd + 1;
+      continue;
+    }
+
+    const colorMatch = rest.match(/^\{([a-zA-Z\u4e00-\u9fa5]+):/);
+    if (colorMatch) {
+      const color = notionColor(colorMatch[1]);
+      const contentStart = index + colorMatch[0].length;
+      const colorEnd = text.indexOf("}", contentStart);
+      if (color && colorEnd !== -1) {
+        chunks.push(...parseInlineRichText(text.slice(contentStart, colorEnd), { ...baseAnnotations, color }));
+        index = colorEnd + 1;
+        continue;
+      }
+    }
+
+    const nextMarkers = [
+      text.indexOf("**", index + 1),
+      text.indexOf("`", index + 1),
+      text.slice(index + 1).search(/\{[a-zA-Z\u4e00-\u9fa5]+:/)
+    ]
+      .map((position, markerIndex) => {
+        if (position < 0) return -1;
+        return markerIndex === 2 ? index + 1 + position : position;
+      })
+      .filter((position) => position > index);
+    const nextIndex = nextMarkers.length ? Math.min(...nextMarkers) : text.length;
+    pushText(text.slice(index, nextIndex), baseAnnotations);
+    index = nextIndex;
+  }
+
+  return chunks;
+}
+
+function notionColor(value) {
+  const key = cleanText(value).toLowerCase();
+  const colors = {
+    gray: "gray",
+    grey: "gray",
+    灰: "gray",
+    灰色: "gray",
+    brown: "brown",
+    棕: "brown",
+    orange: "orange",
+    橙: "orange",
+    yellow: "yellow",
+    黄: "yellow",
+    黄色: "yellow",
+    green: "green",
+    绿: "green",
+    绿色: "green",
+    blue: "blue",
+    蓝: "blue",
+    蓝色: "blue",
+    purple: "purple",
+    紫: "purple",
+    紫色: "purple",
+    pink: "pink",
+    粉: "pink",
+    red: "red",
+    红: "red",
+    红色: "red"
+  };
+  return colors[key] || "";
 }
 
 function splitText(value, size = 1900) {
@@ -759,6 +857,7 @@ function normalizeBlock(block) {
       id: block.id,
       type,
       text,
+      richText: blockRichText(block),
       language: block.code?.language || "",
       icon: block.callout?.icon?.emoji || ""
     };
@@ -779,6 +878,32 @@ function blockText(block) {
   if (type === "numbered_list_item") return richText(block.numbered_list_item?.rich_text);
   if (type === "code") return richText(block.code?.rich_text);
   return "";
+}
+
+function blockRichText(block) {
+  const type = block.type || "";
+  if (type === "paragraph") return richTextFragments(block.paragraph?.rich_text);
+  if (type === "heading_1") return richTextFragments(block.heading_1?.rich_text);
+  if (type === "heading_2") return richTextFragments(block.heading_2?.rich_text);
+  if (type === "heading_3") return richTextFragments(block.heading_3?.rich_text);
+  if (type === "quote") return richTextFragments(block.quote?.rich_text);
+  if (type === "callout") return richTextFragments(block.callout?.rich_text);
+  if (type === "bulleted_list_item") return richTextFragments(block.bulleted_list_item?.rich_text);
+  if (type === "numbered_list_item") return richTextFragments(block.numbered_list_item?.rich_text);
+  if (type === "code") return richTextFragments(block.code?.rich_text);
+  return [];
+}
+
+function richTextFragments(value) {
+  return (value || []).map((item) => ({
+    text: item.plain_text || "",
+    bold: Boolean(item.annotations?.bold),
+    italic: Boolean(item.annotations?.italic),
+    underline: Boolean(item.annotations?.underline),
+    strikethrough: Boolean(item.annotations?.strikethrough),
+    code: Boolean(item.annotations?.code),
+    color: item.annotations?.color || "default"
+  })).filter((item) => item.text);
 }
 
 function isAdminRequest(req) {
