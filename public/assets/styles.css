@@ -3418,3 +3418,89 @@ body.graph-open {
     border-radius: 22px;
   }
 }
+
+/* Seventh pass: switch the workbench from dark glass to light iOS cards. */
+.module-daily,
+.module-focus {
+  color: #1d1d1f;
+  border-color: rgba(0, 0, 0, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 247, 249, 0.74)),
+    rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 18px 42px rgba(28, 32, 40, 0.1);
+}
+
+.module-daily .module-heading span,
+.module-focus .module-heading span,
+.focus-summary span,
+.focus-column > span {
+  color: #0a8f6b;
+}
+
+.module-daily .module-heading strong,
+.module-focus .module-heading strong,
+.daily-record strong,
+.focus-item strong {
+  color: #1d1d1f;
+}
+
+.module-daily {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 248, 250, 0.76)),
+    rgba(255, 255, 255, 0.74);
+}
+
+.daily-record div,
+.focus-summary,
+.focus-column {
+  border-color: rgba(0, 0, 0, 0.075);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 8px 20px rgba(28, 32, 40, 0.045);
+}
+
+.daily-record span,
+.focus-item span {
+  color: rgba(29, 29, 31, 0.5);
+}
+
+.focus-summary {
+  background:
+    linear-gradient(135deg, rgba(52, 199, 89, 0.11), rgba(0, 122, 255, 0.08)),
+    rgba(255, 255, 255, 0.66);
+}
+
+.focus-summary p {
+  color: rgba(29, 29, 31, 0.72);
+}
+
+.focus-item {
+  border-top-color: rgba(0, 0, 0, 0.075);
+}
+
+.focus-item:hover {
+  background: rgba(0, 122, 255, 0.055);
+}
+
+.module-timeline {
+  border-color: rgba(0, 0, 0, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 248, 250, 0.7)),
+    rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 16px 38px rgba(28, 32, 40, 0.08);
+}
+
+.timeline-item {
+  border-color: rgba(0, 0, 0, 0.075);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.timeline-item:hover {
+  border-color: rgba(0, 122, 255, 0.26);
+  background: rgba(255, 255, 255, 0.86);
+}
