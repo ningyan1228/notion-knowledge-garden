@@ -9,7 +9,9 @@ const state = {
   type: "all",
   category: "all",
   tag: "all",
-  sort: "updated"
+  sort: "updated",
+  visibleNotes: 6,
+  notesPageSize: 6
 };
 
 const NOTE_TYPES = ["笔记", "日记", "灵感", "复盘"];
@@ -110,6 +112,8 @@ const elements = {
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
   sortSelect: document.querySelector("#sortSelect"),
+  loadMoreNotes: document.querySelector("#loadMoreNotes"),
+  collapseNotes: document.querySelector("#collapseNotes"),
   refreshButton: document.querySelector("#refreshButton"),
   writerButton: document.querySelector("#writerButton"),
   writerPanel: document.querySelector("#writerPanel"),
@@ -154,26 +158,31 @@ let knowledgeChart = null;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
+  resetNoteList();
   render();
 });
 
 elements.typeFilter?.addEventListener("change", (event) => {
   state.type = event.target.value;
+  resetNoteList();
   render();
 });
 
 elements.categoryFilter.addEventListener("change", (event) => {
   state.category = event.target.value;
+  resetNoteList();
   render();
 });
 
 elements.tagFilter.addEventListener("change", (event) => {
   state.tag = event.target.value;
+  resetNoteList();
   render();
 });
 
 elements.sortSelect.addEventListener("change", (event) => {
   state.sort = event.target.value;
+  resetNoteList();
   render();
 });
 
@@ -187,6 +196,15 @@ elements.focusRandomButton?.addEventListener("click", openRandomNote);
 elements.focusMapButton?.addEventListener("click", scrollToKnowledgeMap);
 elements.graphResetButton?.addEventListener("click", resetGraphFilters);
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
+elements.loadMoreNotes?.addEventListener("click", () => {
+  state.visibleNotes += state.notesPageSize;
+  render();
+});
+elements.collapseNotes?.addEventListener("click", () => {
+  resetNoteList();
+  render();
+  document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
@@ -475,6 +493,10 @@ function render() {
   renderStats(state.notes);
   renderWorkbench(state.notes);
   renderGrid(notes);
+}
+
+function resetNoteList() {
+  state.visibleNotes = state.notesPageSize;
 }
 
 function renderWorkbench(notes) {
@@ -990,12 +1012,26 @@ function renderGrid(notes) {
     empty.className = "empty";
     empty.textContent = "没有匹配的公开笔记。";
     elements.grid.append(empty);
+    renderNoteListActions(0, 0);
     return;
   }
 
   const fragment = document.createDocumentFragment();
-  for (const note of notes) fragment.append(createCard(note));
+  const visibleNotes = notes.slice(0, state.visibleNotes);
+  for (const note of visibleNotes) fragment.append(createCard(note));
   elements.grid.append(fragment);
+  renderNoteListActions(notes.length, visibleNotes.length);
+}
+
+function renderNoteListActions(total, visible) {
+  if (elements.loadMoreNotes) {
+    const hasMore = visible < total;
+    elements.loadMoreNotes.hidden = !hasMore;
+    elements.loadMoreNotes.textContent = hasMore ? `加载更多（${visible}/${total}）` : "已显示全部";
+  }
+  if (elements.collapseNotes) {
+    elements.collapseNotes.hidden = visible <= state.notesPageSize;
+  }
 }
 
 function createCard(note) {
