@@ -104,6 +104,7 @@ const elements = {
   topicMap: document.querySelector("#topicMap"),
   tagCloud: document.querySelector("#tagCloud"),
   recentList: document.querySelector("#recentList"),
+  timelineList: document.querySelector("#timelineList"),
   weeklySummary: document.querySelector("#weeklySummary"),
   pinnedList: document.querySelector("#pinnedList"),
   inspirationList: document.querySelector("#inspirationList"),
@@ -785,6 +786,7 @@ function renderWorkbench(notes) {
   renderDailyPanel(notes);
   renderDiarySection(notes);
   renderFocusPanel(notes);
+  renderTimeline(notes);
   renderTopicMap(notes);
   renderTagCloud(notes);
   renderRecentList(notes);
@@ -990,6 +992,44 @@ function renderFocusList(container, notes, emptyText) {
     `;
     button.addEventListener("click", () => openDetail(note));
     container.append(button);
+  }
+}
+
+function renderTimeline(notes) {
+  if (!elements.timelineList) return;
+  elements.timelineList.innerHTML = "";
+
+  const timelineNotes = [...notes]
+    .sort((a, b) => compareDate(b.updated || b.created, a.updated || a.created))
+    .slice(0, 8);
+
+  if (!timelineNotes.length) {
+    elements.timelineList.append(emptyInline("暂无更新记录"));
+    return;
+  }
+
+  let lastDate = "";
+  for (const note of timelineNotes) {
+    const rawDate = note.updated || note.created;
+    const currentDate = dateKey(rawDate);
+    if (currentDate && currentDate !== lastDate) {
+      const day = document.createElement("div");
+      day.className = "timeline-day";
+      day.textContent = formatDate(currentDate) || currentDate;
+      elements.timelineList.append(day);
+      lastDate = currentDate;
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "timeline-item";
+    button.innerHTML = `
+      <span>${escapeHtml(note.type || "笔记")}</span>
+      <strong>${escapeHtml(note.title)}</strong>
+      <p>${escapeHtml(note.summary || note.category || "没有摘要")}</p>
+    `;
+    button.addEventListener("click", () => openDetail(note));
+    elements.timelineList.append(button);
   }
 }
 

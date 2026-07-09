@@ -3078,3 +3078,111 @@ body.graph-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Fourth pass: replace low-value utility tiles with a real update timeline. */
+.garden-workbench {
+  grid-template-columns: minmax(250px, 0.72fr) repeat(3, minmax(0, 1fr));
+}
+
+.module-focus {
+  grid-column: 2 / -1;
+  grid-row: 1 / span 2;
+}
+
+.module-timeline {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-height: 178px;
+  border-radius: 20px;
+  padding: 18px 20px;
+  background: rgba(255, 253, 247, 0.64);
+  box-shadow: none;
+}
+
+.module-timeline .module-heading {
+  margin-bottom: 14px;
+}
+
+.timeline-list {
+  position: relative;
+  display: grid;
+  grid-template-columns: 96px repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+  align-items: stretch;
+}
+
+.timeline-day {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  color: rgba(39, 82, 65, 0.7);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.timeline-item {
+  min-height: 58px;
+  border: 1px solid rgba(70, 116, 98, 0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+}
+
+.timeline-item:hover {
+  border-color: rgba(44, 138, 112, 0.32);
+  transform: translateY(-1px);
+}
+
+.timeline-item span {
+  color: var(--leaf-dark);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.timeline-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.timeline-item p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .module-timeline {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .timeline-list {
+    grid-template-columns: 92px repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .module-timeline {
+    min-height: auto;
+  }
+
+  .timeline-list {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-day {
+    min-height: 28px;
+    padding-top: 4px;
+  }
+}
