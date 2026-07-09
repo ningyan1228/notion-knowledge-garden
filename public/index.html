@@ -211,6 +211,19 @@
         <div class="diary-grid" id="diaryList"></div>
       </section>
 
+      <section class="notes-manager" aria-labelledby="notesManagerTitle">
+        <div class="notes-manager-head">
+          <div>
+            <span class="manager-kicker">Notes library</span>
+            <h2 id="notesManagerTitle">我的笔记</h2>
+            <p>组合筛选你的内容，也可以快速切换到其他作者的公开笔记。</p>
+          </div>
+          <div class="scope-switch" id="scopeSwitch" aria-label="笔记范围">
+            <button type="button" class="scope-button is-active" data-scope="all">全部</button>
+            <button type="button" class="scope-button" data-scope="mine">只看我的</button>
+            <button type="button" class="scope-button" data-scope="others-public">别人公开</button>
+          </div>
+        </div>
       <section class="toolbar" aria-label="筛选工具">
         <label class="search-box">
           <span>搜索</span>
@@ -244,6 +257,18 @@
           </select>
         </label>
         <label>
+          <span>作者</span>
+          <select id="authorFilter">
+            <option value="all">全部作者</option>
+          </select>
+        </label>
+        <label>
+          <span>月份</span>
+          <select id="monthFilter">
+            <option value="all">全部月份</option>
+          </select>
+        </label>
+        <label>
           <span>排序</span>
           <select id="sortSelect">
             <option value="updated">最近更新</option>
@@ -253,10 +278,19 @@
         </label>
       </section>
 
+        <div class="filter-result-bar">
+          <div class="active-filters" id="activeFilters" aria-live="polite"></div>
+          <div class="filter-result-actions">
+            <span id="filterResultCount">0 篇笔记</span>
+            <button class="text-button" id="resetFilters" type="button">清除筛选</button>
+          </div>
+        </div>
+      </section>
+
       <div class="section-head">
         <div>
           <span>Notes</span>
-          <h2>我的笔记</h2>
+          <h2>笔记列表</h2>
         </div>
         <p class="status-line" id="statusLine">正在读取朝夕拾光...</p>
       </div>
@@ -446,17 +480,27 @@
     <aside class="detail" id="detailPanel" aria-hidden="true">
       <div class="detail-backdrop" data-close-detail></div>
       <article class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
         <button class="icon-button close-button" type="button" aria-label="关闭" data-close-detail>×</button>
-        <img class="detail-cover" id="detailCover" alt="" hidden />
-        <div class="detail-body">
-          <main class="detail-main">
+        <header class="detail-hero" id="detailHero">
+          <img class="detail-cover" id="detailCover" alt="" hidden />
+          <div class="detail-hero-shade"></div>
+          <div class="detail-heading">
             <div class="detail-meta">
               <span id="detailCategory"></span>
               <span id="detailUpdated"></span>
             </div>
             <h2 id="detailTitle"></h2>
             <p id="detailSummary"></p>
+            <div class="detail-byline">
+              <span id="detailAuthor"></span>
+              <span id="detailReadingTime"></span>
+            </div>
             <div class="tag-row" id="detailTags"></div>
+          </div>
+        </header>
+        <div class="detail-body">
+          <main class="detail-main">
             <div class="article-content" id="detailContent"></div>
           </main>
           <aside class="detail-sidebar" aria-label="阅读辅助">

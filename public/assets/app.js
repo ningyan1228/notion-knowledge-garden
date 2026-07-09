@@ -17,10 +17,13 @@ const state = {
   currentDetailNote: null,
   editingNote: null,
   query: "",
+  scope: "all",
   type: "all",
   visibility: "all",
   category: "all",
   tag: "all",
+  author: "all",
+  month: "all",
   sort: "updated",
   visibleNotes: 6,
   notesPageSize: 6
@@ -126,7 +129,13 @@ const elements = {
   visibilityFilter: document.querySelector("#visibilityFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
+  authorFilter: document.querySelector("#authorFilter"),
+  monthFilter: document.querySelector("#monthFilter"),
   sortSelect: document.querySelector("#sortSelect"),
+  scopeSwitch: document.querySelector("#scopeSwitch"),
+  activeFilters: document.querySelector("#activeFilters"),
+  filterResultCount: document.querySelector("#filterResultCount"),
+  resetFilters: document.querySelector("#resetFilters"),
   loadMoreNotes: document.querySelector("#loadMoreNotes"),
   collapseNotes: document.querySelector("#collapseNotes"),
   refreshButton: document.querySelector("#refreshButton"),
@@ -169,6 +178,10 @@ const elements = {
   detailSummary: document.querySelector("#detailSummary"),
   detailTags: document.querySelector("#detailTags"),
   detailContent: document.querySelector("#detailContent"),
+  detailAuthor: document.querySelector("#detailAuthor"),
+  detailReadingTime: document.querySelector("#detailReadingTime"),
+  detailCard: document.querySelector(".detail-card"),
+  readingProgress: document.querySelector("#readingProgress"),
   detailEditButton: document.querySelector("#detailEditButton"),
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
@@ -186,6 +199,7 @@ const elements = {
 
 let knowledgeChart = null;
 let writerDraftTimer = null;
+let detailHeadingObserver = null;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -216,6 +230,35 @@ elements.tagFilter.addEventListener("change", (event) => {
   resetNoteList();
   render();
 });
+
+elements.authorFilter?.addEventListener("change", (event) => {
+  state.author = event.target.value;
+  resetNoteList();
+  render();
+});
+
+elements.monthFilter?.addEventListener("change", (event) => {
+  state.month = event.target.value;
+  resetNoteList();
+  render();
+});
+
+elements.scopeSwitch?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-scope]");
+  if (!button) return;
+  state.scope = button.dataset.scope || "all";
+  resetNoteList();
+  render();
+});
+
+elements.resetFilters?.addEventListener("click", resetFilters);
+elements.activeFilters?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-clear-filter]");
+  if (!button) return;
+  clearFilter(button.dataset.clearFilter);
+});
+
+elements.detailCard?.addEventListener("scroll", updateReadingProgress);
 
 elements.sortSelect.addEventListener("change", (event) => {
   state.sort = event.target.value;
@@ -989,23 +1032,31 @@ function hydrateFilters() {
   const currentType = elements.typeFilter?.value || "all";
   const currentCategory = elements.categoryFilter.value;
   const currentTag = elements.tagFilter.value;
+  const currentAuthor = elements.authorFilter?.value || "all";
+  const currentMonth = elements.monthFilter?.value || "all";
   const types = unique([...NOTE_TYPES, ...state.notes.map((note) => note.type).filter(Boolean)]);
   const categories = unique([...CATEGORY_OPTIONS, ...state.notes.map((note) => note.category).filter(Boolean)]);
   const tags = unique(state.notes.flatMap((note) => note.tags));
+  const authors = unique(state.notes.map(noteAuthorLabel).filter(Boolean));
+  const months = unique(state.notes.map(noteMonth).filter(Boolean)).sort().reverse();
 
   if (elements.typeFilter) fillSelect(elements.typeFilter, "全部类型", types);
   fillSelect(elements.categoryFilter, "全部分类", categories);
   fillSelect(elements.tagFilter, "全部标签", tags);
+  if (elements.authorFilter) fillSelect(elements.authorFilter, "全部作者", authors);
+  if (elements.monthFilter) fillSelect(elements.monthFilter, "全部月份", months, formatMonthLabel);
 
   if (types.includes(currentType)) elements.typeFilter.value = currentType;
   if (categories.includes(currentCategory)) elements.categoryFilter.value = currentCategory;
   if (tags.includes(currentTag)) elements.tagFilter.value = currentTag;
+  if (authors.includes(currentAuthor)) elements.authorFilter.value = currentAuthor;
+  if (months.includes(currentMonth)) elements.monthFilter.value = currentMonth;
 }
 
-function fillSelect(select, label, values) {
+function fillSelect(select, label, values, labelFormatter = (value) => value) {
   select.innerHTML = "";
   select.append(new Option(label, "all"));
-  for (const value of values) select.append(new Option(value, value));
+  for (const value of values) select.append(new Option(labelFormatter(value), value));
 }
 
 function render() {
@@ -1013,6 +1064,7 @@ function render() {
   renderStats(state.notes);
   renderWorkbench(state.notes);
   renderGrid(notes);
+  renderFilterSummary(notes.length);
 }
 
 function resetNoteList() {
@@ -1548,17 +1600,22 @@ function openRandomNote() {
 function filteredNotes() {
   const query = state.query;
   return [...state.notes]
+    .filter((note) => {
+      if (state.scope === "mine") return isMyNote(note);
+      if (state.scope === "others-public") return isPublicNote(note) && !isMyNote(note);
+      return true;
+    })
     .filter((note) => state.type === "all" || note.type === state.type)
     .filter((note) => {
-      const isPublic = note.published || note.visibility === "公开";
-      const isMine = String(note.userId || "") === String(currentUser?.id || currentUser?.username || "");
-      if (state.visibility === "public") return isPublic;
-      if (state.visibility === "private") return !note.published && note.visibility !== "公开";
-      if (state.visibility === "others-public") return isPublic && !isMine;
+      if (state.visibility === "public") return isPublicNote(note);
+      if (state.visibility === "private") return !isPublicNote(note) && isMyNote(note);
+      if (state.visibility === "others-public") return isPublicNote(note) && !isMyNote(note);
       return true;
     })
     .filter((note) => state.category === "all" || note.category === state.category)
     .filter((note) => state.tag === "all" || note.tags.includes(state.tag))
+    .filter((note) => state.author === "all" || noteAuthorLabel(note) === state.author)
+    .filter((note) => state.month === "all" || noteMonth(note) === state.month)
     .filter((note) => {
       if (!query) return true;
       return [note.title, note.summary, note.type, note.category, ...note.tags].join(" ").toLowerCase().includes(query);
@@ -1569,6 +1626,94 @@ function filteredNotes() {
       if (state.sort === "created") return compareDate(b.created, a.created);
       return compareDate(b.updated, a.updated);
     });
+}
+
+function isPublicNote(note) {
+  return Boolean(note.published || note.visibility === "公开");
+}
+
+function isMyNote(note) {
+  const identities = [currentUser?.id, currentUser?.username, currentUser?.name]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase());
+  const ownerValues = [note.userId, note.author]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase());
+  return identities.some((identity) => ownerValues.includes(identity));
+}
+
+function noteAuthorLabel(note) {
+  if (isMyNote(note)) return currentUser?.name || currentUser?.username || note.author || "我";
+  return String(note.author || note.userId || "未知作者");
+}
+
+function noteMonth(note) {
+  const value = String(note.updated || note.created || "");
+  const match = value.match(/^(\d{4})-(\d{2})/);
+  return match ? `${match[1]}-${match[2]}` : "";
+}
+
+function formatMonthLabel(value) {
+  const [year, month] = String(value).split("-");
+  return year && month ? `${year} 年 ${Number(month)} 月` : value;
+}
+
+function renderFilterSummary(count) {
+  if (elements.filterResultCount) elements.filterResultCount.textContent = `${count} 篇笔记`;
+  elements.scopeSwitch?.querySelectorAll("[data-scope]").forEach((button) => {
+    const active = button.dataset.scope === state.scope;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (!elements.activeFilters) return;
+  elements.activeFilters.innerHTML = "";
+  const values = [
+    ["query", state.query && `搜索：${state.query}`],
+    ["type", state.type !== "all" && state.type],
+    ["visibility", state.visibility !== "all" && elements.visibilityFilter?.selectedOptions[0]?.textContent],
+    ["category", state.category !== "all" && state.category],
+    ["tag", state.tag !== "all" && `#${state.tag}`],
+    ["author", state.author !== "all" && `作者：${state.author}`],
+    ["month", state.month !== "all" && formatMonthLabel(state.month)]
+  ].filter(([, value]) => value);
+  if (!values.length) {
+    const hint = document.createElement("span");
+    hint.className = "filter-hint";
+    hint.textContent = "可同时选择类型、分类、标签、作者和月份";
+    elements.activeFilters.append(hint);
+    return;
+  }
+  for (const [key, value] of values) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "active-filter-chip";
+    chip.dataset.clearFilter = key;
+    chip.textContent = `${value} ×`;
+    chip.setAttribute("aria-label", `移除筛选：${value}`);
+    elements.activeFilters.append(chip);
+  }
+}
+
+function clearFilter(key) {
+  const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", author: "all", month: "all" };
+  if (!(key in defaults)) return;
+  state[key] = defaults[key];
+  const controls = { query: elements.searchInput, type: elements.typeFilter, visibility: elements.visibilityFilter, category: elements.categoryFilter, tag: elements.tagFilter, author: elements.authorFilter, month: elements.monthFilter };
+  if (controls[key]) controls[key].value = defaults[key];
+  resetNoteList();
+  render();
+}
+
+function resetFilters() {
+  state.scope = "all";
+  ["query", "type", "visibility", "category", "tag", "author", "month"].forEach((key) => {
+    const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", author: "all", month: "all" };
+    state[key] = defaults[key];
+  });
+  [elements.searchInput, elements.typeFilter, elements.visibilityFilter, elements.categoryFilter, elements.tagFilter, elements.authorFilter, elements.monthFilter]
+    .filter(Boolean).forEach((control) => { control.value = control === elements.searchInput ? "" : "all"; });
+  resetNoteList();
+  render();
 }
 
 function renderStats(notes) {
@@ -1676,11 +1821,23 @@ function renderDetail(note) {
   elements.detailUpdated.textContent = formatDate(note.updated);
   elements.detailTitle.textContent = note.title;
   elements.detailSummary.textContent = note.summary || "";
+  if (elements.detailAuthor) elements.detailAuthor.textContent = `作者 · ${noteAuthorLabel(note)}`;
+  if (elements.detailReadingTime) elements.detailReadingTime.textContent = `${estimateReadingMinutes(note)} 分钟阅读`;
   renderTags(elements.detailTags, note.tags || []);
   const headings = renderBlocks(elements.detailContent, note.content || []);
   renderToc(headings);
+  observeDetailHeadings();
   renderRelatedNotes(note);
   renderDetailNavigation(note);
+  if (elements.detailEditButton) elements.detailEditButton.hidden = !isMyNote(note);
+  if (elements.detailCard) elements.detailCard.scrollTop = 0;
+  updateReadingProgress();
+}
+
+function estimateReadingMinutes(note) {
+  const text = (note.content || []).map((block) => block.text || block.caption || "").join(" ");
+  const characterCount = text.replace(/\s/g, "").length;
+  return Math.max(1, Math.ceil(characterCount / 450));
 }
 
 function renderTags(container, tags) {
@@ -1949,7 +2106,22 @@ function renderBlock(block, headings = [], index = 0) {
     const figure = document.createElement("figure");
     figure.className = "code-card";
     const caption = document.createElement("figcaption");
-    caption.textContent = block.language || "code";
+    const language = document.createElement("span");
+    language.textContent = block.language || "code";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "code-copy-button";
+    copy.textContent = "复制";
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(block.text || "");
+        copy.textContent = "已复制";
+        window.setTimeout(() => { copy.textContent = "复制"; }, 1400);
+      } catch {
+        copy.textContent = "复制失败";
+      }
+    });
+    caption.append(language, copy);
     const pre = document.createElement("pre");
     const code = document.createElement("code");
     code.textContent = block.text || "";
@@ -2043,12 +2215,34 @@ function renderToc(headings) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = heading.level === 3 ? "toc-child" : "";
+    button.dataset.headingId = heading.id;
     button.textContent = heading.text;
     button.addEventListener("click", () => {
       document.getElementById(heading.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     elements.detailToc.append(button);
   }
+}
+
+function observeDetailHeadings() {
+  detailHeadingObserver?.disconnect();
+  const headings = elements.detailContent?.querySelectorAll("h2[id], h3[id]") || [];
+  if (!headings.length || !elements.detailCard) return;
+  detailHeadingObserver = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (!visible) return;
+    elements.detailToc?.querySelectorAll("button").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.headingId === visible.target.id);
+    });
+  }, { root: elements.detailCard, rootMargin: "-12% 0px -72%", threshold: 0 });
+  headings.forEach((heading) => detailHeadingObserver.observe(heading));
+}
+
+function updateReadingProgress() {
+  if (!elements.detailCard || !elements.readingProgress) return;
+  const max = elements.detailCard.scrollHeight - elements.detailCard.clientHeight;
+  const progress = max > 0 ? Math.min(1, elements.detailCard.scrollTop / max) : 0;
+  elements.readingProgress.style.transform = `scaleX(${progress})`;
 }
 
 function renderRelatedNotes(currentNote) {
@@ -2120,6 +2314,7 @@ function openPanel() {
 function closeDetail() {
   elements.detailPanel.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
+  detailHeadingObserver?.disconnect();
 }
 
 function loadingBlocks() {
