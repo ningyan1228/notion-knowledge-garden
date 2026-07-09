@@ -987,6 +987,7 @@ function renderKnowledgeGraph(notes) {
       }
     ]
   });
+  scheduleKnowledgeGraphResize();
 }
 
 function resetGraphFilters() {
@@ -1006,7 +1007,7 @@ function toggleKnowledgeGraphFullscreen() {
   document.body.classList.toggle("graph-open", isFullscreen);
   elements.graphFullscreenButton.textContent = isFullscreen ? "退出全屏" : "全屏";
   elements.graphFullscreenButton.setAttribute("aria-expanded", String(isFullscreen));
-  setTimeout(() => knowledgeChart?.resize(), 180);
+  scheduleKnowledgeGraphResize();
 }
 
 function closeKnowledgeGraphFullscreen() {
@@ -1018,7 +1019,15 @@ function closeKnowledgeGraphFullscreen() {
     elements.graphFullscreenButton.textContent = "全屏";
     elements.graphFullscreenButton.setAttribute("aria-expanded", "false");
   }
-  setTimeout(() => knowledgeChart?.resize(), 180);
+  scheduleKnowledgeGraphResize();
+}
+
+function scheduleKnowledgeGraphResize() {
+  if (!knowledgeChart) return;
+  requestAnimationFrame(() => knowledgeChart?.resize());
+  setTimeout(() => knowledgeChart?.resize(), 80);
+  setTimeout(() => knowledgeChart?.resize(), 220);
+  setTimeout(() => knowledgeChart?.resize(), 420);
 }
 
 function buildKnowledgeGraph(notes) {
