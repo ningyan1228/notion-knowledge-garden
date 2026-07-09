@@ -3637,3 +3637,8 @@ body.graph-open {
     min-height: 300px;
   }
 }
+
+/* Remove the old decorative rule that crosses the hero action buttons. */
+.hero-copy::after {
+  display: none;
+}
