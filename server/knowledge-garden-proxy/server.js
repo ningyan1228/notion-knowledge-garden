@@ -440,16 +440,8 @@ async function buildNoteProperties(input, options = {}) {
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
   if (studyMinutesProperty) properties[studyMinutesProperty] = { number: studyMinutes };
-  const uploadedCover = cover.match(/^notion-upload:([a-f0-9-]+)$/i);
-  if (uploadedCover) {
-    properties["封面"] = {
-      files: [{ name: "cover", type: "file_upload", file_upload: { id: uploadedCover[1] } }]
-    };
-  } else if (cover && /^https?:\/\//i.test(cover)) {
-    properties["封面"] = {
-      files: [{ name: "cover", type: "external", external: { url: cover } }]
-    };
-  }
+  const coverProperty = coverFileProperty(cover);
+  if (coverProperty) properties["封面"] = coverProperty;
 
   return properties;
 }
@@ -504,11 +496,8 @@ async function createNotionNote(input) {
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
   if (studyMinutesProperty) properties[studyMinutesProperty] = { number: studyMinutes };
-  if (cover && /^https?:\/\//i.test(cover)) {
-    properties["封面"] = {
-      files: [{ name: "cover", type: "external", external: { url: cover } }]
-    };
-  }
+  const coverProperty = coverFileProperty(cover);
+  if (coverProperty) properties["封面"] = coverProperty;
 
   return notionRequest("pages", "POST", {
     parent: { database_id: extractNotionId(requiredEnv("NOTION_DATABASE_ID")) },
@@ -1007,6 +996,40 @@ function coverUrl(page, prop) {
   if (pageCover) return pageCover;
   const file = prop?.files?.[0];
   return file?.external?.url || file?.file?.url || prop?.url || "";
+}
+
+function coverFileProperty(cover) {
+  const value = cleanText(cover);
+  const uploadedCover = value.match(/^notion-upload:([a-f0-9-]+)$/i);
+  if (uploadedCover) {
+    return {
+      files: [{ name: "cover", type: "file_upload", file_upload: { id: uploadedCover[1] } }]
+    };
+  }
+
+  if (!/^https?:\/\//i.test(value)) return null;
+
+  // Notion returns temporary signed URLs for files it already hosts. Those URLs
+  // cannot be written back as external files, so keep the existing file instead.
+  if (isNotionHostedFileUrl(value)) return null;
+
+  return {
+    files: [{ name: "cover", type: "external", external: { url: value } }]
+  };
+}
+
+function isNotionHostedFileUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return host.includes("prod-files-secure")
+      || host.endsWith(".amazonaws.com") && value.includes("X-Amz-Signature")
+      || host.includes("notion-static.com")
+      || host.includes("notionusercontent.com")
+      || host === "s3.us-west-2.amazonaws.com" && value.includes("notion");
+  } catch {
+    return false;
+  }
 }
 
 function slugify(value) {
