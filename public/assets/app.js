@@ -495,8 +495,10 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
   }
 
   try {
-    setWriterStatus("正在把图片上传到 Notion...");
-    const dataUrl = await readFileAsDataUrl(file);
+    setWriterStatus("正在处理图片...");
+    const uploadFile = await prepareImageForUpload(file);
+    setWriterStatus(uploadFile === file ? "正在把图片上传到 Notion..." : "图片已压缩，正在上传到 Notion...");
+    const dataUrl = await readFileAsDataUrl(uploadFile);
     const response = await fetch(`${apiBase}/api/admin/uploads`, {
       method: "POST",
       headers: siteHeaders({
@@ -504,8 +506,8 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
         ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
       }),
       body: JSON.stringify({
-        filename: file.name || "notion-image.png",
-        mimeType: file.type,
+        filename: uploadFile.name || "notion-image.jpg",
+        mimeType: uploadFile.type,
         dataUrl,
         alt: altText
       })
@@ -517,11 +519,80 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     return data;
   } catch (error) {
     const message = error instanceof TypeError
-      ? "图片上传连接失败：请确认服务器已更新、API 可访问，并且已允许 notes.101921.xyz 跨域请求。"
+      ? "图片上传连接失败：可能是图片过大、网络中断或服务器上传限制。请刷新后重试，或换一张更小的图片。"
       : error instanceof Error ? error.message : "图片上传失败";
     setWriterStatus(message, true);
     return null;
   }
+}
+
+async function prepareImageForUpload(file) {
+  const maxUploadBytes = 650 * 1024;
+  if (file.size <= maxUploadBytes) return file;
+  if (/image\/gif/i.test(file.type)) {
+    throw new Error("GIF 图片太大，请换成 JPG / PNG / WebP，或先压缩后再上传。");
+  }
+  if (!/image\/(?:png|jpe?g|webp)/i.test(file.type)) return file;
+
+  const image = await loadImageElement(file);
+  const sourceMax = Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height);
+  let scale = sourceMax > 1600 ? 1600 / sourceMax : 1;
+  let quality = 0.82;
+  let blob = null;
+
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    blob = await renderImageBlob(image, width, height, quality);
+    if (blob.size <= maxUploadBytes) break;
+    if (quality > 0.58) {
+      quality -= 0.08;
+    } else {
+      scale *= 0.82;
+    }
+  }
+
+  if (!blob || blob.size >= file.size) return file;
+  const filename = file.name
+    ? file.name.replace(/\.[a-z0-9]+$/i, ".jpg")
+    : "notion-image.jpg";
+  return new File([blob], filename, { type: "image/jpeg", lastModified: Date.now() });
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("读取图片失败，请换一张图片重试。"));
+    };
+    image.src = url;
+  });
+}
+
+function renderImageBlob(image, width, height, quality) {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      reject(new Error("浏览器不支持图片压缩。"));
+      return;
+    }
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("图片压缩失败，请换一张图片重试。"));
+    }, "image/jpeg", quality);
+  });
 }
 
 function readFileAsDataUrl(file) {
@@ -1155,21 +1226,22 @@ function renderTagCloud(notes) {
 function renderRecentList(notes) {
   if (!elements.recentList) return;
   elements.recentList.innerHTML = "";
-  const recent = [...notes]
-    .sort((a, b) => compareDate(b.updated, a.updated))
+  const reviewNotes = [...notes]
+    .filter((note) => !note.pinned)
+    .sort((a, b) => compareDate(a.updated || a.created, b.updated || b.created))
     .slice(0, 3);
 
-  if (!recent.length) {
-    elements.recentList.append(emptyInline("暂无更新"));
+  if (!reviewNotes.length) {
+    elements.recentList.append(emptyInline("暂无待回看"));
     return;
   }
 
-  for (const note of recent) {
+  for (const note of reviewNotes) {
     const button = document.createElement("button");
     button.className = "recent-item";
     button.type = "button";
     button.innerHTML = `
-      <span>${escapeHtml(formatDate(note.updated) || "-")}</span>
+      <span>${escapeHtml(formatDate(note.updated || note.created) || "待回看")}</span>
       <strong>${escapeHtml(note.title)}</strong>
     `;
     button.addEventListener("click", () => openDetail(note));
