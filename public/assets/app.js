@@ -1,10 +1,13 @@
 const apiBase = String(window.KG_CONFIG?.apiBase || "").replace(/\/$/, "");
-const sitePasswordSessionKey = "kgSitePassword";
-const sitePasswordLocalKey = "kgSitePasswordRemembered";
-let siteAccessPassword =
-  sessionStorage.getItem(sitePasswordSessionKey) ||
-  localStorage.getItem(sitePasswordLocalKey) ||
+const authTokenSessionKey = "kgUserToken";
+const authTokenLocalKey = "kgUserTokenRemembered";
+const authUserSessionKey = "kgCurrentUser";
+const authUserLocalKey = "kgCurrentUserRemembered";
+let authToken =
+  sessionStorage.getItem(authTokenSessionKey) ||
+  localStorage.getItem(authTokenLocalKey) ||
   "";
+let currentUser = readStoredUser();
 
 const state = {
   notes: [],
@@ -164,9 +167,12 @@ const elements = {
   nextNote: document.querySelector("#nextNote"),
   siteLock: document.querySelector("#siteLock"),
   sitePasswordForm: document.querySelector("#sitePasswordForm"),
+  siteUsernameInput: document.querySelector("#siteUsernameInput"),
   sitePasswordInput: document.querySelector("#sitePasswordInput"),
   sitePasswordRemember: document.querySelector("#sitePasswordRemember"),
-  sitePasswordError: document.querySelector("#sitePasswordError")
+  sitePasswordError: document.querySelector("#sitePasswordError"),
+  currentUserLabel: document.querySelector("#currentUserLabel"),
+  logoutButton: document.querySelector("#logoutButton")
 };
 
 let knowledgeChart = null;
@@ -229,6 +235,7 @@ elements.writerCoverUploadButton?.addEventListener("click", () => elements.write
 elements.writerContentUploadButton?.addEventListener("click", () => elements.writerContentFile?.click());
 elements.writerCoverFile?.addEventListener("change", handleCoverFileSelect);
 elements.writerContentFile?.addEventListener("change", handleContentFileSelect);
+elements.logoutButton?.addEventListener("click", () => clearAuth("已退出登录，请重新输入用户名和密码。"));
 elements.detailEditButton?.addEventListener("click", () => {
   if (!state.currentDetailNote) return;
   const note = state.currentDetailNote;
@@ -259,7 +266,8 @@ window.addEventListener("resize", () => {
 });
 
 function bootSite() {
-  if (siteAccessPassword) {
+  updateCurrentUserLabel();
+  if (authToken) {
     hideSiteLock();
     loadNotes();
     return;
@@ -272,23 +280,38 @@ function bootSite() {
 
 async function unlockSite(event) {
   event.preventDefault();
+  const username = elements.siteUsernameInput?.value.trim() || "";
   const password = elements.sitePasswordInput?.value.trim() || "";
-  if (!password) {
-    showSiteLock("请输入访问密码。");
+  if (!username || !password) {
+    showSiteLock("请输入用户名和登录密码。");
     return;
   }
 
-  siteAccessPassword = password;
-  persistSitePassword(password, Boolean(elements.sitePasswordRemember?.checked));
-  hideSiteLock();
-  await loadNotes();
+  try {
+    const response = await fetch(`${apiBase}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.token) throw new Error(data.error || "登录失败");
+
+    authToken = data.token;
+    currentUser = data.user || null;
+    persistAuth(authToken, currentUser, Boolean(elements.sitePasswordRemember?.checked));
+    updateCurrentUserLabel();
+    hideSiteLock();
+    await loadNotes();
+  } catch (error) {
+    clearAuth(error instanceof Error ? error.message : "登录失败，请重试。", true);
+  }
 }
 
 function showSiteLock(message = "") {
   elements.siteLock?.classList.add("is-visible");
   elements.siteLock?.setAttribute("aria-hidden", "false");
   if (elements.sitePasswordError) elements.sitePasswordError.textContent = message;
-  window.setTimeout(() => elements.sitePasswordInput?.focus(), 60);
+  window.setTimeout(() => elements.siteUsernameInput?.focus(), 60);
 }
 
 function hideSiteLock() {
@@ -297,33 +320,54 @@ function hideSiteLock() {
   if (elements.sitePasswordError) elements.sitePasswordError.textContent = "";
 }
 
-function persistSitePassword(password, remember) {
-  sessionStorage.setItem(sitePasswordSessionKey, password);
+function persistAuth(token, user, remember) {
+  sessionStorage.setItem(authTokenSessionKey, token);
+  sessionStorage.setItem(authUserSessionKey, JSON.stringify(user || null));
   if (remember) {
-    localStorage.setItem(sitePasswordLocalKey, password);
+    localStorage.setItem(authTokenLocalKey, token);
+    localStorage.setItem(authUserLocalKey, JSON.stringify(user || null));
   } else {
-    localStorage.removeItem(sitePasswordLocalKey);
+    localStorage.removeItem(authTokenLocalKey);
+    localStorage.removeItem(authUserLocalKey);
   }
 }
 
-function clearSitePassword(message = "访问密码不正确，请重新输入。") {
-  siteAccessPassword = "";
-  sessionStorage.removeItem(sitePasswordSessionKey);
-  localStorage.removeItem(sitePasswordLocalKey);
+function clearAuth(message = "请重新登录。", showLock = true) {
+  authToken = "";
+  currentUser = null;
+  sessionStorage.removeItem(authTokenSessionKey);
+  sessionStorage.removeItem(authUserSessionKey);
+  localStorage.removeItem(authTokenLocalKey);
+  localStorage.removeItem(authUserLocalKey);
   if (elements.sitePasswordInput) elements.sitePasswordInput.value = "";
-  showSiteLock(message);
+  updateCurrentUserLabel();
+  if (showLock) showSiteLock(message);
 }
 
 function siteHeaders(headers = {}) {
-  return siteAccessPassword
-    ? { ...headers, "X-Site-Password": siteAccessPassword }
+  return authToken
+    ? { ...headers, Authorization: `Bearer ${authToken}` }
     : headers;
+}
+
+function readStoredUser() {
+  try {
+    const raw = sessionStorage.getItem(authUserSessionKey) || localStorage.getItem(authUserLocalKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function updateCurrentUserLabel() {
+  if (!elements.currentUserLabel) return;
+  elements.currentUserLabel.textContent = currentUser?.name || currentUser?.username || "未登录";
 }
 
 async function readJsonResponse(response) {
   const data = await response.json().catch(() => ({}));
   if (response.status === 401 && data?.requiresAccess) {
-    clearSitePassword(data.error || "访问密码不正确，请重新输入。");
+    clearAuth(data.error || "登录已失效，请重新输入用户名和密码。");
   }
   return data;
 }
@@ -364,7 +408,7 @@ function openEditor(note) {
   if (elements.writerCategory) elements.writerCategory.value = note.category || "";
   if (elements.writerTags) elements.writerTags.value = (note.tags || []).join(", ");
   if (elements.writerContent) elements.writerContent.value = blocksToMarkdown(note.content || []);
-  if (elements.writerPublished) elements.writerPublished.checked = true;
+  if (elements.writerPublished) elements.writerPublished.checked = Boolean(note.published);
   if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
   if (elements.writerStatus) elements.writerStatus.textContent = "";
   document.body.style.overflow = "hidden";
@@ -444,9 +488,9 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     return null;
   }
 
-  const token = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
-  if (!token) {
-    setWriterStatus(`先填管理密码，再${actionLabel}。`, true);
+  const adminToken = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
+  if (!authToken && !adminToken) {
+    setWriterStatus(`请先登录，再${actionLabel}。`, true);
     return null;
   }
 
@@ -457,7 +501,7 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
       method: "POST",
       headers: siteHeaders({
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
       }),
       body: JSON.stringify({
         filename: file.name || "notion-image.png",
@@ -469,7 +513,7 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "图片上传失败");
 
-    localStorage.setItem("kgAdminToken", token);
+    if (adminToken && !authToken) localStorage.setItem("kgAdminToken", adminToken);
     return data;
   } catch (error) {
     const message = error instanceof TypeError
@@ -504,12 +548,12 @@ async function createNoteFromWriter(event) {
   const form = event.currentTarget;
   const submitButton = form.querySelector('button[type="submit"]');
   const formData = new FormData(form);
-  const token = String(formData.get("token") || "").trim();
+  const adminToken = String(formData.get("token") || "").trim();
   const title = String(formData.get("title") || "").trim();
   const noteId = String(formData.get("id") || "").trim();
 
-  if (!token || !title) {
-    setWriterStatus("请先填写管理密码和标题。", true);
+  if ((!authToken && !adminToken) || !title) {
+    setWriterStatus(authToken || adminToken ? "请填写标题。" : "请先登录，再填写标题。", true);
     return;
   }
 
@@ -536,17 +580,17 @@ async function createNoteFromWriter(event) {
       method: noteId ? "PUT" : "POST",
       headers: siteHeaders({
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
       }),
       body: JSON.stringify(payload)
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "创建笔记失败");
 
-    localStorage.setItem("kgAdminToken", token);
+    if (adminToken && !authToken) localStorage.setItem("kgAdminToken", adminToken);
     if (!noteId) {
       form.reset();
-      elements.writerToken.value = token;
+      if (elements.writerToken) elements.writerToken.value = adminToken;
       if (elements.writerTypeSelect) elements.writerTypeSelect.value = "笔记";
       if (elements.writerPublished) elements.writerPublished.checked = true;
     }
@@ -583,6 +627,11 @@ async function loadNotes({ refresh = false } = {}) {
     });
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "读取笔记失败");
+    if (data.user) {
+      currentUser = data.user;
+      persistAuth(authToken, currentUser, Boolean(localStorage.getItem(authTokenLocalKey)));
+      updateCurrentUserLabel();
+    }
     state.notes = normalizeNotes(data.notes);
     setStatus(`已载入 ${state.notes.length} 篇公开笔记${data.cached ? "，来自缓存" : ""}`);
   } catch (error) {
@@ -608,6 +657,10 @@ function normalizeNotes(notes) {
     created: String(note.created || ""),
     updated: String(note.updated || note.created || ""),
     studyMinutes: Number(note.studyMinutes || note.readingMinutes || 0),
+    author: String(note.author || ""),
+    userId: String(note.userId || ""),
+    visibility: String(note.visibility || ""),
+    published: Boolean(note.published),
     pinned: Boolean(note.pinned),
     content: Array.isArray(note.content) ? note.content : []
   }));

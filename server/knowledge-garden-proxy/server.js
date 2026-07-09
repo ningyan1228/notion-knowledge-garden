@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import http from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -11,6 +12,9 @@ const ALLOWED_ORIGINS = new Set(
     .filter(Boolean)
 );
 const SITE_PASSWORD = String(process.env.SITE_PASSWORD || "").trim();
+const SITE_USERS = parseSiteUsers(process.env.SITE_USERS || "");
+const DEFAULT_USER_ID = String(process.env.DEFAULT_USER_ID || "zhiwu").trim();
+const AUTH_SECRET = String(process.env.AUTH_SECRET || process.env.ADMIN_TOKEN || process.env.SITE_PASSWORD || "knowledge-garden-local-secret").trim();
 
 const FIELDS = {
   title: ["Title", "\u6807\u9898", "Name", "\u540d\u79f0"],
@@ -23,6 +27,9 @@ const FIELDS = {
   published: ["Published", "\u662f\u5426\u516c\u5f00", "\u516c\u5f00"],
   pinned: ["Pinned", "\u7f6e\u9876"],
   slug: ["Slug", "slug", "\u77ed\u94fe\u63a5", "\u8def\u5f84"],
+  author: ["Author", "\u4f5c\u8005"],
+  userId: ["User ID", "UserID", "userId", "\u7528\u6237ID", "\u7528\u6237 ID"],
+  visibility: ["Visibility", "\u53ef\u89c1\u6027"],
   created: ["Created", "\u521b\u5efa\u65f6\u95f4"],
   updated: ["Updated", "\u66f4\u65b0\u65f6\u95f4"],
   studyMinutes: ["Study Minutes", "Reading Minutes", "\u5b66\u4e60\u65f6\u957f", "\u9605\u8bfb\u65f6\u95f4", "\u5b66\u4e60\u5206\u949f", "\u65f6\u957f"]
@@ -48,13 +55,41 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: SERVICE_NAME,
+        authMode: SITE_USERS.length ? "users" : "site-password",
         time: new Date().toISOString()
       });
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/auth/login") {
+      const input = await readJsonBody(req);
+      const user = authenticateCredentials(input?.username, input?.password);
+      if (!user) {
+        sendJson(res, 401, { error: "用户名或密码不正确", requiresAccess: true });
+        return;
+      }
+
+      sendJson(res, 200, {
+        token: signUserToken(user),
+        user: publicUser(user)
+      });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/auth/me") {
+      const user = getRequestUser(req);
+      if (!user) {
+        sendJson(res, 401, { error: "请先登录", requiresAccess: true });
+        return;
+      }
+
+      sendJson(res, 200, { user: publicUser(user) });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/admin/uploads") {
-      if (!isAdminRequest(req)) {
+      const user = getRequestUser(req);
+      if (!user && !isAdminRequest(req)) {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
@@ -66,13 +101,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/admin/notes") {
-      if (!isAdminRequest(req)) {
+      const user = getRequestUser(req);
+      if (!user && !isAdminRequest(req)) {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
 
       const input = await readJsonBody(req);
-      const page = await createNotionNoteV2(input);
+      const page = await createNotionNoteV2(applyUserToInput(input, user));
       cachedPages = null;
       cachedAt = 0;
 
@@ -84,14 +120,15 @@ const server = http.createServer(async (req, res) => {
 
     const adminDetailMatch = url.pathname.match(/^\/api\/admin\/notes\/([^/]+)$/);
     if ((req.method === "PUT" || req.method === "PATCH") && adminDetailMatch) {
-      if (!isAdminRequest(req)) {
+      const user = getRequestUser(req);
+      if (!user && !isAdminRequest(req)) {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
 
       const key = decodeURIComponent(adminDetailMatch[1]);
       const input = await readJsonBody(req);
-      const page = await updateNotionNote(key, input);
+      const page = await updateNotionNote(key, applyUserToInput(input, user), user);
       cachedPages = null;
       cachedAt = 0;
 
@@ -106,17 +143,22 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/notes") {
-      if (!isSiteAccessRequest(req)) {
-        sendJson(res, 401, { error: "访问密码不正确", requiresAccess: true });
+      const user = getAccessUser(req);
+      if (!user) {
+        sendJson(res, 401, { error: "请先登录", requiresAccess: true });
         return;
       }
 
       const force = url.searchParams.get("refresh") === "1";
-      const pages = await getPublishedPages(force);
-      const notes = pages.map(normalizeNote).filter((note) => note.title);
+      const pages = await getAllPagesCached(force);
+      const notes = pages
+        .filter((page) => canReadPage(page, user))
+        .map(normalizeNote)
+        .filter((note) => note.title);
 
       sendJson(res, 200, {
         notes,
+        user: publicUser(user),
         cached: !force && cachedPages !== null && Date.now() - cachedAt < CACHE_TTL_MS,
         updatedAt: new Date(cachedAt || Date.now()).toISOString()
       });
@@ -125,14 +167,15 @@ const server = http.createServer(async (req, res) => {
 
     const detailMatch = url.pathname.match(/^\/api\/notes\/([^/]+)$/);
     if (req.method === "GET" && detailMatch) {
-      if (!isSiteAccessRequest(req)) {
-        sendJson(res, 401, { error: "访问密码不正确", requiresAccess: true });
+      const user = getAccessUser(req);
+      if (!user) {
+        sendJson(res, 401, { error: "请先登录", requiresAccess: true });
         return;
       }
 
       const key = decodeURIComponent(detailMatch[1]);
-      const page = await findPublishedPage(key);
-      if (!page) {
+      const page = await findPage(key);
+      if (!page || !canReadPage(page, user)) {
         sendJson(res, 404, { error: "Note not found" });
         return;
       }
@@ -149,7 +192,8 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, { error: "Not Found" });
   } catch (error) {
-    sendJson(res, 500, { error: error instanceof Error ? error.message : "Unknown error" });
+    const status = Number(error?.statusCode || 500);
+    sendJson(res, status, { error: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
@@ -158,13 +202,17 @@ server.listen(PORT, () => {
 });
 
 async function getPublishedPages(force = false) {
+  const pages = await getAllPagesCached(force);
+  return pages.filter(isPublished);
+}
+
+async function getAllPagesCached(force = false) {
   const now = Date.now();
   if (!force && cachedPages && now - cachedAt < CACHE_TTL_MS) {
     return cachedPages;
   }
 
-  const pages = await queryAllPages();
-  cachedPages = pages.filter(isPublished);
+  cachedPages = await queryAllPages();
   cachedAt = now;
   return cachedPages;
 }
@@ -176,6 +224,18 @@ async function findPublishedPage(key) {
   }
 
   const pages = await getPublishedPages(false);
+  return pages.find((page) => {
+    const note = normalizeNote(page);
+    return note.slug === key || note.id === key;
+  }) || null;
+}
+
+async function findPage(key) {
+  if (isNotionId(key)) {
+    return notionRequest(`pages/${extractNotionId(key)}`, "GET");
+  }
+
+  const pages = await getAllPagesCached(false);
   return pages.find((page) => {
     const note = normalizeNote(page);
     return note.slug === key || note.id === key;
@@ -294,9 +354,14 @@ async function findPageForAdmin(key) {
   }) || null;
 }
 
-async function updateNotionNote(key, input) {
+async function updateNotionNote(key, input, user = null) {
   const page = await findPageForAdmin(key);
   if (!page) throw new Error("Note not found");
+  if (user && !canEditPage(page, user)) {
+    const error = new Error("没有权限编辑这篇笔记");
+    error.statusCode = 403;
+    throw error;
+  }
 
   const properties = await buildNoteProperties(input, { includeCreated: false });
   const updated = await notionRequest(`pages/${page.id}`, "PATCH", { properties });
@@ -337,6 +402,9 @@ async function buildNoteProperties(input, options = {}) {
   const pinned = Boolean(input?.pinned);
   const status = cleanText(input?.status) || (published ? "完成" : "进行中");
   const studyMinutes = Number(input?.studyMinutes || 0);
+  const author = cleanText(input?.author);
+  const userId = cleanText(input?.userId);
+  const visibility = cleanText(input?.visibility) || (published ? "公开" : "私密");
 
   const properties = {
     "标题": { title: richTextChunks(title) },
@@ -353,6 +421,21 @@ async function buildNoteProperties(input, options = {}) {
   if (slugProperty) properties[slugProperty] = { rich_text: richTextChunks(slug) };
   const typeProperty = await optionalDatabaseProperty(FIELDS.type, "select");
   if (typeProperty) properties[typeProperty] = { select: { name: noteType } };
+  const authorProperty = author ? await optionalDatabaseProperty(FIELDS.author, "rich_text") : "";
+  if (SITE_USERS.length && author && !authorProperty) {
+    throw new Error("Notion 数据库缺少富文本字段：作者");
+  }
+  if (authorProperty) properties[authorProperty] = { rich_text: richTextChunks(author) };
+  const userIdProperty = userId ? await optionalDatabaseProperty(FIELDS.userId, "rich_text") : "";
+  if (SITE_USERS.length && userId && !userIdProperty) {
+    throw new Error("Notion 数据库缺少富文本字段：用户ID");
+  }
+  if (userIdProperty) properties[userIdProperty] = { rich_text: richTextChunks(userId) };
+  const visibilityProperty = visibility ? await optionalDatabaseProperty(FIELDS.visibility, "select") : "";
+  if (SITE_USERS.length && visibility && !visibilityProperty) {
+    throw new Error("Notion 数据库缺少选择字段：可见性");
+  }
+  if (visibilityProperty) properties[visibilityProperty] = { select: { name: visibility } };
   if (category) properties["分类"] = { select: { name: category } };
   if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
   const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
@@ -645,6 +728,10 @@ function normalizeNote(page) {
     created: dateProp(pick(props, FIELDS.created)) || page.created_time || "",
     updated: dateProp(pick(props, FIELDS.updated)) || page.last_edited_time || "",
     studyMinutes: numberProp(pick(props, FIELDS.studyMinutes)),
+    author: textProp(pick(props, FIELDS.author)),
+    userId: textProp(pick(props, FIELDS.userId)) || DEFAULT_USER_ID,
+    visibility: optionProp(pick(props, FIELDS.visibility)) || (checkboxProp(pick(props, FIELDS.published)) ? "公开" : "私密"),
+    published: checkboxProp(pick(props, FIELDS.published)),
     pinned: checkboxProp(pick(props, FIELDS.pinned)),
     notionUrl: page.url || ""
   };
@@ -706,7 +793,8 @@ function blockText(block) {
 }
 
 function isAdminRequest(req) {
-  const expected = requiredEnv("ADMIN_TOKEN");
+  const expected = optionalEnv("ADMIN_TOKEN");
+  if (!expected) return false;
   const authorization = String(req.headers.authorization || "");
   const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
   const headerToken = String(req.headers["x-admin-token"] || "").trim();
@@ -719,13 +807,13 @@ function isSiteAccessRequest(req) {
   return headerPassword === SITE_PASSWORD;
 }
 
-async function readJsonBody(req) {
+async function readJsonBody(req, limit = 1024 * 1024) {
   const chunks = [];
   let size = 0;
 
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 1024 * 1024) throw new Error("Request body too large");
+    if (size > limit) throw new Error("Request body too large");
     chunks.push(chunk);
   }
 
@@ -749,6 +837,119 @@ function normalizeTags(value) {
 
 function isPublished(page) {
   return checkboxProp(pick(page.properties || {}, FIELDS.published));
+}
+
+function parseSiteUsers(value) {
+  return String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [username = "", password = "", role = "writer", id = "", name = ""] = entry.split(":").map((part) => part.trim());
+      if (!username || !password) return null;
+      return {
+        username,
+        password,
+        role: role || "writer",
+        id: id || username,
+        name: name || username
+      };
+    })
+    .filter(Boolean);
+}
+
+function authenticateCredentials(username, password) {
+  const normalizedUsername = cleanText(username);
+  const normalizedPassword = cleanText(password);
+  return SITE_USERS.find((user) => user.username === normalizedUsername && user.password === normalizedPassword) || null;
+}
+
+function publicUser(user) {
+  if (!user) return null;
+  return {
+    username: user.username,
+    id: user.id,
+    name: user.name || user.username,
+    role: user.role || "writer"
+  };
+}
+
+function signUserToken(user) {
+  const payload = {
+    username: user.username,
+    id: user.id,
+    role: user.role,
+    name: user.name,
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", AUTH_SECRET).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+function verifyUserToken(token) {
+  try {
+    const [body, signature] = String(token || "").split(".");
+    if (!body || !signature) return null;
+    const expected = crypto.createHmac("sha256", AUTH_SECRET).update(body).digest("base64url");
+    const signatureBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expected);
+    if (signatureBuffer.length !== expectedBuffer.length) return null;
+    if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
+
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (!payload?.username || Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) return null;
+    const configuredUser = SITE_USERS.find((user) => user.username === payload.username && user.id === payload.id);
+    return configuredUser || null;
+  } catch {
+    return null;
+  }
+}
+
+function getRequestUser(req) {
+  const authorization = String(req.headers.authorization || "");
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const headerToken = String(req.headers["x-user-token"] || "").trim();
+  return verifyUserToken(bearer || headerToken);
+}
+
+function getAccessUser(req) {
+  if (SITE_USERS.length) return getRequestUser(req);
+  if (!isSiteAccessRequest(req)) return null;
+  return {
+    username: DEFAULT_USER_ID,
+    id: DEFAULT_USER_ID,
+    name: DEFAULT_USER_ID,
+    role: "admin"
+  };
+}
+
+function applyUserToInput(input, user) {
+  if (!user) return input || {};
+  const next = { ...(input || {}) };
+  next.author = user.name || user.username;
+  next.userId = user.id || user.username;
+  next.visibility = cleanText(next.visibility) || (next.published ? "公开" : "私密");
+  return next;
+}
+
+function canReadPage(page, user) {
+  if (!user) return false;
+  const note = normalizeNote(page);
+  const ownerId = String(note.userId || DEFAULT_USER_ID);
+  const currentUserId = String(user.id || user.username);
+  if (ownerId === currentUserId) return true;
+
+  const isDiary = note.type === "日记";
+  if (isDiary) return false;
+
+  return note.published || note.visibility === "公开";
+}
+
+function canEditPage(page, user) {
+  if (!user) return false;
+  const note = normalizeNote(page);
+  return String(note.userId || DEFAULT_USER_ID) === String(user.id || user.username);
 }
 
 function pick(props, names) {
@@ -846,7 +1047,7 @@ function setCors(req, res) {
   }
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token,X-Site-Password");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token,X-Site-Password,X-User-Token");
 }
 
 function sendJson(res, status, data) {

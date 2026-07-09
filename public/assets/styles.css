@@ -2320,6 +2320,7 @@ h1 {
   font-weight: 800;
 }
 
+.site-lock-card input[type="text"],
 .site-lock-card input[type="password"] {
   width: 100%;
   min-height: 48px;
@@ -2331,6 +2332,7 @@ h1 {
   outline: none;
 }
 
+.site-lock-card input[type="text"]:focus,
 .site-lock-card input[type="password"]:focus {
   border-color: rgba(0, 122, 255, 0.38);
   box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
