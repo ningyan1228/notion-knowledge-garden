@@ -27,6 +27,7 @@ const state = {
 const NOTE_TYPES = ["笔记", "日记", "灵感", "复盘"];
 const CATEGORY_OPTIONS = [
   "常识",
+  "日记",
   "书单",
   "工作记录",
   "收益详情",
@@ -430,8 +431,10 @@ function updateWriterPrivacyDefault() {
   if (!elements.writerTypeSelect || !elements.writerPublished) return;
   if (elements.writerTypeSelect.value === "日记") {
     elements.writerPublished.checked = false;
+    if (elements.writerCategory) elements.writerCategory.value = "日记";
   } else {
     elements.writerPublished.checked = true;
+    if (elements.writerCategory?.value === "日记") elements.writerCategory.value = "常识";
   }
 }
 
