@@ -3,6 +3,8 @@ const apiBase = String(window.KG_CONFIG?.apiBase || "").replace(/\/$/, "");
 const state = {
   notes: [],
   detailCache: new Map(),
+  currentDetailNote: null,
+  editingNote: null,
   query: "",
   type: "all",
   category: "all",
@@ -112,9 +114,23 @@ const elements = {
   writerButton: document.querySelector("#writerButton"),
   writerPanel: document.querySelector("#writerPanel"),
   writerForm: document.querySelector("#writerForm"),
+  writerNoteId: document.querySelector("#writerNoteId"),
+  writerTitle: document.querySelector("#writerTitle"),
+  writerModeLabel: document.querySelector("#writerModeLabel"),
+  writerSubmitButton: document.querySelector("#writerSubmitButton"),
   writerToken: document.querySelector("#writerToken"),
+  writerNoteTitle: document.querySelector("#writerNoteTitle"),
+  writerSlug: document.querySelector("#writerSlug"),
   writerTypeSelect: document.querySelector("#writerTypeSelect"),
+  writerStatusSelect: document.querySelector("#writerStatusSelect"),
+  writerCover: document.querySelector("#writerCover"),
+  writerStudyMinutes: document.querySelector("#writerStudyMinutes"),
+  writerSummary: document.querySelector("#writerSummary"),
+  writerCategory: document.querySelector("#writerCategory"),
+  writerTags: document.querySelector("#writerTags"),
+  writerContent: document.querySelector("#writerContent"),
   writerPublished: document.querySelector("#writerPublished"),
+  writerPinned: document.querySelector("#writerPinned"),
   writerStatus: document.querySelector("#writerStatus"),
   statusLine: document.querySelector("#statusLine"),
   grid: document.querySelector("#notes"),
@@ -127,6 +143,7 @@ const elements = {
   detailSummary: document.querySelector("#detailSummary"),
   detailTags: document.querySelector("#detailTags"),
   detailContent: document.querySelector("#detailContent"),
+  detailEditButton: document.querySelector("#detailEditButton"),
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
   previousNote: document.querySelector("#previousNote"),
@@ -172,6 +189,10 @@ elements.graphResetButton?.addEventListener("click", resetGraphFilters);
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
+elements.writerContent?.addEventListener("paste", handleWriterPaste);
+elements.detailEditButton?.addEventListener("click", () => {
+  if (state.currentDetailNote) openEditor(state.currentDetailNote);
+});
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
   node.addEventListener("click", closeDetail);
@@ -196,6 +217,12 @@ window.addEventListener("resize", () => {
 });
 
 function openWriter(preferredType = "笔记") {
+  state.editingNote = null;
+  elements.writerForm?.reset();
+  if (elements.writerNoteId) elements.writerNoteId.value = "";
+  if (elements.writerTitle) elements.writerTitle.textContent = "写一篇新笔记";
+  if (elements.writerModeLabel) elements.writerModeLabel.textContent = "新建笔记";
+  if (elements.writerSubmitButton) elements.writerSubmitButton.textContent = "发布到 Notion";
   elements.writerPanel?.setAttribute("aria-hidden", "false");
   const nextType = NOTE_TYPES.includes(preferredType) ? preferredType : "笔记";
   if (elements.writerTypeSelect) elements.writerTypeSelect.value = nextType;
@@ -203,6 +230,30 @@ function openWriter(preferredType = "笔记") {
   if (elements.writerToken) {
     elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
   }
+  if (elements.writerStatus) elements.writerStatus.textContent = "";
+  document.body.style.overflow = "hidden";
+}
+
+function openEditor(note) {
+  state.editingNote = note;
+  elements.writerPanel?.setAttribute("aria-hidden", "false");
+  if (elements.writerTitle) elements.writerTitle.textContent = "编辑这篇笔记";
+  if (elements.writerModeLabel) elements.writerModeLabel.textContent = "保存修改";
+  if (elements.writerSubmitButton) elements.writerSubmitButton.textContent = "保存到 Notion";
+  if (elements.writerToken) elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
+  if (elements.writerNoteId) elements.writerNoteId.value = note.id || "";
+  if (elements.writerNoteTitle) elements.writerNoteTitle.value = note.title || "";
+  if (elements.writerSlug) elements.writerSlug.value = note.slug || "";
+  if (elements.writerTypeSelect) elements.writerTypeSelect.value = note.type || "笔记";
+  if (elements.writerStatusSelect) elements.writerStatusSelect.value = note.status || "进行中";
+  if (elements.writerCover) elements.writerCover.value = note.cover || "";
+  if (elements.writerStudyMinutes) elements.writerStudyMinutes.value = note.studyMinutes || "";
+  if (elements.writerSummary) elements.writerSummary.value = note.summary || "";
+  if (elements.writerCategory) elements.writerCategory.value = note.category || "";
+  if (elements.writerTags) elements.writerTags.value = (note.tags || []).join(", ");
+  if (elements.writerContent) elements.writerContent.value = blocksToMarkdown(note.content || []);
+  if (elements.writerPublished) elements.writerPublished.checked = true;
+  if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
   if (elements.writerStatus) elements.writerStatus.textContent = "";
   document.body.style.overflow = "hidden";
 }
@@ -223,6 +274,67 @@ function closeWriter() {
   }
 }
 
+async function handleWriterPaste(event) {
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+  if (!imageItem) return;
+
+  event.preventDefault();
+  const file = imageItem.getAsFile();
+  if (!file) return;
+
+  const token = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
+  if (!token) {
+    setWriterStatus("先填管理密码，再粘贴图片。", true);
+    return;
+  }
+
+  try {
+    setWriterStatus("正在把图片上传到 Notion...");
+    const dataUrl = await readFileAsDataUrl(file);
+    const response = await fetch(`${apiBase}/api/admin/uploads`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        filename: file.name || "pasted-image.png",
+        mimeType: file.type,
+        dataUrl,
+        alt: "粘贴图片"
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "图片上传失败");
+
+    localStorage.setItem("kgAdminToken", token);
+    insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+    setWriterStatus("图片已上传到 Notion，并插入正文。");
+  } catch (error) {
+    setWriterStatus(error instanceof Error ? error.message : "图片上传失败", true);
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("读取图片失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function insertAtCursor(textarea, value) {
+  if (!textarea) return;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = `${textarea.value.slice(0, start)}${value}${textarea.value.slice(end)}`;
+  const cursor = start + value.length;
+  textarea.focus();
+  textarea.setSelectionRange(cursor, cursor);
+}
+
 async function createNoteFromWriter(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -230,6 +342,7 @@ async function createNoteFromWriter(event) {
   const formData = new FormData(form);
   const token = String(formData.get("token") || "").trim();
   const title = String(formData.get("title") || "").trim();
+  const noteId = String(formData.get("id") || "").trim();
 
   if (!token || !title) {
     setWriterStatus("请先填写管理密码和标题。", true);
@@ -252,11 +365,11 @@ async function createNoteFromWriter(event) {
   };
 
   submitButton.disabled = true;
-  setWriterStatus("正在同步到 Notion...");
+  setWriterStatus(noteId ? "正在保存修改到 Notion..." : "正在同步到 Notion...");
 
   try {
-    const response = await fetch(`${apiBase}/api/admin/notes`, {
-      method: "POST",
+    const response = await fetch(noteId ? `${apiBase}/api/admin/notes/${encodeURIComponent(noteId)}` : `${apiBase}/api/admin/notes`, {
+      method: noteId ? "PUT" : "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
@@ -267,14 +380,17 @@ async function createNoteFromWriter(event) {
     if (!response.ok) throw new Error(data.error || "创建笔记失败");
 
     localStorage.setItem("kgAdminToken", token);
-    form.reset();
-    elements.writerToken.value = token;
-    if (elements.writerTypeSelect) elements.writerTypeSelect.value = "笔记";
-    if (elements.writerPublished) elements.writerPublished.checked = true;
-    setWriterStatus(`已同步：${data.note?.title || title}${payload.published ? "" : "。未公开内容只保存在 Notion。"}`);
+    if (!noteId) {
+      form.reset();
+      elements.writerToken.value = token;
+      if (elements.writerTypeSelect) elements.writerTypeSelect.value = "笔记";
+      if (elements.writerPublished) elements.writerPublished.checked = true;
+    }
+    state.detailCache.clear();
+    setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。未公开内容只保存在 Notion。"}`);
     await loadNotes({ refresh: true });
   } catch (error) {
-    setWriterStatus(error instanceof Error ? error.message : "创建笔记失败", true);
+    setWriterStatus(error instanceof Error ? error.message : "保存笔记失败", true);
   } finally {
     submitButton.disabled = false;
   }
@@ -930,6 +1046,7 @@ async function fetchDetail(key) {
 }
 
 function renderDetail(note) {
+  state.currentDetailNote = note;
   if (note.cover) {
     elements.detailCover.src = note.cover;
     elements.detailCover.alt = `${note.title} 封面`;
@@ -998,6 +1115,21 @@ function renderBlocks(container, blocks) {
 function renderBlock(block, headings = [], index = 0) {
   const type = block.type || "paragraph";
   if (type === "divider") return document.createElement("hr");
+  if (type === "image") {
+    const figure = document.createElement("figure");
+    figure.className = "article-image";
+    const image = document.createElement("img");
+    image.src = block.url || "";
+    image.alt = block.caption || "笔记图片";
+    image.loading = "lazy";
+    figure.append(image);
+    if (block.caption) {
+      const caption = document.createElement("figcaption");
+      caption.textContent = block.caption;
+      figure.append(caption);
+    }
+    return figure;
+  }
   if (type === "quote" || type === "callout") {
     const quote = document.createElement("blockquote");
     quote.textContent = block.text || "";
@@ -1032,6 +1164,25 @@ function renderBlock(block, headings = [], index = 0) {
   const paragraph = document.createElement("p");
   paragraph.textContent = block.text || "";
   return paragraph;
+}
+
+function blocksToMarkdown(blocks) {
+  return (blocks || []).map((block, index) => {
+    const text = block.text || "";
+    if (block.type === "heading_1") return `# ${text}`;
+    if (block.type === "heading_2") return `## ${text}`;
+    if (block.type === "heading_3") return `### ${text}`;
+    if (block.type === "quote" || block.type === "callout") return `> ${text}`;
+    if (block.type === "bulleted_list_item") return `- ${text}`;
+    if (block.type === "numbered_list_item") return `${index + 1}. ${text}`;
+    if (block.type === "divider") return "---";
+    if (block.type === "code") return `\`\`\`${block.language || ""}\n${text}\n\`\`\``;
+    if (block.type === "image") {
+      if (block.fileUploadId) return `![${block.caption || "笔记图片"}](notion-upload:${block.fileUploadId})`;
+      return block.url ? `![${block.caption || "笔记图片"}](${block.url})` : "";
+    }
+    return text;
+  }).filter(Boolean).join("\n\n");
 }
 
 function renderToc(headings) {

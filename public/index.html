@@ -263,10 +263,11 @@
         <div class="writer-body">
           <div class="detail-meta">
             <span>同步到 Notion</span>
-            <span>新建笔记</span>
+            <span id="writerModeLabel">新建笔记</span>
           </div>
           <h2 id="writerTitle">写一篇新笔记</h2>
           <form id="writerForm" class="writer-form">
+            <input id="writerNoteId" name="id" type="hidden" />
             <label class="full">
               <span>管理密码</span>
               <input id="writerToken" name="token" type="password" autocomplete="current-password" required />
@@ -334,6 +335,7 @@
             <label class="full">
               <span>正文</span>
               <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
+              <small class="writer-help">支持 Ctrl+V 直接粘贴图片，图片会上传到 Notion 后插入正文。</small>
             </label>
             <div class="writer-options full">
               <label>
@@ -346,7 +348,7 @@
               </label>
             </div>
             <div class="writer-actions full">
-              <button class="button primary" type="submit">发布到 Notion</button>
+              <button class="button primary" id="writerSubmitButton" type="submit">发布到 Notion</button>
               <button class="button ghost" type="button" data-close-writer>取消</button>
             </div>
             <p class="writer-status full" id="writerStatus"></p>
@@ -372,6 +374,9 @@
             <div class="article-content" id="detailContent"></div>
           </main>
           <aside class="detail-sidebar" aria-label="阅读辅助">
+            <section class="reader-widget">
+              <button class="button primary detail-edit-button" id="detailEditButton" type="button">编辑笔记</button>
+            </section>
             <section class="reader-widget">
               <span>目录</span>
               <nav class="detail-toc" id="detailToc"></nav>

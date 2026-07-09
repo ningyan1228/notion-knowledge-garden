@@ -5,7 +5,7 @@ const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
 const ALLOWED_ORIGINS = new Set(
-  (process.env.ALLOWED_ORIGINS || "https://ningyan1228.github.io,http://127.0.0.1:4173,http://localhost:4173")
+  (process.env.ALLOWED_ORIGINS || "https://ningyan1228.github.io,https://notes.101921.xyz,http://127.0.0.1:4173,http://localhost:4173")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)
@@ -52,6 +52,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/admin/uploads") {
+      if (!isAdminRequest(req)) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const input = await readJsonBody(req, 8 * 1024 * 1024);
+      const upload = await uploadImageToNotion(input);
+      sendJson(res, 201, upload);
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/admin/notes") {
       if (!isAdminRequest(req)) {
         sendJson(res, 401, { error: "Unauthorized" });
@@ -59,12 +71,35 @@ const server = http.createServer(async (req, res) => {
       }
 
       const input = await readJsonBody(req);
-      const page = await createNotionNote(input);
+      const page = await createNotionNoteV2(input);
       cachedPages = null;
       cachedAt = 0;
 
       sendJson(res, 201, {
         note: normalizeNote(page)
+      });
+      return;
+    }
+
+    const adminDetailMatch = url.pathname.match(/^\/api\/admin\/notes\/([^/]+)$/);
+    if ((req.method === "PUT" || req.method === "PATCH") && adminDetailMatch) {
+      if (!isAdminRequest(req)) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const key = decodeURIComponent(adminDetailMatch[1]);
+      const input = await readJsonBody(req);
+      const page = await updateNotionNote(key, input);
+      cachedPages = null;
+      cachedAt = 0;
+
+      const blocks = await listBlocks(page.id);
+      sendJson(res, 200, {
+        note: {
+          ...normalizeNote(page),
+          content: blocks.map(normalizeBlock).filter(Boolean)
+        }
       });
       return;
     }
@@ -171,6 +206,170 @@ async function listBlocks(blockId) {
   return blocks;
 }
 
+async function uploadImageToNotion(input) {
+  const dataUrl = cleanText(input?.dataUrl);
+  const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|gif|webp));base64,([a-z0-9+/=]+)$/i);
+  if (!match) throw new Error("Only pasted image data URLs are supported");
+
+  const mimeType = match[1].toLowerCase();
+  const extension = imageExtension(mimeType);
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > 7 * 1024 * 1024) {
+    throw new Error("Image must be smaller than 7MB");
+  }
+
+  const filename = safeFilename(input?.filename, extension);
+  const upload = await notionRequest("file_uploads", "POST", {
+    mode: "single_part",
+    filename,
+    content_type: mimeType
+  });
+  await sendNotionFileUpload(upload.id, buffer, filename, mimeType);
+
+  return {
+    fileUploadId: upload.id,
+    markdown: `![${cleanText(input?.alt) || "粘贴图片"}](notion-upload:${upload.id})`,
+    filename,
+    mimeType,
+    size: buffer.length
+  };
+}
+
+async function sendNotionFileUpload(fileUploadId, buffer, filename, mimeType) {
+  const token = requiredEnv("NOTION_TOKEN");
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: mimeType }), filename);
+
+  const response = await fetch(`https://api.notion.com/v1/file_uploads/${fileUploadId}/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Notion-Version": NOTION_VERSION
+    },
+    body: form
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    throw new Error(data.message || `Notion file upload failed: ${response.status}`);
+  }
+  return data;
+}
+
+function imageExtension(mimeType) {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("webp")) return "webp";
+  if (mimeType.includes("gif")) return "gif";
+  return "jpg";
+}
+
+function safeFilename(value, extension) {
+  const base = cleanText(value)
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[^a-z0-9\u4e00-\u9fa5_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `${base || "pasted-image"}-${Date.now()}.${extension}`;
+}
+
+async function findPageForAdmin(key) {
+  if (isNotionId(key)) return notionRequest(`pages/${extractNotionId(key)}`, "GET");
+
+  const pages = await queryAllPages();
+  return pages.find((page) => {
+    const note = normalizeNote(page);
+    return note.slug === key || note.id === key;
+  }) || null;
+}
+
+async function updateNotionNote(key, input) {
+  const page = await findPageForAdmin(key);
+  if (!page) throw new Error("Note not found");
+
+  const properties = await buildNoteProperties(input, { includeCreated: false });
+  const updated = await notionRequest(`pages/${page.id}`, "PATCH", { properties });
+
+  if (Object.prototype.hasOwnProperty.call(input || {}, "content")) {
+    await replacePageBlocks(page.id, markdownToBlocks(input?.content || input?.summary || input?.title || ""));
+  }
+
+  return updated;
+}
+
+async function replacePageBlocks(pageId, blocks) {
+  const existingBlocks = await listBlocks(pageId);
+  for (const block of existingBlocks) {
+    await notionRequest(`blocks/${block.id}`, "PATCH", { archived: true });
+  }
+
+  if (!blocks.length) return;
+  for (let index = 0; index < blocks.length; index += 90) {
+    await notionRequest(`blocks/${pageId}/children`, "PATCH", {
+      children: blocks.slice(index, index + 90)
+    });
+  }
+}
+
+async function buildNoteProperties(input, options = {}) {
+  const title = cleanText(input?.title);
+  if (!title) throw new Error("Missing title");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const summary = cleanText(input?.summary);
+  const noteType = cleanText(input?.type) || "笔记";
+  const category = cleanText(input?.category);
+  const tags = normalizeTags(input?.tags);
+  const slug = cleanText(input?.slug) || slugify(title);
+  const cover = cleanText(input?.cover);
+  const published = Boolean(input?.published);
+  const pinned = Boolean(input?.pinned);
+  const status = cleanText(input?.status) || (published ? "完成" : "进行中");
+  const studyMinutes = Number(input?.studyMinutes || 0);
+
+  const properties = {
+    "标题": { title: richTextChunks(title) },
+    "摘要": { rich_text: richTextChunks(summary) },
+    "是否公开": { checkbox: published },
+    "置顶": { checkbox: pinned },
+    "状态": { status: { name: status } },
+    "更新时间": { date: { start: today } }
+  };
+
+  if (options.includeCreated) properties["创建时间"] = { date: { start: today } };
+
+  const slugProperty = await optionalDatabaseProperty(FIELDS.slug, "rich_text");
+  if (slugProperty) properties[slugProperty] = { rich_text: richTextChunks(slug) };
+  const typeProperty = await optionalDatabaseProperty(FIELDS.type, "select");
+  if (typeProperty) properties[typeProperty] = { select: { name: noteType } };
+  if (category) properties["分类"] = { select: { name: category } };
+  if (tags.length) properties["标签"] = { multi_select: tags.map((name) => ({ name })) };
+  const studyMinutesProperty = studyMinutes > 0 ? await optionalDatabaseProperty(FIELDS.studyMinutes, "number") : "";
+  if (studyMinutesProperty) properties[studyMinutesProperty] = { number: studyMinutes };
+  if (cover && /^https?:\/\//i.test(cover)) {
+    properties["封面"] = {
+      files: [{ name: "cover", type: "external", external: { url: cover } }]
+    };
+  }
+
+  return properties;
+}
+
+async function createNotionNoteV2(input) {
+  const title = cleanText(input?.title);
+  if (!title) throw new Error("Missing title");
+
+  const summary = cleanText(input?.summary);
+  const content = cleanText(input?.content);
+  const properties = await buildNoteProperties(input, { includeCreated: true });
+
+  return notionRequest("pages", "POST", {
+    parent: { database_id: extractNotionId(requiredEnv("NOTION_DATABASE_ID")) },
+    properties,
+    children: markdownToBlocks(content || summary || title)
+  });
+}
+
 async function createNotionNote(input) {
   const title = cleanText(input?.title);
   if (!title) throw new Error("Missing title");
@@ -273,6 +472,36 @@ function markdownToBlocks(markdown) {
     if (/^---+$/.test(trimmed)) {
       flushParagraph();
       blocks.push({ object: "block", type: "divider", divider: {} });
+      continue;
+    }
+
+    const uploadImage = trimmed.match(/^!\[([^\]]*)\]\(notion-upload:([a-f0-9-]+)\)$/i);
+    if (uploadImage) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "image",
+        image: {
+          type: "file_upload",
+          file_upload: { id: uploadImage[2] },
+          caption: uploadImage[1] ? richTextChunks(uploadImage[1]) : []
+        }
+      });
+      continue;
+    }
+
+    const image = trimmed.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/i);
+    if (image) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "image",
+        image: {
+          type: "external",
+          external: { url: image[2] },
+          caption: image[1] ? richTextChunks(image[1]) : []
+        }
+      });
       continue;
     }
 
@@ -408,6 +637,15 @@ function normalizeNote(page) {
 function normalizeBlock(block) {
   const type = block.type || "";
   if (type === "divider") return { id: block.id, type };
+  if (type === "image") {
+    return {
+      id: block.id,
+      type,
+      url: block.image?.external?.url || block.image?.file?.url || "",
+      fileUploadId: block.image?.file_upload?.id || "",
+      caption: richText(block.image?.caption)
+    };
+  }
 
   const text = blockText(block);
   if (!text) return null;
@@ -585,7 +823,7 @@ function setCors(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Admin-Token");
 }
 
