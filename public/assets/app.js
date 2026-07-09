@@ -134,11 +134,15 @@ const elements = {
   writerTypeSelect: document.querySelector("#writerTypeSelect"),
   writerStatusSelect: document.querySelector("#writerStatusSelect"),
   writerCover: document.querySelector("#writerCover"),
+  writerCoverFile: document.querySelector("#writerCoverFile"),
+  writerCoverUploadButton: document.querySelector("#writerCoverUploadButton"),
   writerStudyMinutes: document.querySelector("#writerStudyMinutes"),
   writerSummary: document.querySelector("#writerSummary"),
   writerCategory: document.querySelector("#writerCategory"),
   writerTags: document.querySelector("#writerTags"),
   writerContent: document.querySelector("#writerContent"),
+  writerContentFile: document.querySelector("#writerContentFile"),
+  writerContentUploadButton: document.querySelector("#writerContentUploadButton"),
   writerPublished: document.querySelector("#writerPublished"),
   writerPinned: document.querySelector("#writerPinned"),
   writerStatus: document.querySelector("#writerStatus"),
@@ -221,6 +225,10 @@ elements.sitePasswordForm?.addEventListener("submit", unlockSite);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
+elements.writerCoverUploadButton?.addEventListener("click", () => elements.writerCoverFile?.click());
+elements.writerContentUploadButton?.addEventListener("click", () => elements.writerContentFile?.click());
+elements.writerCoverFile?.addEventListener("change", handleCoverFileSelect);
+elements.writerContentFile?.addEventListener("change", handleContentFileSelect);
 elements.detailEditButton?.addEventListener("click", () => {
   if (!state.currentDetailNote) return;
   const note = state.currentDetailNote;
@@ -394,6 +402,30 @@ async function handleCoverPaste(event) {
   setWriterStatus("封面已上传到 Notion，保存笔记后生效。");
 }
 
+async function handleCoverFileSelect(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  const data = await uploadImageFile(file, "封面图片", "选择封面图片");
+  if (!data) return;
+
+  if (elements.writerCover) elements.writerCover.value = `notion-upload:${data.fileUploadId}`;
+  setWriterStatus("封面已上传到 Notion，保存笔记后生效。");
+}
+
+async function handleContentFileSelect(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  const data = await uploadImageFile(file, "正文图片", "插入正文图片");
+  if (!data) return;
+
+  insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+  setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
 async function uploadPastedImage(event, altText) {
   const items = Array.from(event.clipboardData?.items || []);
   const imageItem = items.find((item) => item.type.startsWith("image/"));
@@ -403,9 +435,18 @@ async function uploadPastedImage(event, altText) {
   const file = imageItem.getAsFile();
   if (!file) return null;
 
+  return uploadImageFile(file, altText, "粘贴图片");
+}
+
+async function uploadImageFile(file, altText, actionLabel = "上传图片") {
+  if (!file.type.startsWith("image/")) {
+    setWriterStatus("请选择图片文件：PNG、JPG、GIF 或 WebP。", true);
+    return null;
+  }
+
   const token = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
   if (!token) {
-    setWriterStatus("先填管理密码，再粘贴图片。", true);
+    setWriterStatus(`先填管理密码，再${actionLabel}。`, true);
     return null;
   }
 
@@ -419,19 +460,22 @@ async function uploadPastedImage(event, altText) {
         Authorization: `Bearer ${token}`
       }),
       body: JSON.stringify({
-        filename: file.name || "pasted-image.png",
+        filename: file.name || "notion-image.png",
         mimeType: file.type,
         dataUrl,
         alt: altText
       })
     });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "图片上传失败");
 
     localStorage.setItem("kgAdminToken", token);
     return data;
   } catch (error) {
-    setWriterStatus(error instanceof Error ? error.message : "图片上传失败", true);
+    const message = error instanceof TypeError
+      ? "图片上传连接失败：请确认服务器已更新、API 可访问，并且已允许 notes.101921.xyz 跨域请求。"
+      : error instanceof Error ? error.message : "图片上传失败";
+    setWriterStatus(message, true);
     return null;
   }
 }

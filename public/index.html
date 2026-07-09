@@ -355,6 +355,11 @@
             <label>
               <span>封面链接</span>
               <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
+              <div class="writer-upload-row">
+                <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
+                <small>会上传到 Notion，不占服务器空间。</small>
+              </div>
+              <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
             </label>
             <label>
               <span>学习时长（分钟）</span>
@@ -390,7 +395,12 @@
             <label class="full">
               <span>正文</span>
               <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
-              <small class="writer-help">正文和封面都支持 Ctrl+V 粘贴图片，图片会上传到 Notion。</small>
+              <div class="writer-upload-row">
+                <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
+                <small>也可以直接写 Markdown：![图片说明](图片链接)</small>
+              </div>
+              <input class="visually-hidden" id="writerContentFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion。</small>
             </label>
             <div class="writer-options full">
               <label>

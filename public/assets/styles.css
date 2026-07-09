@@ -1373,6 +1373,45 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.writer-upload-row {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.writer-upload-row small {
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mini-button {
+  min-height: 34px;
+  border: 1px solid rgba(44, 138, 112, 0.18);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--leaf-dark);
+  background: rgba(240, 249, 245, 0.82);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mini-button:hover {
+  border-color: rgba(44, 138, 112, 0.32);
+  background: rgba(229, 247, 238, 0.92);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+}
+
 .detail-edit-button {
   width: 100%;
   justify-content: center;
