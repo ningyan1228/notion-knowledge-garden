@@ -159,6 +159,8 @@ const elements = {
   writerCategory: document.querySelector("#writerCategory"),
   writerTags: document.querySelector("#writerTags"),
   writerContent: document.querySelector("#writerContent"),
+  writerVisualEditor: document.querySelector("#writerVisualEditor"),
+  editorModeSwitch: document.querySelector(".editor-mode-switch"),
   writerFormatToolbar: document.querySelector(".writer-format-toolbar"),
   writerPreview: document.querySelector("#writerPreview"),
   writerDraftStatus: document.querySelector("#writerDraftStatus"),
@@ -200,6 +202,7 @@ const elements = {
 let knowledgeChart = null;
 let writerDraftTimer = null;
 let detailHeadingObserver = null;
+let writerEditorMode = "visual";
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -292,6 +295,11 @@ elements.sitePasswordForm?.addEventListener("submit", unlockSite);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
+elements.writerVisualEditor?.addEventListener("input", handleVisualEditorInput);
+elements.writerVisualEditor?.addEventListener("paste", handleVisualEditorPaste);
+elements.writerVisualEditor?.addEventListener("keydown", handleWriterContentKeydown);
+elements.editorModeSwitch?.addEventListener("click", handleEditorModeSwitch);
+elements.writerFormatToolbar?.addEventListener("pointerdown", (event) => event.preventDefault());
 elements.writerFormatToolbar?.addEventListener("click", handleFormatToolbarClick);
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
 elements.writerCoverUploadButton?.addEventListener("click", () => elements.writerCoverFile?.click());
@@ -438,6 +446,7 @@ async function readJsonResponse(response) {
 function openWriter(preferredType = "笔记") {
   state.editingNote = null;
   elements.writerForm?.reset();
+  setWriterMarkdown("");
   if (elements.writerNoteId) elements.writerNoteId.value = "";
   if (elements.writerTitle) elements.writerTitle.textContent = "写一篇新笔记";
   if (elements.writerModeLabel) elements.writerModeLabel.textContent = "新建笔记";
@@ -448,6 +457,7 @@ function openWriter(preferredType = "笔记") {
   updateWriterPrivacyDefault();
   const restored = restoreWriterDraft();
   if (!restored && nextType === "日记") applyDiaryDefaults({ forceTemplate: true });
+  syncVisualFromMarkdown();
   renderWriterPreview();
   if (elements.writerToken) {
     elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
@@ -473,7 +483,7 @@ function openEditor(note) {
   if (elements.writerSummary) elements.writerSummary.value = note.summary || "";
   if (elements.writerCategory) elements.writerCategory.value = note.category || "";
   if (elements.writerTags) elements.writerTags.value = (note.tags || []).join(", ");
-  if (elements.writerContent) elements.writerContent.value = blocksToMarkdown(note.content || []);
+  setWriterMarkdown(blocksToMarkdown(note.content || []));
   if (elements.writerPublished) elements.writerPublished.checked = Boolean(note.published);
   if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
   if (elements.writerStatus) elements.writerStatus.textContent = "";
@@ -504,11 +514,145 @@ function closeWriter() {
   }
 }
 
+function handleEditorModeSwitch(event) {
+  const button = event.target.closest("[data-editor-mode]");
+  if (!button) return;
+  const nextMode = button.dataset.editorMode === "markdown" ? "markdown" : "visual";
+  if (nextMode === writerEditorMode) return;
+  if (nextMode === "markdown") syncMarkdownFromVisual();
+  else syncVisualFromMarkdown();
+  writerEditorMode = nextMode;
+  elements.writerContent.hidden = nextMode !== "markdown";
+  elements.writerVisualEditor.hidden = nextMode !== "visual";
+  elements.editorModeSwitch?.querySelectorAll("[data-editor-mode]").forEach((node) => {
+    const active = node.dataset.editorMode === nextMode;
+    node.classList.toggle("is-active", active);
+    node.setAttribute("aria-pressed", String(active));
+  });
+  (nextMode === "visual" ? elements.writerVisualEditor : elements.writerContent)?.focus();
+}
+
+function handleVisualEditorInput() {
+  syncMarkdownFromVisual();
+  emitWriterChanged();
+}
+
+async function handleVisualEditorPaste(event) {
+  const data = await uploadPastedImage(event, "粘贴图片");
+  if (!data) return;
+  setWriterMarkdown(`${elements.writerContent?.value || ""}\n${data.markdown}\n`);
+  emitWriterChanged();
+  setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+function setWriterMarkdown(value, { syncVisual = true } = {}) {
+  if (elements.writerContent) elements.writerContent.value = String(value || "");
+  if (syncVisual) syncVisualFromMarkdown();
+}
+
+function syncMarkdownFromVisual() {
+  if (!elements.writerVisualEditor || !elements.writerContent) return;
+  elements.writerContent.value = visualHtmlToMarkdown(elements.writerVisualEditor);
+}
+
+function syncVisualFromMarkdown() {
+  if (!elements.writerVisualEditor) return;
+  const blocks = markdownToPreviewBlocks(elements.writerContent?.value || "");
+  elements.writerVisualEditor.innerHTML = blocks.map(blockToEditorHtml).join("") || "<p><br></p>";
+}
+
+function blockToEditorHtml(block) {
+  const content = richTextToEditorHtml(block.richText, block.text || "");
+  if (block.type === "image") {
+    const caption = escapeHtml(block.caption || "图片");
+    if (String(block.url || "").startsWith("notion-upload:")) {
+      return `<p data-image-source="${escapeHtml(block.url)}" data-image-caption="${caption}">图片已插入，保存后即可显示：${caption}</p>`;
+    }
+    return `<figure><img src="${escapeHtml(block.url || "")}" alt="${caption}"><figcaption>${caption}</figcaption></figure>`;
+  }
+  if (block.type === "heading_1") return `<h1>${content}</h1>`;
+  if (block.type === "heading_2") return `<h2>${content}</h2>`;
+  if (block.type === "heading_3") return `<h3>${content}</h3>`;
+  if (block.type === "quote" || block.type === "callout") return `<blockquote>${content}</blockquote>`;
+  if (block.type === "bulleted_list_item") return `<ul><li>${content}</li></ul>`;
+  if (block.type === "numbered_list_item") return `<ol><li>${content}</li></ol>`;
+  if (block.type === "to_do") return `<p data-todo="true">☐ ${content}</p>`;
+  if (block.type === "code") return `<pre><code>${escapeHtml(block.text || "")}</code></pre>`;
+  if (block.type === "divider") return "<hr>";
+  return `<p>${content || "<br>"}</p>`;
+}
+
+function richTextToEditorHtml(parts, fallback) {
+  const values = Array.isArray(parts) && parts.length ? parts : [{ text: fallback }];
+  return values.map((part) => {
+    let html = escapeHtml(part.text || "");
+    if (part.code) html = `<code>${html}</code>`;
+    if (part.bold) html = `<strong>${html}</strong>`;
+    if (part.italic) html = `<em>${html}</em>`;
+    if (part.underline) html = `<u>${html}</u>`;
+    if (part.strikethrough) html = `<s>${html}</s>`;
+    const color = normalizeRichColor(part.color);
+    if (color) html = `<span data-text-color="${color}">${html}</span>`;
+    return html;
+  }).join("");
+}
+
+function visualHtmlToMarkdown(editor) {
+  const readInline = (node) => Array.from(node.childNodes).map((child) => {
+    if (child.nodeType === Node.TEXT_NODE) return child.textContent || "";
+    const tag = child.nodeName.toLowerCase();
+    let text = readInline(child);
+    if (tag === "strong" || tag === "b") text = `**${text}**`;
+    else if (tag === "code") text = `\`${text}\``;
+    else if (tag === "em" || tag === "i") text = `*${text}*`;
+    const color = child.getAttribute?.("data-text-color") || colorToName(child.getAttribute?.("color") || child.style?.color || "");
+    if (color) text = `{${color}:${text}}`;
+    return text;
+  }).join("");
+  const blocks = Array.from(editor.children).flatMap((node) => {
+    const tag = node.nodeName.toLowerCase();
+    if (tag === "h1") return [`# ${readInline(node)}`];
+    if (tag === "h2") return [`## ${readInline(node)}`];
+    if (tag === "h3") return [`### ${readInline(node)}`];
+    if (tag === "blockquote") return readInline(node).split("\n").map((line) => `> ${line}`);
+    if (tag === "ul") return Array.from(node.children).map((item) => `- ${readInline(item)}`);
+    if (tag === "ol") return Array.from(node.children).map((item, index) => `${index + 1}. ${readInline(item)}`);
+    if (tag === "pre") return [`\`\`\`\n${node.textContent || ""}\n\`\`\``];
+    if (tag === "hr") return ["---"];
+    if (tag === "figure") {
+      const image = node.querySelector("img");
+      const caption = node.querySelector("figcaption")?.textContent?.trim() || image?.alt || "图片";
+      return image?.src ? [`![${caption}](${image.src})`] : [];
+    }
+    if (node.dataset.imageSource) return [`![${node.dataset.imageCaption || "图片"}](${node.dataset.imageSource})`];
+    const text = readInline(node).replace(/^☐\s*/, "");
+    return node.dataset.todo === "true" ? [`- [ ] ${text}`] : [text];
+  });
+  return blocks.filter(Boolean).join("\n\n");
+}
+
+function colorToName(value) {
+  const normalized = String(value || "").replace(/\s/g, "").toLowerCase();
+  const colors = { "#34c759": "green", "rgb(52,199,89)": "green", "#007aff": "blue", "rgb(0,122,255)": "blue", "#ff3b30": "red", "rgb(255,59,48)": "red", "#ffcc00": "yellow", "rgb(255,204,0)": "yellow", "#af52de": "purple", "rgb(175,82,222)": "purple" };
+  return colors[normalized] || "";
+}
+
+function insertVisualHtml(html) {
+  const editor = elements.writerVisualEditor;
+  if (!editor) return;
+  editor.focus();
+  document.execCommand("insertHTML", false, html);
+  syncMarkdownFromVisual();
+  emitWriterChanged();
+}
+
 async function handleWriterPaste(event) {
   const data = await uploadPastedImage(event, "粘贴图片");
   if (!data) return;
 
+  if (writerEditorMode === "visual") syncVisualFromMarkdown();
   insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+  if (writerEditorMode === "visual") syncVisualFromMarkdown();
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
 
@@ -536,6 +680,10 @@ function handleWriterContentKeydown(event) {
 }
 
 function applyWriterFormat(format, color = "") {
+  if (writerEditorMode === "visual") {
+    applyVisualFormat(format, color);
+    return;
+  }
   const textarea = elements.writerContent;
   if (!textarea) return;
 
@@ -562,6 +710,28 @@ function applyWriterFormat(format, color = "") {
   }
 
   textarea.focus();
+  emitWriterChanged();
+}
+
+function applyVisualFormat(format, color = "") {
+  const editor = elements.writerVisualEditor;
+  if (!editor) return;
+  editor.focus();
+  if (format === "bold") document.execCommand("bold");
+  else if (format === "quote") document.execCommand("formatBlock", false, "blockquote");
+  else if (format === "bullet") document.execCommand("insertUnorderedList");
+  else if (format === "todo") insertVisualHtml('<p data-todo="true">☐ 待办事项</p>');
+  else if (format === "code") document.execCommand("formatBlock", false, "pre");
+  else if (["h1", "h2", "h3"].includes(format)) document.execCommand("formatBlock", false, format);
+  else if (format === "color" && color) {
+    const colors = { green: "#34c759", blue: "#007aff", red: "#ff3b30", yellow: "#ffcc00", purple: "#af52de" };
+    document.execCommand("foreColor", false, colors[color] || "#1f2937");
+  } else if (format === "date") document.execCommand("insertText", false, formatTodayLine().trim());
+  else if (format === "divider") insertVisualHtml("<hr><p><br></p>");
+  else if (format === "diary-template") {
+    setWriterMarkdown((elements.writerContent?.value || "").trim() ? `${elements.writerContent.value}\n\n${diaryTemplate()}` : diaryTemplate());
+  }
+  syncMarkdownFromVisual();
   emitWriterChanged();
 }
 
@@ -675,7 +845,7 @@ function restoreWriterDraft() {
     if (elements.writerSummary) elements.writerSummary.value = draft.summary || "";
     if (elements.writerCategory) elements.writerCategory.value = draft.category || "";
     if (elements.writerTags) elements.writerTags.value = draft.tags || "";
-    if (elements.writerContent) elements.writerContent.value = draft.content || "";
+    setWriterMarkdown(draft.content || "");
     if (elements.writerPublished) elements.writerPublished.checked = Boolean(draft.published);
     if (elements.writerPinned) elements.writerPinned.checked = Boolean(draft.pinned);
     updateWriterDraftStatus("已恢复上次未发布草稿");
@@ -703,19 +873,20 @@ function applyDiaryDefaults({ forceTemplate = false } = {}) {
   if (!elements.writerStudyMinutes?.value) elements.writerStudyMinutes.value = "10";
   if (!elements.writerContent) return;
   if (forceTemplate && !elements.writerContent.value.trim()) {
-    elements.writerContent.value = diaryTemplate();
+    setWriterMarkdown(diaryTemplate());
   }
 }
 
 function insertDiaryTemplate() {
   if (!elements.writerContent) return;
   if (!elements.writerContent.value.trim()) {
-    elements.writerContent.value = diaryTemplate();
-    elements.writerContent.focus();
+    setWriterMarkdown(diaryTemplate());
+    (writerEditorMode === "visual" ? elements.writerVisualEditor : elements.writerContent)?.focus();
     emitWriterChanged();
     return;
   }
-  insertAtCursor(elements.writerContent, `\n\n${diaryTemplate()}`);
+  setWriterMarkdown(`${elements.writerContent.value}\n\n${diaryTemplate()}`);
+  emitWriterChanged();
 }
 
 function diaryTemplate() {
@@ -754,7 +925,12 @@ async function handleContentFileSelect(event) {
   const data = await uploadImageFile(file, "正文图片", "插入正文图片");
   if (!data) return;
 
-  insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+  if (writerEditorMode === "visual") {
+    setWriterMarkdown(`${elements.writerContent?.value || ""}\n${data.markdown}\n`);
+    emitWriterChanged();
+  } else {
+    insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+  }
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
 
@@ -1914,7 +2090,7 @@ function markdownToPreviewBlocks(markdown) {
     const image = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/i);
     if (image) {
       flushParagraph();
-      blocks.push({ type: "paragraph", text: `图片：${image[1] || image[2]}` });
+      blocks.push({ type: "image", url: image[2], caption: image[1] || "图片" });
       continue;
     }
 

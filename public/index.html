@@ -416,6 +416,11 @@
             </label>
             <label class="full">
               <span>正文</span>
+              <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
+                <button class="editor-mode-button is-active" id="visualEditorMode" type="button" data-editor-mode="visual">可视化编辑</button>
+                <button class="editor-mode-button" id="markdownEditorMode" type="button" data-editor-mode="markdown">Markdown</button>
+                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。</small>
+              </div>
               <div class="writer-format-toolbar" aria-label="正文格式工具栏">
                 <div class="writer-format-group" aria-label="文字样式">
                   <button class="format-button" type="button" data-format="bold">B</button>
@@ -442,7 +447,8 @@
                   <button class="format-button color-dot purple" type="button" data-format="color" data-color="purple" aria-label="紫色文字"></button>
                 </div>
               </div>
-              <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
+              <div class="visual-editor" id="writerVisualEditor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
+              <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
               <div class="writer-preview-shell">
                 <div class="writer-preview-head">
                   <span>实时预览</span>
