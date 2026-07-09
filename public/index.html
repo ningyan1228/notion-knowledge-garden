@@ -387,12 +387,18 @@
                   <button class="format-button" type="button" data-format="bold">B</button>
                   <button class="format-button" type="button" data-format="quote">引用</button>
                   <button class="format-button" type="button" data-format="bullet">列表</button>
+                  <button class="format-button" type="button" data-format="todo">待办</button>
                   <button class="format-button" type="button" data-format="code">代码</button>
                 </div>
                 <div class="writer-format-group" aria-label="标题级别">
                   <button class="format-button" type="button" data-format="h1">H1</button>
                   <button class="format-button" type="button" data-format="h2">H2</button>
                   <button class="format-button" type="button" data-format="h3">H3</button>
+                </div>
+                <div class="writer-format-group" aria-label="快捷插入">
+                  <button class="format-button" type="button" data-format="date">日期</button>
+                  <button class="format-button" type="button" data-format="divider">分割线</button>
+                  <button class="format-button" type="button" data-format="diary-template">日记模板</button>
                 </div>
                 <div class="writer-format-group color-group" aria-label="文字颜色">
                   <button class="format-button color-dot green" type="button" data-format="color" data-color="green" aria-label="绿色文字"></button>
@@ -403,6 +409,13 @@
                 </div>
               </div>
               <textarea id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```"></textarea>
+              <div class="writer-preview-shell">
+                <div class="writer-preview-head">
+                  <span>实时预览</span>
+                  <small id="writerDraftStatus">草稿会自动保存在本机</small>
+                </div>
+                <div class="writer-preview article-content" id="writerPreview"></div>
+              </div>
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
                 <small>也可以直接写 Markdown：![图片说明](图片链接)</small>

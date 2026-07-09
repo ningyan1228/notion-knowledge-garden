@@ -616,6 +616,20 @@ function markdownToBlocks(markdown) {
       continue;
     }
 
+    const todo = trimmed.match(/^[-*]\s+\[( |x|X)\]\s+(.+)$/);
+    if (todo) {
+      flushParagraph();
+      blocks.push({
+        object: "block",
+        type: "to_do",
+        to_do: {
+          rich_text: richTextChunks(todo[2]),
+          checked: todo[1].toLowerCase() === "x"
+        }
+      });
+      continue;
+    }
+
     const bullet = trimmed.match(/^[-*]\s+(.+)$/);
     if (bullet) {
       flushParagraph();
@@ -848,6 +862,7 @@ function normalizeBlock(block) {
       "heading_3",
       "quote",
       "callout",
+      "to_do",
       "bulleted_list_item",
       "numbered_list_item",
       "code"
@@ -858,6 +873,7 @@ function normalizeBlock(block) {
       type,
       text,
       richText: blockRichText(block),
+      checked: Boolean(block.to_do?.checked),
       language: block.code?.language || "",
       icon: block.callout?.icon?.emoji || ""
     };
@@ -874,6 +890,7 @@ function blockText(block) {
   if (type === "heading_3") return richText(block.heading_3?.rich_text);
   if (type === "quote") return richText(block.quote?.rich_text);
   if (type === "callout") return richText(block.callout?.rich_text);
+  if (type === "to_do") return richText(block.to_do?.rich_text);
   if (type === "bulleted_list_item") return richText(block.bulleted_list_item?.rich_text);
   if (type === "numbered_list_item") return richText(block.numbered_list_item?.rich_text);
   if (type === "code") return richText(block.code?.rich_text);
@@ -888,6 +905,7 @@ function blockRichText(block) {
   if (type === "heading_3") return richTextFragments(block.heading_3?.rich_text);
   if (type === "quote") return richTextFragments(block.quote?.rich_text);
   if (type === "callout") return richTextFragments(block.callout?.rich_text);
+  if (type === "to_do") return richTextFragments(block.to_do?.rich_text);
   if (type === "bulleted_list_item") return richTextFragments(block.bulleted_list_item?.rich_text);
   if (type === "numbered_list_item") return richTextFragments(block.numbered_list_item?.rich_text);
   if (type === "code") return richTextFragments(block.code?.rich_text);

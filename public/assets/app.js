@@ -3,6 +3,8 @@ const authTokenSessionKey = "kgUserToken";
 const authTokenLocalKey = "kgUserTokenRemembered";
 const authUserSessionKey = "kgCurrentUser";
 const authUserLocalKey = "kgCurrentUserRemembered";
+const writerDraftPrefix = "kgWriterDraft:v2";
+const writerDraftDelayMs = 500;
 let authToken =
   sessionStorage.getItem(authTokenSessionKey) ||
   localStorage.getItem(authTokenLocalKey) ||
@@ -149,6 +151,8 @@ const elements = {
   writerTags: document.querySelector("#writerTags"),
   writerContent: document.querySelector("#writerContent"),
   writerFormatToolbar: document.querySelector(".writer-format-toolbar"),
+  writerPreview: document.querySelector("#writerPreview"),
+  writerDraftStatus: document.querySelector("#writerDraftStatus"),
   writerContentFile: document.querySelector("#writerContentFile"),
   writerContentUploadButton: document.querySelector("#writerContentUploadButton"),
   writerPublished: document.querySelector("#writerPublished"),
@@ -181,6 +185,7 @@ const elements = {
 };
 
 let knowledgeChart = null;
+let writerDraftTimer = null;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -238,6 +243,8 @@ elements.collapseNotes?.addEventListener("click", () => {
   document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
+elements.writerForm?.addEventListener("input", handleWriterFormInput);
+elements.writerForm?.addEventListener("change", handleWriterFormInput);
 elements.sitePasswordForm?.addEventListener("submit", unlockSite);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
@@ -396,6 +403,9 @@ function openWriter(preferredType = "笔记") {
   const nextType = NOTE_TYPES.includes(preferredType) ? preferredType : "笔记";
   if (elements.writerTypeSelect) elements.writerTypeSelect.value = nextType;
   updateWriterPrivacyDefault();
+  const restored = restoreWriterDraft();
+  if (!restored && nextType === "日记") applyDiaryDefaults({ forceTemplate: true });
+  renderWriterPreview();
   if (elements.writerToken) {
     elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
   }
@@ -424,6 +434,8 @@ function openEditor(note) {
   if (elements.writerPublished) elements.writerPublished.checked = Boolean(note.published);
   if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
   if (elements.writerStatus) elements.writerStatus.textContent = "";
+  renderWriterPreview();
+  updateWriterDraftStatus("正在编辑已有笔记，草稿会保存在本机");
   document.body.style.overflow = "hidden";
 }
 
@@ -432,13 +444,17 @@ function updateWriterPrivacyDefault() {
   if (elements.writerTypeSelect.value === "日记") {
     elements.writerPublished.checked = false;
     if (elements.writerCategory) elements.writerCategory.value = "日记";
+    applyDiaryDefaults();
   } else {
     elements.writerPublished.checked = true;
     if (elements.writerCategory?.value === "日记") elements.writerCategory.value = "常识";
   }
+  renderWriterPreview();
+  scheduleWriterDraftSave();
 }
 
 function closeWriter() {
+  saveWriterDraft();
   elements.writerPanel?.setAttribute("aria-hidden", "true");
   if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") {
     document.body.style.overflow = "";
@@ -486,15 +502,24 @@ function applyWriterFormat(format, color = "") {
     prefixSelectedLines(textarea, "> ");
   } else if (format === "bullet") {
     prefixSelectedLines(textarea, "- ");
+  } else if (format === "todo") {
+    prefixSelectedLines(textarea, "- [ ] ");
   } else if (format === "code") {
     wrapBlockSelection(textarea, "```\n", "\n```", "代码内容");
   } else if (["h1", "h2", "h3"].includes(format)) {
     prefixSelectedLines(textarea, `${"#".repeat(Number(format.slice(1)))} `, /^(#{1,6}\s*)/);
   } else if (format === "color" && color) {
     wrapSelection(textarea, `{${color}:`, "}", "彩色文字");
+  } else if (format === "date") {
+    insertAtCursor(textarea, formatTodayLine());
+  } else if (format === "divider") {
+    insertAtCursor(textarea, "\n\n---\n\n");
+  } else if (format === "diary-template") {
+    insertDiaryTemplate();
   }
 
   textarea.focus();
+  emitWriterChanged();
 }
 
 function wrapSelection(textarea, before, after, fallback) {
@@ -534,6 +559,128 @@ function prefixSelectedLines(textarea, prefix, replacePattern = null) {
 
   textarea.value = `${value.slice(0, lineStart)}${next}${value.slice(lineEnd)}`;
   textarea.setSelectionRange(lineStart, lineStart + next.length);
+}
+
+function handleWriterFormInput() {
+  renderWriterPreview();
+  scheduleWriterDraftSave();
+}
+
+function emitWriterChanged() {
+  renderWriterPreview();
+  scheduleWriterDraftSave();
+}
+
+function writerDraftKey() {
+  const userKey = currentUser?.id || currentUser?.username || "guest";
+  const noteKey = elements.writerNoteId?.value?.trim() || "new";
+  return `${writerDraftPrefix}:${userKey}:${noteKey}`;
+}
+
+function collectWriterDraft() {
+  return {
+    savedAt: new Date().toISOString(),
+    id: elements.writerNoteId?.value || "",
+    title: elements.writerNoteTitle?.value || "",
+    slug: elements.writerSlug?.value || "",
+    type: elements.writerTypeSelect?.value || "笔记",
+    status: elements.writerStatusSelect?.value || "进行中",
+    cover: elements.writerCover?.value || "",
+    studyMinutes: elements.writerStudyMinutes?.value || "",
+    summary: elements.writerSummary?.value || "",
+    category: elements.writerCategory?.value || "",
+    tags: elements.writerTags?.value || "",
+    content: elements.writerContent?.value || "",
+    published: Boolean(elements.writerPublished?.checked),
+    pinned: Boolean(elements.writerPinned?.checked)
+  };
+}
+
+function scheduleWriterDraftSave() {
+  window.clearTimeout(writerDraftTimer);
+  writerDraftTimer = window.setTimeout(saveWriterDraft, writerDraftDelayMs);
+}
+
+function saveWriterDraft() {
+  if (!elements.writerForm || elements.writerPanel?.getAttribute("aria-hidden") === "true") return;
+  const draft = collectWriterDraft();
+  if (!draft.title && !draft.summary && !draft.content && !draft.cover) {
+    localStorage.removeItem(writerDraftKey());
+    updateWriterDraftStatus("草稿会自动保存在本机");
+    return;
+  }
+  localStorage.setItem(writerDraftKey(), JSON.stringify(draft));
+  updateWriterDraftStatus(`草稿已自动保存 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
+}
+
+function restoreWriterDraft() {
+  if (elements.writerNoteId?.value) return false;
+  const raw = localStorage.getItem(writerDraftKey());
+  if (!raw) {
+    updateWriterDraftStatus("草稿会自动保存在本机");
+    return false;
+  }
+
+  try {
+    const draft = JSON.parse(raw);
+    if (elements.writerNoteTitle) elements.writerNoteTitle.value = draft.title || "";
+    if (elements.writerSlug) elements.writerSlug.value = draft.slug || "";
+    if (elements.writerTypeSelect) elements.writerTypeSelect.value = NOTE_TYPES.includes(draft.type) ? draft.type : "笔记";
+    if (elements.writerStatusSelect) elements.writerStatusSelect.value = draft.status || "进行中";
+    if (elements.writerCover) elements.writerCover.value = draft.cover || "";
+    if (elements.writerStudyMinutes) elements.writerStudyMinutes.value = draft.studyMinutes || "";
+    if (elements.writerSummary) elements.writerSummary.value = draft.summary || "";
+    if (elements.writerCategory) elements.writerCategory.value = draft.category || "";
+    if (elements.writerTags) elements.writerTags.value = draft.tags || "";
+    if (elements.writerContent) elements.writerContent.value = draft.content || "";
+    if (elements.writerPublished) elements.writerPublished.checked = Boolean(draft.published);
+    if (elements.writerPinned) elements.writerPinned.checked = Boolean(draft.pinned);
+    updateWriterDraftStatus("已恢复上次未发布草稿");
+    return true;
+  } catch {
+    localStorage.removeItem(writerDraftKey());
+    updateWriterDraftStatus("草稿会自动保存在本机");
+    return false;
+  }
+}
+
+function clearWriterDraft() {
+  window.clearTimeout(writerDraftTimer);
+  localStorage.removeItem(writerDraftKey());
+  updateWriterDraftStatus("已发布，草稿已清除");
+}
+
+function updateWriterDraftStatus(message) {
+  if (elements.writerDraftStatus) elements.writerDraftStatus.textContent = message;
+}
+
+function applyDiaryDefaults({ forceTemplate = false } = {}) {
+  if (elements.writerCategory) elements.writerCategory.value = "日记";
+  if (!elements.writerTags?.value.trim()) elements.writerTags.value = "日记, 记录";
+  if (!elements.writerStudyMinutes?.value) elements.writerStudyMinutes.value = "10";
+  if (!elements.writerContent) return;
+  if (forceTemplate && !elements.writerContent.value.trim()) {
+    elements.writerContent.value = diaryTemplate();
+  }
+}
+
+function insertDiaryTemplate() {
+  if (!elements.writerContent) return;
+  if (!elements.writerContent.value.trim()) {
+    elements.writerContent.value = diaryTemplate();
+    elements.writerContent.focus();
+    emitWriterChanged();
+    return;
+  }
+  insertAtCursor(elements.writerContent, `\n\n${diaryTemplate()}`);
+}
+
+function diaryTemplate() {
+  return `## ${formatDate(new Date()) || "今天"}\n\n### 今日关键词\n- \n\n### 今天发生了什么\n\n\n### 我的想法\n\n\n### 明天想做\n- [ ] `;
+}
+
+function formatTodayLine() {
+  return `\n${formatDate(new Date()) || new Date().toISOString().slice(0, 10)}\n`;
 }
 
 async function handleCoverPaste(event) {
@@ -710,6 +857,7 @@ function insertAtCursor(textarea, value) {
   const cursor = start + value.length;
   textarea.focus();
   textarea.setSelectionRange(cursor, cursor);
+  emitWriterChanged();
 }
 
 async function createNoteFromWriter(event) {
@@ -762,8 +910,10 @@ async function createNoteFromWriter(event) {
       if (elements.writerToken) elements.writerToken.value = adminToken;
       if (elements.writerTypeSelect) elements.writerTypeSelect.value = "笔记";
       if (elements.writerPublished) elements.writerPublished.checked = true;
+      renderWriterPreview();
     }
     state.detailCache.clear();
+    clearWriterDraft();
     setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}`);
     await loadNotes({ refresh: true });
   } catch (error) {
@@ -1543,6 +1693,181 @@ function renderTags(container, tags) {
   }
 }
 
+function renderWriterPreview() {
+  if (!elements.writerPreview) return;
+  const markdown = elements.writerContent?.value || "";
+  const blocks = markdownToPreviewBlocks(markdown);
+  renderBlocks(elements.writerPreview, blocks);
+}
+
+function markdownToPreviewBlocks(markdown) {
+  const blocks = [];
+  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+  let paragraph = [];
+  let inCode = false;
+  let codeLines = [];
+  let codeLanguage = "";
+
+  const flushParagraph = () => {
+    const text = paragraph.join("\n").trim();
+    paragraph = [];
+    if (text) blocks.push(previewTextBlock("paragraph", text));
+  };
+
+  const flushCode = () => {
+    blocks.push({
+      type: "code",
+      text: codeLines.join("\n"),
+      language: codeLanguage || "plain text"
+    });
+    codeLines = [];
+    codeLanguage = "";
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const codeFence = line.trim().match(/^```(.*)$/);
+    if (codeFence) {
+      if (inCode) flushCode();
+      else {
+        flushParagraph();
+        codeLanguage = codeFence[1]?.trim() || "";
+      }
+      inCode = !inCode;
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      continue;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      blocks.push({ type: "divider" });
+      continue;
+    }
+
+    const image = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/i);
+    if (image) {
+      flushParagraph();
+      blocks.push({ type: "paragraph", text: `图片：${image[1] || image[2]}` });
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      blocks.push(previewTextBlock(`heading_${heading[1].length}`, heading[2]));
+      continue;
+    }
+
+    const todo = trimmed.match(/^[-*]\s+\[( |x|X)\]\s+(.+)$/);
+    if (todo) {
+      flushParagraph();
+      blocks.push(previewTextBlock("to_do", todo[2], { checked: todo[1].toLowerCase() === "x" }));
+      continue;
+    }
+
+    const quote = trimmed.match(/^>\s+(.+)$/);
+    if (quote) {
+      flushParagraph();
+      blocks.push(previewTextBlock("quote", quote[1]));
+      continue;
+    }
+
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      blocks.push(previewTextBlock("bulleted_list_item", bullet[1]));
+      continue;
+    }
+
+    const numbered = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    if (numbered) {
+      flushParagraph();
+      blocks.push(previewTextBlock("numbered_list_item", numbered[1]));
+      continue;
+    }
+
+    paragraph.push(line);
+  }
+
+  if (inCode) flushCode();
+  flushParagraph();
+  return blocks;
+}
+
+function previewTextBlock(type, text, extra = {}) {
+  return {
+    type,
+    text,
+    richText: parsePreviewRichText(text),
+    ...extra
+  };
+}
+
+function parsePreviewRichText(text) {
+  const source = String(text || "");
+  const parts = [];
+  let index = 0;
+
+  const push = (value, attrs = {}) => {
+    if (!value) return;
+    parts.push({ text: value, ...attrs });
+  };
+
+  while (index < source.length) {
+    const rest = source.slice(index);
+    const boldEnd = rest.startsWith("**") ? source.indexOf("**", index + 2) : -1;
+    if (boldEnd !== -1) {
+      push(source.slice(index + 2, boldEnd), { bold: true });
+      index = boldEnd + 2;
+      continue;
+    }
+
+    const codeEnd = rest.startsWith("`") ? source.indexOf("`", index + 1) : -1;
+    if (codeEnd !== -1) {
+      push(source.slice(index + 1, codeEnd), { code: true });
+      index = codeEnd + 1;
+      continue;
+    }
+
+    const colorMatch = rest.match(/^\{([a-zA-Z\u4e00-\u9fa5]+):/);
+    if (colorMatch) {
+      const contentStart = index + colorMatch[0].length;
+      const colorEnd = source.indexOf("}", contentStart);
+      if (colorEnd !== -1) {
+        push(source.slice(contentStart, colorEnd), { color: colorMatch[1] });
+        index = colorEnd + 1;
+        continue;
+      }
+    }
+
+    const nextMarkers = [
+      source.indexOf("**", index + 1),
+      source.indexOf("`", index + 1),
+      source.slice(index + 1).search(/\{[a-zA-Z\u4e00-\u9fa5]+:/)
+    ]
+      .map((position, markerIndex) => {
+        if (position < 0) return -1;
+        return markerIndex === 2 ? index + 1 + position : position;
+      })
+      .filter((position) => position > index);
+    const nextIndex = nextMarkers.length ? Math.min(...nextMarkers) : source.length;
+    push(source.slice(index, nextIndex));
+    index = nextIndex;
+  }
+
+  return parts.length ? parts : [{ text: source }];
+}
+
 function renderBlocks(container, blocks) {
   container.innerHTML = "";
   const headings = [];
@@ -1558,6 +1883,12 @@ function renderBlocks(container, blocks) {
 
   for (const [index, block] of blocks.entries()) {
     const type = block.type || "paragraph";
+    if (type === "to_do") {
+      activeList = null;
+      activeListType = "";
+      container.append(renderBlock(block, headings, index));
+      continue;
+    }
     if (type === "bulleted_list_item" || type === "numbered_list_item") {
       const listTag = type === "numbered_list_item" ? "ol" : "ul";
       if (!activeList || activeListType !== listTag) {
@@ -1601,6 +1932,18 @@ function renderBlock(block, headings = [], index = 0) {
     const quote = document.createElement("blockquote");
     appendRichText(quote, block);
     return quote;
+  }
+  if (type === "to_do") {
+    const item = document.createElement("label");
+    item.className = "article-todo";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = Boolean(block.checked);
+    checkbox.disabled = true;
+    const text = document.createElement("span");
+    appendRichText(text, block);
+    item.append(checkbox, text);
+    return item;
   }
   if (type === "code") {
     const figure = document.createElement("figure");
@@ -1662,6 +2005,7 @@ function blocksToMarkdown(blocks) {
     if (block.type === "heading_2") return `## ${text}`;
     if (block.type === "heading_3") return `### ${text}`;
     if (block.type === "quote" || block.type === "callout") return `> ${text}`;
+    if (block.type === "to_do") return `- [${block.checked ? "x" : " "}] ${text}`;
     if (block.type === "bulleted_list_item") return `- ${text}`;
     if (block.type === "numbered_list_item") return `${index + 1}. ${text}`;
     if (block.type === "divider") return "---";
