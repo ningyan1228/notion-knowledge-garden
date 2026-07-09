@@ -208,6 +208,7 @@ elements.collapseNotes?.addEventListener("click", () => {
 elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
+elements.writerCover?.addEventListener("paste", handleCoverPaste);
 elements.detailEditButton?.addEventListener("click", () => {
   if (state.currentDetailNote) openEditor(state.currentDetailNote);
 });
@@ -293,18 +294,34 @@ function closeWriter() {
 }
 
 async function handleWriterPaste(event) {
+  const data = await uploadPastedImage(event, "粘贴图片");
+  if (!data) return;
+
+  insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
+  setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+async function handleCoverPaste(event) {
+  const data = await uploadPastedImage(event, "封面图片");
+  if (!data) return;
+
+  if (elements.writerCover) elements.writerCover.value = `notion-upload:${data.fileUploadId}`;
+  setWriterStatus("封面已上传到 Notion，保存笔记后生效。");
+}
+
+async function uploadPastedImage(event, altText) {
   const items = Array.from(event.clipboardData?.items || []);
   const imageItem = items.find((item) => item.type.startsWith("image/"));
-  if (!imageItem) return;
+  if (!imageItem) return null;
 
   event.preventDefault();
   const file = imageItem.getAsFile();
-  if (!file) return;
+  if (!file) return null;
 
   const token = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
   if (!token) {
     setWriterStatus("先填管理密码，再粘贴图片。", true);
-    return;
+    return null;
   }
 
   try {
@@ -320,17 +337,17 @@ async function handleWriterPaste(event) {
         filename: file.name || "pasted-image.png",
         mimeType: file.type,
         dataUrl,
-        alt: "粘贴图片"
+        alt: altText
       })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "图片上传失败");
 
     localStorage.setItem("kgAdminToken", token);
-    insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
-    setWriterStatus("图片已上传到 Notion，并插入正文。");
+    return data;
   } catch (error) {
     setWriterStatus(error instanceof Error ? error.message : "图片上传失败", true);
+    return null;
   }
 }
 
