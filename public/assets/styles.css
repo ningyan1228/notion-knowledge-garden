@@ -2720,3 +2720,187 @@ body.graph-open {
     min-height: 320px;
   }
 }
+
+/* Second pass: make the workbench read like one calm dashboard, not many loud cards. */
+.garden-workbench {
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.8fr);
+  gap: 16px;
+}
+
+.module-feature {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 220px;
+}
+
+.module-daily {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 230px;
+}
+
+.module-focus {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 466px;
+  padding: 24px;
+}
+
+.module-topics,
+.module-tags,
+.module-recent,
+.module-wander {
+  grid-row: 3;
+  min-height: 118px;
+  max-height: 132px;
+  padding: 16px 18px;
+  overflow: hidden;
+}
+
+.module-topics {
+  grid-column: 1;
+}
+
+.module-tags {
+  grid-column: 2;
+}
+
+.module-recent {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+.module-wander {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+.module-topics .module-heading,
+.module-tags .module-heading,
+.module-recent .module-heading,
+.module-wander .module-kicker {
+  margin-bottom: 8px;
+}
+
+.module-topics .module-heading strong,
+.module-tags .module-heading strong,
+.module-recent .module-heading strong {
+  font-size: 16px;
+}
+
+.module-topics .topic-map,
+.module-tags .tag-cloud,
+.module-recent .recent-list {
+  max-height: 56px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.module-topics .topic-pill,
+.module-tags .cloud-tag {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.module-recent .recent-item {
+  min-height: 36px;
+  border-radius: 12px;
+  padding: 7px 9px;
+}
+
+.module-recent .recent-item:nth-child(n + 2) {
+  display: none;
+}
+
+.module-wander {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 14px;
+  align-items: center;
+}
+
+.module-wander h2 {
+  margin-top: 4px;
+  font-size: 24px;
+}
+
+.module-wander p {
+  margin-top: 6px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.module-wander .button {
+  margin: 0;
+  min-height: 42px;
+  width: 100%;
+}
+
+.focus-board {
+  grid-template-columns: minmax(220px, 0.92fr) minmax(180px, 0.72fr) minmax(210px, 0.9fr) 122px;
+  min-height: 290px;
+  gap: 14px;
+}
+
+.focus-summary,
+.focus-column,
+.focus-actions {
+  padding: 16px;
+}
+
+.focus-item {
+  min-height: 54px;
+}
+
+.focus-actions .quick-action {
+  min-height: 48px;
+}
+
+.daily-record div {
+  min-height: 52px;
+  padding: 9px 11px;
+}
+
+@media (max-width: 1180px) {
+  .garden-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .module-feature,
+  .module-daily,
+  .module-focus,
+  .module-topics,
+  .module-tags,
+  .module-recent,
+  .module-wander {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .module-focus {
+    grid-column: 1 / -1;
+    min-height: auto;
+  }
+
+  .focus-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .garden-workbench,
+  .focus-board,
+  .module-wander {
+    grid-template-columns: 1fr;
+  }
+
+  .module-topics,
+  .module-tags,
+  .module-recent,
+  .module-wander {
+    max-height: none;
+  }
+}
