@@ -12,6 +12,31 @@
   </head>
   <body>
     <main class="page-shell">
+      <div class="mac-app-shell">
+        <aside class="mac-sidebar" aria-label="朝夕拾光导航">
+          <div class="mac-window-dots" aria-hidden="true">
+            <i class="mac-dot red"></i>
+            <i class="mac-dot yellow"></i>
+            <i class="mac-dot green"></i>
+          </div>
+          <a class="mac-sidebar-brand" href="#">
+            <span>朝</span>
+            <strong>朝夕拾光</strong>
+          </a>
+          <nav class="mac-nav">
+            <a href="#today">今日</a>
+            <a href="#notes">公开笔记</a>
+            <a href="#diaries">拾光日记</a>
+            <a href="#growthMap">成长热力</a>
+            <a href="#knowledgeGraph">知识星图</a>
+          </nav>
+          <div class="mac-sidebar-card">
+            <span>Notion Sync</span>
+            <strong>公开内容自动同步</strong>
+            <p>私密日记保留在 Notion，不会显示到网站。</p>
+          </div>
+        </aside>
+        <div class="mac-main">
       <header class="topbar">
         <a class="brand-mark" href="#">朝夕拾光</a>
         <span>收集每天的灵感与知识碎片</span>
@@ -69,7 +94,7 @@
         </article>
       </section>
 
-      <section class="garden-workbench" aria-label="知识工作台">
+      <section class="garden-workbench" id="today" aria-label="知识工作台">
         <article class="module-card module-feature">
           <div>
             <span class="module-kicker">Today</span>
@@ -155,7 +180,7 @@
         </article>
       </section>
 
-      <section class="growth-map" aria-label="热力成长地图">
+      <section class="growth-map" id="growthMap" aria-label="热力成长地图">
         <div class="growth-intro">
           <span>Knowledge Contribution</span>
           <h2><strong id="growthYear">2026</strong> 学习热力图</h2>
@@ -257,6 +282,8 @@
       <div class="notes-actions" aria-label="笔记列表操作">
         <button class="button ghost" id="collapseNotes" type="button" hidden>收起列表</button>
         <button class="button primary" id="loadMoreNotes" type="button" hidden>加载更多</button>
+      </div>
+        </div>
       </div>
     </main>
 
