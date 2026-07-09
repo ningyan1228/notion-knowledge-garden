@@ -992,10 +992,10 @@ async function getDatabaseProperties() {
 }
 
 function coverUrl(page, prop) {
-  const pageCover = page.cover?.external?.url || page.cover?.file?.url;
-  if (pageCover) return pageCover;
   const file = prop?.files?.[0];
-  return file?.external?.url || file?.file?.url || prop?.url || "";
+  const propertyCover = file?.external?.url || file?.file?.url || prop?.url || "";
+  if (propertyCover) return propertyCover;
+  return page.cover?.external?.url || page.cover?.file?.url || "";
 }
 
 function coverFileProperty(cover) {
