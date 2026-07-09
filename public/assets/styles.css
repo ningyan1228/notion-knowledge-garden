@@ -3504,3 +3504,73 @@ body.graph-open {
   border-color: rgba(0, 122, 255, 0.26);
   background: rgba(255, 255, 255, 0.86);
 }
+
+/* Eighth pass: stack hero intro above the knowledge map for a calmer first screen. */
+.hero {
+  grid-template-columns: 1fr;
+  min-height: 0;
+  gap: 16px;
+}
+
+.hero-copy {
+  min-height: 260px;
+  padding: clamp(28px, 4vw, 46px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 22px;
+}
+
+.hero-copy .eyebrow,
+.hero-copy h1,
+.hero-copy p {
+  grid-column: 1;
+}
+
+.hero-copy h1 {
+  max-width: none;
+  margin-top: 18px;
+  font-size: clamp(54px, 7vw, 96px);
+}
+
+.hero-copy p {
+  max-width: 760px;
+  margin-top: 16px;
+}
+
+.hero-actions {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin-top: 0;
+  align-self: end;
+  justify-content: flex-end;
+  min-width: 360px;
+}
+
+.hero-visual {
+  min-height: 520px;
+}
+
+.hero-visual .knowledge-graph {
+  min-height: 360px;
+}
+
+@media (max-width: 920px) {
+  .hero-copy {
+    display: flex;
+    min-height: 300px;
+  }
+
+  .hero-actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .hero-visual {
+    min-height: 430px;
+  }
+
+  .hero-visual .knowledge-graph {
+    min-height: 300px;
+  }
+}
