@@ -1614,7 +1614,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
     }
 
     const compact = height < 300;
-    const graph = buildKnowledgeGraph(notes, compact ? 10 : 18);
+    const graph = buildKnowledgeGraph(notes, compact ? 7 : 10);
 
     knowledgeChart.setOption({
     backgroundColor: "transparent",
@@ -1662,7 +1662,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       }
     ]
     }, { notMerge: true });
-    if (elements.graphHint) elements.graphHint.textContent = "分类与标签显示名称；悬停笔记可查看完整标题";
+    if (elements.graphHint) elements.graphHint.textContent = "显示最近 10 篇笔记；每个节点都标注短标题，悬停可查看全文";
     window.clearTimeout(graphRetryTimer);
     scheduleKnowledgeGraphResize();
   } catch (error) {
@@ -1797,11 +1797,22 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       name: compactLabel(note.title),
       kind: "note",
       noteId: note.id,
-      symbolSize: note.pinned ? 32 : 22,
+      symbolSize: note.pinned ? 30 : 21,
       tooltip: `笔记：${note.title}`,
       itemStyle: { color: note.pinned ? "#f0d39d" : "#dce8e4" },
-      label: { show: false },
-      emphasis: { label: { show: true, color: "#ffffff", fontSize: 12, textBorderWidth: 4 } }
+      label: {
+        show: true,
+        position: "bottom",
+        distance: 7,
+        color: "#ffffff",
+        fontSize: 11,
+        fontWeight: 800,
+        backgroundColor: "rgba(9, 30, 36, 0.78)",
+        borderRadius: 6,
+        padding: [3, 5],
+        textBorderWidth: 0
+      },
+      emphasis: { label: { show: true, color: "#ffffff", fontSize: 12, backgroundColor: "rgba(3, 19, 24, 0.94)" } }
     });
     addLink(categoryId, noteId);
 
