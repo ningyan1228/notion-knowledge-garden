@@ -4408,6 +4408,148 @@ body[data-app-view="growth"] .growth-map {
   margin-bottom: 0;
 }
 
+/* Growth view: compact annual dashboard instead of a tall stack of small cards. */
+body[data-app-view="growth"] .mac-sidebar {
+  position: sticky;
+  top: 18px;
+  height: auto;
+  min-height: 0;
+  align-self: start;
+}
+
+body[data-app-view="growth"] .growth-map {
+  margin-top: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  border-radius: 28px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 94% 4%, rgba(48, 185, 135, 0.11), transparent 24%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.93), rgba(246, 250, 248, 0.82));
+}
+
+body[data-app-view="growth"] .growth-intro {
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 0;
+  padding: 18px 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.72fr);
+  align-items: center;
+  gap: 24px;
+  border-radius: 20px;
+}
+
+body[data-app-view="growth"] .growth-intro-copy {
+  min-width: 0;
+}
+
+body[data-app-view="growth"] .growth-intro span {
+  padding: 5px 9px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+body[data-app-view="growth"] .growth-intro h2 {
+  margin: 8px 0 0;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.12;
+  white-space: nowrap;
+}
+
+body[data-app-view="growth"] .growth-intro p {
+  margin: 0;
+  color: rgba(247, 251, 247, 0.76);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+body[data-app-view="growth"] .growth-stats {
+  grid-column: auto;
+  grid-row: auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body[data-app-view="growth"] .growth-stats article {
+  min-height: 78px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 16px;
+}
+
+body[data-app-view="growth"] .growth-stats span {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body[data-app-view="growth"] .growth-stats strong {
+  margin: 0;
+  font-size: 29px;
+  white-space: nowrap;
+}
+
+body[data-app-view="growth"] .heatmap-shell {
+  grid-column: auto;
+  grid-row: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(30, 83, 75, 0.1);
+}
+
+body[data-app-view="growth"] .heatmap-head {
+  margin-bottom: 15px;
+}
+
+body[data-app-view="growth"] .heatmap-head span {
+  font-size: 13px;
+}
+
+body[data-app-view="growth"] .heatmap-months {
+  gap: 12px 22px;
+}
+
+body[data-app-view="growth"] .heatmap-month {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+}
+
+body[data-app-view="growth"] .heatmap-month-label {
+  font-size: 14px;
+}
+
+body[data-app-view="growth"] .heatmap-cells {
+  grid-template-columns: repeat(16, 11px);
+  gap: 6px;
+}
+
+body[data-app-view="growth"] .heat-cell {
+  width: 11px;
+  height: 11px;
+  min-width: 11px;
+  min-height: 11px;
+  border-radius: 4px;
+}
+
+body[data-app-view="growth"] .growth-insights {
+  margin-top: 16px;
+}
+
+body[data-app-view="growth"] .growth-insights article {
+  min-height: 104px;
+  padding: 16px 18px;
+}
+
+@media (max-width: 760px) {
+  body[data-app-view="growth"] .mac-sidebar { height: auto; }
+  body[data-app-view="growth"] .growth-intro { grid-template-columns: 1fr; gap: 12px; }
+  body[data-app-view="growth"] .growth-intro h2 { white-space: normal; }
+  body[data-app-view="growth"] .growth-stats { grid-template-columns: 1fr; }
+  body[data-app-view="growth"] .heatmap-months { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 620px) {
   body[data-app-view="graph"] .hero {
     min-height: calc(100svh - 108px);
