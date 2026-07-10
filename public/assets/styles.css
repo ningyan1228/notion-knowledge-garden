@@ -4032,3 +4032,47 @@ body.graph-open {
 .hero-copy::after {
   display: none;
 }
+
+/* Compact home: let writing and notes take priority over decoration. */
+.hero { gap: 12px; }
+.hero-copy {
+  min-height: 188px;
+  padding: clamp(22px, 3vw, 32px) clamp(24px, 4vw, 42px);
+  gap: 16px;
+}
+.hero-copy h1 {
+  margin-top: 8px;
+  font-size: clamp(42px, 5vw, 66px);
+  line-height: 1.05;
+}
+.hero-copy p {
+  margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.hero-actions { min-width: 300px; gap: 9px; }
+.hero-actions .button { min-height: 38px; padding: 0 14px; }
+.hero-visual { min-height: 310px; padding: 18px 20px 16px; }
+.hero-visual .graph-header { margin-bottom: 10px; }
+.hero-visual .graph-header strong { font-size: 26px; }
+.hero-visual .knowledge-graph { height: 220px; min-height: 220px; }
+.hero-visual .graph-legend { margin-top: 10px; }
+.knowledge-graph { color: rgba(237, 245, 240, 0.76); font-weight: 700; text-align: center; }
+
+@media (max-width: 920px) {
+  .hero-copy { min-height: 210px; }
+  .hero-visual { min-height: 288px; }
+  .hero-visual .knowledge-graph { height: 196px; min-height: 196px; }
+}
+
+@media (max-width: 620px) {
+  .hero-copy { min-height: 0; padding: 24px; }
+  .hero-copy h1 { font-size: 44px; }
+  .hero-actions { gap: 8px; }
+  .hero-actions .button { padding: 0 12px; }
+  .hero-visual { min-height: 272px; padding: 16px; }
+  .hero-visual .graph-header strong { font-size: 23px; }
+  .hero-visual .graph-tools { gap: 6px; }
+  .hero-visual .graph-tools p { display: none; }
+  .hero-visual .knowledge-graph { height: 184px; min-height: 184px; }
+}

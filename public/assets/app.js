@@ -108,6 +108,7 @@ const elements = {
   heatmapMonths: document.querySelector("#heatmapMonths"),
   knowledgeGraph: document.querySelector("#knowledgeGraph"),
   graphHint: document.querySelector("#graphHint"),
+  graphRetryButton: document.querySelector("#graphRetryButton"),
   graphResetButton: document.querySelector("#graphResetButton"),
   graphFullscreenButton: document.querySelector("#graphFullscreenButton"),
   topicMap: document.querySelector("#topicMap"),
@@ -213,6 +214,8 @@ const elements = {
 };
 
 let knowledgeChart = null;
+let graphRetryTimer = null;
+let graphResizeObserver = null;
 let writerDraftTimer = null;
 let detailHeadingObserver = null;
 let writerEditorMode = "visual";
@@ -319,6 +322,10 @@ elements.focusWriteButton?.addEventListener("click", () => openWriter("笔记"))
 elements.focusRandomButton?.addEventListener("click", openRandomNote);
 elements.focusMapButton?.addEventListener("click", scrollToKnowledgeMap);
 elements.graphResetButton?.addEventListener("click", resetGraphFilters);
+elements.graphRetryButton?.addEventListener("click", () => {
+  if (elements.graphHint) elements.graphHint.textContent = "正在重新绘制知识星图...";
+  renderKnowledgeGraph(state.notes, 0, true);
+});
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
 elements.loadMoreNotes?.addEventListener("click", () => {
   state.visibleNotes += state.notesPageSize;
@@ -377,9 +384,10 @@ document.addEventListener("keydown", (event) => {
 syncPageViewFromHash();
 
 bootSite();
+setupKnowledgeGraphObserver();
 
 window.addEventListener("resize", () => {
-  knowledgeChart?.resize();
+  scheduleKnowledgeGraphResize();
 });
 
 function bootSite() {
@@ -1561,38 +1569,38 @@ function renderTimeline(notes) {
   }
 }
 
-function renderKnowledgeGraph(notes) {
+function renderKnowledgeGraph(notes, attempt = 0, force = false) {
   if (!elements.knowledgeGraph) return;
   if (!window.echarts) {
-    elements.knowledgeGraph.textContent = "知识地图组件加载中...";
+    setKnowledgeGraphMessage("知识星图正在加载，稍后会自动重试。");
+    scheduleKnowledgeGraphRetry(notes, attempt);
     return;
   }
 
-  const graph = buildKnowledgeGraph(notes);
-  if (!knowledgeChart) {
-    knowledgeChart = window.echarts.init(elements.knowledgeGraph, null, { renderer: "canvas" });
-    knowledgeChart.on("click", (params) => {
-      const data = params.data || {};
-      if (data.kind === "category") {
-        state.category = data.value;
-        elements.categoryFilter.value = data.value;
-        elements.graphHint.textContent = `已筛选分类：${data.value}`;
-        render();
-        scrollToNotes();
-      } else if (data.kind === "tag") {
-        state.tag = data.value;
-        elements.tagFilter.value = data.value;
-        elements.graphHint.textContent = `已筛选标签：${data.value}`;
-        render();
-        scrollToNotes();
-      } else if (data.kind === "note") {
-        const note = state.notes.find((item) => item.id === data.noteId || item.slug === data.noteId);
-        if (note) openDetail(note);
-      }
-    });
+  const width = elements.knowledgeGraph.clientWidth;
+  const height = elements.knowledgeGraph.clientHeight;
+  if (width < 160 || height < 140) {
+    setKnowledgeGraphMessage("知识星图将在区域显示后自动绘制。");
+    scheduleKnowledgeGraphRetry(notes, attempt);
+    return;
   }
 
-  knowledgeChart.setOption({
+  try {
+    if (force && knowledgeChart) {
+      knowledgeChart.dispose();
+      knowledgeChart = null;
+    }
+    knowledgeChart ||= window.echarts.getInstanceByDom(elements.knowledgeGraph);
+    if (!knowledgeChart) {
+      elements.knowledgeGraph.replaceChildren();
+      knowledgeChart = window.echarts.init(elements.knowledgeGraph, null, { renderer: "canvas" });
+      knowledgeChart.on("click", handleKnowledgeGraphClick);
+    }
+
+    const compact = height < 300;
+    const graph = buildKnowledgeGraph(notes, compact ? 14 : 26);
+
+    knowledgeChart.setOption({
     backgroundColor: "transparent",
     tooltip: {
       trigger: "item",
@@ -1610,8 +1618,8 @@ function renderKnowledgeGraph(notes) {
         left: 8,
         right: 8,
         force: {
-          repulsion: 170,
-          edgeLength: [54, 118],
+          repulsion: compact ? 92 : 150,
+          edgeLength: compact ? [36, 72] : [48, 104],
           gravity: 0.08
         },
         lineStyle: {
@@ -1633,8 +1641,58 @@ function renderKnowledgeGraph(notes) {
         links: graph.links
       }
     ]
+    }, { notMerge: true });
+    if (elements.graphHint) elements.graphHint.textContent = "点击节点进入对应知识";
+    window.clearTimeout(graphRetryTimer);
+    scheduleKnowledgeGraphResize();
+  } catch (error) {
+    knowledgeChart?.dispose();
+    knowledgeChart = null;
+    setKnowledgeGraphMessage("知识星图暂时未准备好，正在重试…");
+    scheduleKnowledgeGraphRetry(notes, attempt);
+  }
+}
+
+function handleKnowledgeGraphClick(params) {
+  const data = params.data || {};
+  if (data.kind === "category") {
+    state.category = data.value;
+    elements.categoryFilter.value = data.value;
+    elements.graphHint.textContent = `已筛选分类：${data.value}`;
+    render();
+    scrollToNotes();
+  } else if (data.kind === "tag") {
+    state.tag = data.value;
+    elements.tagFilter.value = data.value;
+    elements.graphHint.textContent = `已筛选标签：${data.value}`;
+    render();
+    scrollToNotes();
+  } else if (data.kind === "note") {
+    const note = state.notes.find((item) => item.id === data.noteId || item.slug === data.noteId);
+    if (note) openDetail(note);
+  }
+}
+
+function setKnowledgeGraphMessage(message) {
+  if (!knowledgeChart) elements.knowledgeGraph.textContent = message;
+  if (elements.graphHint) elements.graphHint.textContent = message;
+}
+
+function scheduleKnowledgeGraphRetry(notes, attempt = 0) {
+  if (attempt >= 5) return;
+  window.clearTimeout(graphRetryTimer);
+  graphRetryTimer = window.setTimeout(() => renderKnowledgeGraph(notes, attempt + 1), 240 + attempt * 220);
+}
+
+function setupKnowledgeGraphObserver() {
+  if (!elements.knowledgeGraph || !window.ResizeObserver) return;
+  graphResizeObserver = new ResizeObserver((entries) => {
+    const { width, height } = entries[0]?.contentRect || {};
+    if (width < 160 || height < 140) return;
+    if (knowledgeChart) scheduleKnowledgeGraphResize();
+    else renderKnowledgeGraph(state.notes);
   });
-  scheduleKnowledgeGraphResize();
+  graphResizeObserver.observe(elements.knowledgeGraph);
 }
 
 function resetGraphFilters() {
@@ -1677,7 +1735,7 @@ function scheduleKnowledgeGraphResize() {
   setTimeout(() => knowledgeChart?.resize(), 420);
 }
 
-function buildKnowledgeGraph(notes) {
+function buildKnowledgeGraph(notes, noteLimit = 26) {
   const nodes = new Map();
   const links = [];
   const addNode = (id, node) => {
@@ -1700,7 +1758,7 @@ function buildKnowledgeGraph(notes) {
   const categoryCounts = countValues(notes.map((note) => note.category).filter(Boolean));
   const tagCounts = countValues(notes.flatMap((note) => note.tags));
 
-  for (const note of notes.slice(0, 36)) {
+  for (const note of notes.slice(0, noteLimit)) {
     const category = note.category || "未分类";
     const categoryId = `category:${category}`;
     addNode(categoryId, {
