@@ -133,6 +133,7 @@ const elements = {
   monthFilter: document.querySelector("#monthFilter"),
   sortSelect: document.querySelector("#sortSelect"),
   scopeSwitch: document.querySelector("#scopeSwitch"),
+  closeNotesLibrary: document.querySelector("#closeNotesLibrary"),
   activeFilters: document.querySelector("#activeFilters"),
   filterResultCount: document.querySelector("#filterResultCount"),
   resetFilters: document.querySelector("#resetFilters"),
@@ -255,6 +256,11 @@ elements.scopeSwitch?.addEventListener("click", (event) => {
 });
 
 elements.resetFilters?.addEventListener("click", resetFilters);
+elements.closeNotesLibrary?.addEventListener("click", closeNotesLibrary);
+document.querySelectorAll("[data-open-notes-library]").forEach((node) => {
+  node.addEventListener("click", openNotesLibrary);
+});
+window.addEventListener("hashchange", syncPageViewFromHash);
 elements.activeFilters?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-clear-filter]");
   if (!button) return;
@@ -329,6 +335,8 @@ document.addEventListener("keydown", (event) => {
     closeWriter();
   }
 });
+
+syncPageViewFromHash();
 
 bootSite();
 
@@ -1809,13 +1817,11 @@ function isPublicNote(note) {
 }
 
 function isMyNote(note) {
-  const identities = [currentUser?.id, currentUser?.username, currentUser?.name]
+  const identities = [currentUser?.id, currentUser?.username]
     .filter(Boolean)
     .map((value) => String(value).trim().toLowerCase());
-  const ownerValues = [note.userId, note.author]
-    .filter(Boolean)
-    .map((value) => String(value).trim().toLowerCase());
-  return identities.some((identity) => ownerValues.includes(identity));
+  const ownerId = String(note.userId || "").trim().toLowerCase();
+  return Boolean(ownerId) && identities.includes(ownerId);
 }
 
 function noteAuthorLabel(note) {
@@ -1890,6 +1896,20 @@ function resetFilters() {
     .filter(Boolean).forEach((control) => { control.value = control === elements.searchInput ? "" : "all"; });
   resetNoteList();
   render();
+}
+
+function openNotesLibrary() {
+  document.body.classList.add("notes-library-mode");
+}
+
+function closeNotesLibrary() {
+  history.pushState("", document.title, `${window.location.pathname}${window.location.search}`);
+  document.body.classList.remove("notes-library-mode");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function syncPageViewFromHash() {
+  document.body.classList.toggle("notes-library-mode", window.location.hash === "#notesLibrary");
 }
 
 function renderStats(notes) {

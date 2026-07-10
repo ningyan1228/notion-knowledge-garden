@@ -2881,6 +2881,39 @@ h1 {
 .notes-manager-head h2 { margin-top: 4px; font-size: 30px; }
 .notes-manager-head p { margin-top: 6px; color: var(--muted); line-height: 1.6; }
 
+.library-shortcut-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+body.notes-library-mode .topbar,
+body.notes-library-mode .hero,
+body.notes-library-mode .stats,
+body.notes-library-mode .garden-workbench,
+body.notes-library-mode .growth-map,
+body.notes-library-mode .diary-section {
+  display: none;
+}
+
+body.notes-library-mode .mac-main {
+  padding-top: 24px;
+}
+
+body.notes-library-mode .notes-manager {
+  margin-top: 0;
+}
+
+body.notes-library-mode .library-shortcut-bar {
+  display: flex;
+}
+
 .scope-switch {
   flex: 0 0 auto;
   gap: 4px;
@@ -2991,6 +3024,7 @@ h1 {
   .detail-heading h2 { font-size: 38px; }
   .detail-body { padding: 28px 20px 44px; }
   .article-content { font-size: 17px; line-height: 1.95; }
+  .library-shortcut-bar { align-items: flex-start; flex-direction: column; }
 }
 
 .growth-intro {

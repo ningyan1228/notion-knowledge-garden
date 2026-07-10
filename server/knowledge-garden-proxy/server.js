@@ -815,6 +815,8 @@ function normalizeNote(page) {
   const props = page.properties || {};
   const title = textProp(pick(props, FIELDS.title));
   const slug = textProp(pick(props, FIELDS.slug));
+  const author = textProp(pick(props, FIELDS.author));
+  const storedUserId = textProp(pick(props, FIELDS.userId));
 
   return {
     id: page.id,
@@ -829,8 +831,8 @@ function normalizeNote(page) {
     created: dateProp(pick(props, FIELDS.created)) || page.created_time || "",
     updated: dateProp(pick(props, FIELDS.updated)) || page.last_edited_time || "",
     studyMinutes: numberProp(pick(props, FIELDS.studyMinutes)),
-    author: textProp(pick(props, FIELDS.author)),
-    userId: textProp(pick(props, FIELDS.userId)) || DEFAULT_USER_ID,
+    author,
+    userId: resolveOwnerId({ userId: storedUserId, author }),
     visibility: optionProp(pick(props, FIELDS.visibility)) || (checkboxProp(pick(props, FIELDS.published)) ? "公开" : "私密"),
     published: checkboxProp(pick(props, FIELDS.published)),
     pinned: checkboxProp(pick(props, FIELDS.pinned)),
@@ -1065,10 +1067,26 @@ function applyUserToInput(input, user) {
   return next;
 }
 
+function resolveOwnerId(note) {
+  const storedUserId = cleanText(note?.userId);
+  if (storedUserId) return storedUserId;
+
+  const author = cleanText(note?.author).toLowerCase();
+  if (author) {
+    const matchingUser = SITE_USERS.find((user) => [user.id, user.username, user.name]
+      .filter(Boolean)
+      .some((identity) => String(identity).trim().toLowerCase() === author));
+    return matchingUser?.id || "";
+  }
+
+  // 多账号启用前留下的无作者旧笔记，继续归默认账号所有。
+  return DEFAULT_USER_ID;
+}
+
 function canReadPage(page, user) {
   if (!user) return false;
   const note = normalizeNote(page);
-  const ownerId = String(note.userId || DEFAULT_USER_ID);
+  const ownerId = String(note.userId || "");
   const currentUserId = String(user.id || user.username);
   if (ownerId === currentUserId) return true;
 
@@ -1081,7 +1099,7 @@ function canReadPage(page, user) {
 function canEditPage(page, user) {
   if (!user) return false;
   const note = normalizeNote(page);
-  return String(note.userId || DEFAULT_USER_ID) === String(user.id || user.username);
+  return Boolean(note.userId) && String(note.userId) === String(user.id || user.username);
 }
 
 function pick(props, names) {

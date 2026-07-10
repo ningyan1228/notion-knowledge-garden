@@ -25,7 +25,7 @@
           </a>
           <nav class="mac-nav">
             <a href="#today">今日</a>
-            <a href="#notes">我的笔记</a>
+            <a href="#notesLibrary" data-open-notes-library>我的笔记</a>
             <a href="#diaries">拾光日记</a>
             <a href="#growthMap">成长热力</a>
             <a href="#knowledgeGraph">知识星图</a>
@@ -51,7 +51,7 @@
           <div class="hero-actions">
             <button class="button secondary" type="button" id="writerButton">写笔记</button>
             <button class="button primary" type="button" id="refreshButton">刷新笔记</button>
-            <a class="button ghost" href="#notes">浏览全部</a>
+            <a class="button ghost" href="#notesLibrary" data-open-notes-library>进入笔记库</a>
           </div>
         </div>
         <div class="hero-visual graph-panel" aria-label="知识地图">
@@ -211,7 +211,7 @@
         <div class="diary-grid" id="diaryList"></div>
       </section>
 
-      <section class="notes-manager" aria-labelledby="notesManagerTitle">
+      <section class="notes-manager" id="notesLibrary" aria-labelledby="notesManagerTitle">
         <div class="notes-manager-head">
           <div>
             <span class="manager-kicker">Notes library</span>
@@ -223,6 +223,10 @@
             <button type="button" class="scope-button" data-scope="mine">只看我的</button>
             <button type="button" class="scope-button" data-scope="others-public">别人公开</button>
           </div>
+        </div>
+        <div class="library-shortcut-bar">
+          <span>笔记库模式 · 专注浏览、搜索与整理全部笔记</span>
+          <button class="text-button" id="closeNotesLibrary" type="button">← 返回首页</button>
         </div>
       <section class="toolbar" aria-label="筛选工具">
         <label class="search-box">
