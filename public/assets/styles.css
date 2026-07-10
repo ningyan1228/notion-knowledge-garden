@@ -4148,3 +4148,46 @@ body.graph-open {
   .hero-visual .graph-tools p { display: none; }
   .hero-visual .knowledge-graph { height: 184px; min-height: 184px; }
 }
+
+/* The graph panel is a compact overview, not a second full-screen hero. */
+.hero-visual.graph-panel {
+  min-height: 0;
+  height: auto;
+  padding: 16px 20px 14px;
+  gap: 8px;
+}
+.hero-visual.graph-panel .graph-header {
+  align-items: center;
+}
+.hero-visual.graph-panel .graph-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.hero-visual.graph-panel .graph-tools p {
+  max-width: none;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.hero-visual.graph-panel .graph-tools button {
+  min-height: 28px;
+  padding: 0 9px;
+}
+.hero-visual.graph-panel .knowledge-graph {
+  flex: 0 0 210px;
+  height: 210px;
+  min-height: 210px;
+  margin-top: 0;
+  border-radius: 16px;
+}
+.hero-visual.graph-panel .graph-legend {
+  margin-top: 3px;
+}
+
+@media (max-width: 620px) {
+  .hero-visual.graph-panel { padding: 14px; }
+  .hero-visual.graph-panel .graph-tools p { display: none; }
+  .hero-visual.graph-panel .knowledge-graph { flex-basis: 178px; height: 178px; min-height: 178px; }
+}
