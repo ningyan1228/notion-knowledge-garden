@@ -2070,6 +2070,8 @@ function renderOrganization() {
   allButton.dataset.folder = "all";
   allButton.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">全部文件夹</span><span class="folder-chip-count">${ownNotes.length}</span>`;
   elements.folderList.append(allButton);
+  const allFolderCount = allButton.querySelector(".folder-chip-count");
+  if (allFolderCount) allFolderCount.textContent = `${ownNotes.length} 篇笔记`;
   for (const folder of folders) {
     const button = document.createElement("button");
     button.type = "button";
@@ -2078,6 +2080,8 @@ function renderOrganization() {
     const count = ownNotes.filter((note) => note.folder === folder).length;
     button.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${escapeHtml(folder)}</span><span class="folder-chip-count">${count}</span>`;
     elements.folderList.append(button);
+    const folderCount = button.querySelector(".folder-chip-count");
+    if (folderCount) folderCount.textContent = `${count} 篇笔记`;
   }
 }
 
