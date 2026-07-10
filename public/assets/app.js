@@ -641,7 +641,7 @@ function visualHtmlToMarkdown(editor) {
 
 function colorToName(value) {
   const normalized = String(value || "").replace(/\s/g, "").toLowerCase();
-  const colors = { "#34c759": "green", "rgb(52,199,89)": "green", "#007aff": "blue", "rgb(0,122,255)": "blue", "#ff3b30": "red", "rgb(255,59,48)": "red", "#ffcc00": "yellow", "rgb(255,204,0)": "yellow", "#af52de": "purple", "rgb(175,82,222)": "purple" };
+  const colors = { "#8e8e93": "gray", "rgb(142,142,147)": "gray", "#8a5a44": "brown", "rgb(138,90,68)": "brown", "#ff9500": "orange", "rgb(255,149,0)": "orange", "#ffcc00": "yellow", "rgb(255,204,0)": "yellow", "#34c759": "green", "rgb(52,199,89)": "green", "#007aff": "blue", "rgb(0,122,255)": "blue", "#af52de": "purple", "rgb(175,82,222)": "purple", "#ff2d55": "pink", "rgb(255,45,85)": "pink", "#ff3b30": "red", "rgb(255,59,48)": "red" };
   return colors[normalized] || "";
 }
 
@@ -732,7 +732,7 @@ function applyVisualFormat(format, color = "") {
   else if (format === "code") document.execCommand("formatBlock", false, "pre");
   else if (["h1", "h2", "h3"].includes(format)) document.execCommand("formatBlock", false, format);
   else if (format === "color" && color) {
-    const colors = { green: "#34c759", blue: "#007aff", red: "#ff3b30", yellow: "#ffcc00", purple: "#af52de" };
+    const colors = { gray: "#8e8e93", brown: "#8a5a44", orange: "#ff9500", yellow: "#ffcc00", green: "#34c759", blue: "#007aff", purple: "#af52de", pink: "#ff2d55", red: "#ff3b30" };
     document.execCommand("foreColor", false, colors[color] || "#1f2937");
   } else if (format === "date") document.execCommand("insertText", false, formatTodayLine().trim());
   else if (format === "divider") insertVisualHtml("<hr><p><br></p>");

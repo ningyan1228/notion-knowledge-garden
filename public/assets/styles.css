@@ -1467,11 +1467,15 @@ textarea:focus {
 .visual-editor figure img { display: block; width: min(100%, 680px); max-height: 420px; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; background: #f5f5f7; }
 .visual-editor figcaption { margin-top: 6px; color: var(--subtle); font-size: 12px; text-align: center; }
 .visual-editor [data-todo="true"] { color: var(--ink-soft); }
+.visual-editor span[data-text-color="gray"] { color: #8e8e93; }
+.visual-editor span[data-text-color="brown"] { color: #8a5a44; }
+.visual-editor span[data-text-color="orange"] { color: #ff9500; }
 .visual-editor span[data-text-color="green"] { color: #0a8f6b; }
 .visual-editor span[data-text-color="blue"] { color: #007aff; }
 .visual-editor span[data-text-color="red"] { color: #ff3b30; }
 .visual-editor span[data-text-color="yellow"] { color: #b77900; }
 .visual-editor span[data-text-color="purple"] { color: #af52de; }
+.visual-editor span[data-text-color="pink"] { color: #ff2d55; }
 
 @media (max-width: 620px) {
   .editor-mode-switch small { width: 100%; margin-left: 0; }
@@ -1479,11 +1483,15 @@ textarea:focus {
   .markdown-editor { min-height: 240px; padding: 13px; }
 }
 
+.color-dot.gray { background: #8e8e93; }
+.color-dot.brown { background: #8a5a44; }
+.color-dot.orange { background: #ff9500; }
+.color-dot.yellow { background: #ffcc00; }
 .color-dot.green { background: #34c759; }
 .color-dot.blue { background: #007aff; }
-.color-dot.red { background: #ff3b30; }
-.color-dot.yellow { background: #ffcc00; }
 .color-dot.purple { background: #af52de; }
+.color-dot.pink { background: #ff2d55; }
+.color-dot.red { background: #ff3b30; }
 
 .writer-options {
   display: flex;
