@@ -265,6 +265,15 @@ elements.favoriteFilterButton?.addEventListener("click", () => {
 });
 
 elements.folderList?.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-folder-action]");
+  if (action) {
+    event.preventDefault();
+    event.stopPropagation();
+    const folder = action.dataset.folder || "";
+    if (action.dataset.folderAction === "rename") renameCustomFolder(folder);
+    if (action.dataset.folderAction === "delete") deleteCustomFolder(folder);
+    return;
+  }
   const button = event.target.closest("[data-folder]");
   if (!button) return;
   state.folder = button.dataset.folder || "all";
@@ -2043,7 +2052,7 @@ function promptNewFolder() {
 
 function createCustomFolder(value) {
   const folder = String(value || "").trim().slice(0, 40);
-  if (!folder) return;
+  if (!folder || folder === "all") return;
   const folders = knownFolders();
   if (!folders.includes(folder)) saveFolderRegistry([...folders, folder]);
   state.folder = folder;
@@ -2064,24 +2073,98 @@ function renderOrganization() {
   }
   if (!elements.folderList) return;
   elements.folderList.innerHTML = "";
-  const allButton = document.createElement("button");
-  allButton.type = "button";
-  allButton.className = `folder-chip is-all${state.folder === "all" ? " is-active" : ""}`;
-  allButton.dataset.folder = "all";
-  allButton.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">全部文件夹</span><span class="folder-chip-count">${ownNotes.length}</span>`;
-  elements.folderList.append(allButton);
-  const allFolderCount = allButton.querySelector(".folder-chip-count");
-  if (allFolderCount) allFolderCount.textContent = `${ownNotes.length} 篇笔记`;
+  elements.folderList.append(createFolderCard("all", ownNotes.length, { all: true }));
   for (const folder of folders) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `folder-chip${state.folder === folder ? " is-active" : ""}`;
-    button.dataset.folder = folder;
     const count = ownNotes.filter((note) => note.folder === folder).length;
-    button.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${escapeHtml(folder)}</span><span class="folder-chip-count">${count}</span>`;
-    elements.folderList.append(button);
-    const folderCount = button.querySelector(".folder-chip-count");
-    if (folderCount) folderCount.textContent = `${count} 篇笔记`;
+    elements.folderList.append(createFolderCard(folder, count));
+  }
+}
+
+function createFolderCard(folder, count, options = {}) {
+  const all = Boolean(options.all);
+  const card = document.createElement("div");
+  card.className = `folder-chip${all ? " is-all" : ""}${state.folder === folder ? " is-active" : ""}`;
+
+  const select = document.createElement("button");
+  select.type = "button";
+  select.className = "folder-chip-select";
+  select.dataset.folder = folder;
+  select.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${all ? "全部文件夹" : escapeHtml(folder)}</span><span class="folder-chip-count">${count} 篇笔记</span>`;
+  card.append(select);
+
+  if (!all) {
+    const actions = document.createElement("span");
+    actions.className = "folder-card-actions";
+    actions.innerHTML = `
+      <button type="button" class="folder-chip-menu" data-folder-action="rename" data-folder="${escapeHtml(folder)}" aria-label="重命名文件夹" title="重命名">✎</button>
+      <button type="button" class="folder-chip-menu danger" data-folder-action="delete" data-folder="${escapeHtml(folder)}" aria-label="删除文件夹" title="删除">×</button>
+    `;
+    card.append(actions);
+  }
+  return card;
+}
+
+async function renameCustomFolder(folder) {
+  if (!folder) return;
+  const next = String(window.prompt(`重命名“${folder}”`, folder) || "").trim().slice(0, 40);
+  if (!next || next === folder || next === "all") return;
+  if (knownFolders().includes(next)) {
+    setStatus("已经有同名文件夹，请换一个名称。", true);
+    return;
+  }
+
+  const affectedNotes = state.notes.filter((note) => isMyNote(note) && note.folder === folder);
+  if (affectedNotes.length && !window.confirm(`将同步更新 ${affectedNotes.length} 篇笔记的文件夹名称，是否继续？`)) return;
+
+  try {
+    for (let index = 0; index < affectedNotes.length; index += 1) {
+      const note = affectedNotes[index];
+      setStatus(`正在重命名文件夹… ${index + 1}/${affectedNotes.length}`);
+      await saveNoteOrganization(note, { folder: next });
+      note.folder = next;
+    }
+    saveFolderRegistry(knownFolders().filter((name) => name !== folder).concat(next));
+    if (state.folder === folder) state.folder = next;
+    if (state.currentDetailNote?.folder === folder) state.currentDetailNote.folder = next;
+    state.detailCache.clear();
+    hydrateFilters();
+    render();
+    if (state.currentDetailNote) renderDetail(state.currentDetailNote);
+    setStatus(`文件夹已重命名为“${next}”。`);
+  } catch (error) {
+    hydrateFilters();
+    render();
+    setStatus(error instanceof Error ? error.message : "文件夹重命名失败。", true);
+  }
+}
+
+async function deleteCustomFolder(folder) {
+  if (!folder) return;
+  const affectedNotes = state.notes.filter((note) => isMyNote(note) && note.folder === folder);
+  const message = affectedNotes.length
+    ? `删除“${folder}”后，其中 ${affectedNotes.length} 篇笔记会移至未归档；笔记内容不会删除。确定继续吗？`
+    : `确定删除空文件夹“${folder}”吗？`;
+  if (!window.confirm(message)) return;
+
+  try {
+    for (let index = 0; index < affectedNotes.length; index += 1) {
+      const note = affectedNotes[index];
+      setStatus(`正在移出笔记… ${index + 1}/${affectedNotes.length}`);
+      await saveNoteOrganization(note, { folder: "" });
+      note.folder = "";
+    }
+    saveFolderRegistry(knownFolders().filter((name) => name !== folder));
+    if (state.folder === folder) state.folder = "all";
+    if (state.currentDetailNote?.folder === folder) state.currentDetailNote.folder = "";
+    state.detailCache.clear();
+    hydrateFilters();
+    render();
+    if (state.currentDetailNote) renderDetail(state.currentDetailNote);
+    setStatus(`已删除文件夹“${folder}”，笔记已保留。`);
+  } catch (error) {
+    hydrateFilters();
+    render();
+    setStatus(error instanceof Error ? error.message : "删除文件夹失败。", true);
   }
 }
 

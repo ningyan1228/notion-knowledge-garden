@@ -3015,22 +3015,57 @@ body.notes-library-mode .library-shortcut-bar {
   overflow: hidden;
   border: 1px solid rgba(37, 96, 166, 0.12);
   border-radius: 17px;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 38px 1fr;
-  grid-template-rows: 1fr auto;
-  column-gap: 11px;
-  text-align: left;
+  padding: 0;
+  display: block;
   color: #344354;
   background: rgba(255,255,255,.86);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 4px 12px rgba(35, 70, 110, 0.04);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 .folder-chip:hover { border-color: rgba(0, 122, 255, .38); background: #f6fbff; transform: translateY(-2px); }
+.folder-chip-select {
+  width: 100%;
+  min-height: 104px;
+  border: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  column-gap: 11px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.folder-chip-select:focus-visible {
+  outline: 3px solid rgba(0, 122, 255, 0.35);
+  outline-offset: -3px;
+}
 .folder-chip-icon { align-self: center; width: 34px; height: 23px; border-radius: 5px 6px 6px 6px; }
 .folder-chip-icon::before { width: 16px; height: 7px; }
 .folder-chip-name { overflow: hidden; align-self: center; font-size: 14px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 .folder-chip-count { grid-column: 2; color: var(--subtle); font-size: 12px; font-weight: 800; }
+.folder-card-actions {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  display: flex;
+  gap: 3px;
+}
+.folder-chip-menu {
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(35, 96, 160, 0.12);
+  border-radius: 8px;
+  padding: 0;
+  color: #477198;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+.folder-chip-menu:hover { color: #0765cb; background: #eef7ff; }
+.folder-chip-menu.danger:hover { color: #c64040; background: #fff0f0; }
 .folder-chip.is-all .folder-chip-icon { background: linear-gradient(145deg, #b1bbc8, #7f8b99); box-shadow: none; }
 .folder-chip.is-all .folder-chip-icon::before { background: #c3cbd6; }
 .folder-chip.is-active { border-color: #529cf7; color: #075ec7; background: linear-gradient(145deg, #edf7ff, #ddecff); box-shadow: 0 8px 19px rgba(32, 124, 237, .17), inset 0 1px 0 rgba(255,255,255,.95); }
@@ -4299,6 +4334,24 @@ body[data-app-view="graph"] .hero-visual.graph-panel .graph-legend {
 
 body[data-app-view="notes"] .library-shortcut-bar {
   display: flex;
+}
+
+/* A focused growth page should end with its content, not a full-height white app canvas. */
+body[data-app-view="growth"] .mac-app-shell {
+  min-height: 0;
+  align-items: start;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-app-view="growth"] .mac-main {
+  align-self: start;
+  padding-bottom: 0;
+}
+
+body[data-app-view="growth"] .growth-map {
+  margin-bottom: 0;
 }
 
 @media (max-width: 620px) {
