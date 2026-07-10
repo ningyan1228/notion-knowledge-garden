@@ -2126,6 +2126,26 @@ body::before {
   background: rgba(255, 255, 255, 0.62);
 }
 
+.sidebar-write-button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #087cff, #23b978);
+  box-shadow: 0 10px 20px rgba(11, 125, 169, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  font-size: 14px;
+  font-weight: 900;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.sidebar-write-button span { font-size: 17px; }
+.sidebar-write-button:hover { transform: translateY(-2px); box-shadow: 0 14px 25px rgba(11, 125, 169, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.24); }
+
 .mac-sidebar-card {
   margin-top: auto;
   border: 1px solid rgba(0, 0, 0, 0.08);

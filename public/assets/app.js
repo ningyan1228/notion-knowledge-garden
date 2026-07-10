@@ -152,6 +152,7 @@ const elements = {
   collapseNotes: document.querySelector("#collapseNotes"),
   refreshButton: document.querySelector("#refreshButton"),
   writerButton: document.querySelector("#writerButton"),
+  sidebarWriteButton: document.querySelector("#sidebarWriteButton"),
   writerPanel: document.querySelector("#writerPanel"),
   writerForm: document.querySelector("#writerForm"),
   writerNoteId: document.querySelector("#writerNoteId"),
@@ -330,6 +331,7 @@ elements.sortSelect.addEventListener("change", (event) => {
 
 elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true }));
 elements.writerButton?.addEventListener("click", () => openWriter("笔记"));
+elements.sidebarWriteButton?.addEventListener("click", () => openWriter("笔记"));
 elements.quickWriteButton?.addEventListener("click", () => openWriter("灵感"));
 elements.dailyWriteButton?.addEventListener("click", () => openWriter("日记"));
 elements.randomNoteButton?.addEventListener("click", openRandomNote);
