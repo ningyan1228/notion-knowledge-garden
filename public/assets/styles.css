@@ -3001,6 +3001,7 @@ body.notes-library-mode .library-shortcut-bar {
 .folder-list {
   grid-area: folders;
   display: flex;
+  align-items: flex-start;
   min-height: 116px;
   gap: 12px;
   min-width: 0;
@@ -3008,6 +3009,39 @@ body.notes-library-mode .library-shortcut-bar {
   padding: 3px 3px 9px;
   scrollbar-width: thin;
 }
+.folder-tree-branch {
+  flex: 0 0 190px;
+  display: grid;
+  gap: 9px;
+}
+.folder-tree-branch .folder-chip {
+  width: 100%;
+  flex-basis: auto;
+}
+.folder-child-list {
+  margin-left: 13px;
+  border-left: 2px solid rgba(67, 142, 223, 0.19);
+  padding-left: 10px;
+  display: grid;
+  gap: 8px;
+}
+.folder-chip.is-subfolder {
+  min-height: 82px;
+  border-radius: 14px;
+  background: rgba(247, 251, 255, 0.92);
+}
+.folder-chip.is-subfolder .folder-chip-select {
+  min-height: 80px;
+  padding: 11px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 8px;
+}
+.folder-chip.is-subfolder .folder-chip-icon {
+  width: 27px;
+  height: 18px;
+}
+.folder-chip.is-subfolder .folder-chip-name { font-size: 13px; }
+.folder-chip.is-subfolder .folder-chip-count { font-size: 11px; }
 .folder-chip {
   position: relative;
   flex: 0 0 166px;

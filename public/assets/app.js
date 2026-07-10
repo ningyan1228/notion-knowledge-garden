@@ -5,6 +5,7 @@ const authUserSessionKey = "kgCurrentUser";
 const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
 const folderRegistryPrefix = "kgFolders:v1";
+const folderPathSeparator = " / ";
 const writerDraftDelayMs = 500;
 let authToken =
   sessionStorage.getItem(authTokenSessionKey) ||
@@ -270,6 +271,7 @@ elements.folderList?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     const folder = action.dataset.folder || "";
+    if (action.dataset.folderAction === "add-child") promptNewSubfolder(folder);
     if (action.dataset.folderAction === "rename") renameCustomFolder(folder);
     if (action.dataset.folderAction === "delete") deleteCustomFolder(folder);
     return;
@@ -1610,7 +1612,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
     }
 
     const compact = height < 300;
-    const graph = buildKnowledgeGraph(notes, compact ? 14 : 26);
+    const graph = buildKnowledgeGraph(notes, compact ? 10 : 18);
 
     knowledgeChart.setOption({
     backgroundColor: "transparent",
@@ -1630,9 +1632,9 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
         left: 8,
         right: 8,
         force: {
-          repulsion: compact ? 92 : 150,
-          edgeLength: compact ? [36, 72] : [48, 104],
-          gravity: 0.08
+          repulsion: compact ? 110 : 220,
+          edgeLength: compact ? [42, 82] : [74, 138],
+          gravity: 0.055
         },
         lineStyle: {
           color: "rgba(214, 235, 226, 0.42)",
@@ -1643,8 +1645,12 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
           show: true,
           color: "#f7fbf7",
           fontWeight: 700,
+          fontSize: 13,
+          textBorderColor: "rgba(11, 31, 36, 0.72)",
+          textBorderWidth: 3,
           formatter: "{b}"
         },
+        labelLayout: { hideOverlap: true },
         emphasis: {
           focus: "adjacency",
           lineStyle: { width: 2.5, color: "#b9e8d8" }
@@ -1654,7 +1660,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       }
     ]
     }, { notMerge: true });
-    if (elements.graphHint) elements.graphHint.textContent = "点击节点进入对应知识";
+    if (elements.graphHint) elements.graphHint.textContent = "分类与标签显示名称；悬停笔记可查看完整标题";
     window.clearTimeout(graphRetryTimer);
     scheduleKnowledgeGraphResize();
   } catch (error) {
@@ -1777,9 +1783,10 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       name: category,
       kind: "category",
       value: category,
-      symbolSize: 34 + Math.min((categoryCounts[category] || 1) * 4, 18),
+      symbolSize: 38 + Math.min((categoryCounts[category] || 1) * 4, 18),
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
-      itemStyle: { color: "#c68a3a" }
+      itemStyle: { color: "#c68a3a" },
+      label: { show: true, fontSize: 13, fontWeight: 800, textBorderWidth: 3 }
     });
     addLink("root", categoryId);
 
@@ -1788,14 +1795,15 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       name: compactLabel(note.title),
       kind: "note",
       noteId: note.id,
-      symbolSize: note.pinned ? 34 : 28,
+      symbolSize: note.pinned ? 32 : 22,
       tooltip: `笔记：${note.title}`,
       itemStyle: { color: note.pinned ? "#f0d39d" : "#dce8e4" },
-      label: { color: note.pinned ? "#fff4d8" : "#f7fbf7", fontSize: 11 }
+      label: { show: false },
+      emphasis: { label: { show: true, color: "#ffffff", fontSize: 12, textBorderWidth: 4 } }
     });
     addLink(categoryId, noteId);
 
-    for (const tag of note.tags.slice(0, 5)) {
+    for (const tag of note.tags.slice(0, 3)) {
       const tagId = `tag:${tag}`;
       addNode(tagId, {
         name: tag,
@@ -1804,7 +1812,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
         symbolSize: 24 + Math.min((tagCounts[tag] || 1) * 3, 14),
         tooltip: `标签：${tag} / ${tagCounts[tag] || 1} 次`,
         itemStyle: { color: "#6f9fd2" },
-        label: { fontSize: 11 }
+        label: { show: true, fontSize: 12, fontWeight: 800, textBorderWidth: 3 }
       });
       addLink(categoryId, tagId);
       addLink(tagId, noteId);
@@ -2050,9 +2058,45 @@ function promptNewFolder() {
   createCustomFolder(value);
 }
 
-function createCustomFolder(value) {
-  const folder = String(value || "").trim().slice(0, 40);
-  if (!folder || folder === "all") return;
+function normalizeFolderSegment(value) {
+  return String(value || "")
+    .replace(/[\\/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+}
+
+function parentFolderOf(folder) {
+  const position = String(folder || "").lastIndexOf(folderPathSeparator);
+  return position > -1 ? folder.slice(0, position) : "";
+}
+
+function folderLabel(folder) {
+  const parent = parentFolderOf(folder);
+  return parent ? folder.slice(parent.length + folderPathSeparator.length) : folder;
+}
+
+function isFolderBranch(value, folder) {
+  return value === folder || String(value || "").startsWith(`${folder}${folderPathSeparator}`);
+}
+
+function replaceFolderBranch(value, fromFolder, toFolder) {
+  return isFolderBranch(value, fromFolder)
+    ? `${toFolder}${String(value).slice(fromFolder.length)}`
+    : value;
+}
+
+function promptNewSubfolder(parentFolder) {
+  if (!parentFolder) return;
+  const value = window.prompt(`在“${folderLabel(parentFolder)}”中新建子文件夹`, "");
+  if (value === null) return;
+  createCustomFolder(value, parentFolder);
+}
+
+function createCustomFolder(value, parentFolder = "") {
+  const segment = normalizeFolderSegment(value);
+  const folder = parentFolder ? `${parentFolder}${folderPathSeparator}${segment}` : segment;
+  if (!segment || folder === "all") return;
   const folders = knownFolders();
   if (!folders.includes(folder)) saveFolderRegistry([...folders, folder]);
   state.folder = folder;
@@ -2074,28 +2118,47 @@ function renderOrganization() {
   if (!elements.folderList) return;
   elements.folderList.innerHTML = "";
   elements.folderList.append(createFolderCard("all", ownNotes.length, { all: true }));
-  for (const folder of folders) {
-    const count = ownNotes.filter((note) => note.folder === folder).length;
-    elements.folderList.append(createFolderCard(folder, count));
+  const roots = folders.filter((folder) => !folders.includes(parentFolderOf(folder)));
+  for (const folder of roots) {
+    elements.folderList.append(createFolderBranch(folder, folders, ownNotes));
   }
+}
+
+function createFolderBranch(folder, folders, ownNotes) {
+  const branch = document.createElement("div");
+  const parent = parentFolderOf(folder);
+  branch.className = `folder-tree-branch${parent ? " is-nested" : ""}`;
+  const count = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
+  branch.append(createFolderCard(folder, count, { subfolder: Boolean(parent) }));
+
+  const children = folders.filter((candidate) => parentFolderOf(candidate) === folder);
+  if (children.length) {
+    const childList = document.createElement("div");
+    childList.className = "folder-child-list";
+    for (const child of children) childList.append(createFolderBranch(child, folders, ownNotes));
+    branch.append(childList);
+  }
+  return branch;
 }
 
 function createFolderCard(folder, count, options = {}) {
   const all = Boolean(options.all);
+  const subfolder = Boolean(options.subfolder);
   const card = document.createElement("div");
-  card.className = `folder-chip${all ? " is-all" : ""}${state.folder === folder ? " is-active" : ""}`;
+  card.className = `folder-chip${all ? " is-all" : ""}${subfolder ? " is-subfolder" : ""}${state.folder === folder ? " is-active" : ""}`;
 
   const select = document.createElement("button");
   select.type = "button";
   select.className = "folder-chip-select";
   select.dataset.folder = folder;
-  select.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${all ? "全部文件夹" : escapeHtml(folder)}</span><span class="folder-chip-count">${count} 篇笔记</span>`;
+  select.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${all ? "全部文件夹" : escapeHtml(folderLabel(folder))}</span><span class="folder-chip-count">${count} 篇笔记</span>`;
   card.append(select);
 
   if (!all) {
     const actions = document.createElement("span");
     actions.className = "folder-card-actions";
     actions.innerHTML = `
+      <button type="button" class="folder-chip-menu" data-folder-action="add-child" data-folder="${escapeHtml(folder)}" aria-label="新建子文件夹" title="新建子文件夹">+</button>
       <button type="button" class="folder-chip-menu" data-folder-action="rename" data-folder="${escapeHtml(folder)}" aria-label="重命名文件夹" title="重命名">✎</button>
       <button type="button" class="folder-chip-menu danger" data-folder-action="delete" data-folder="${escapeHtml(folder)}" aria-label="删除文件夹" title="删除">×</button>
     `;
@@ -2106,26 +2169,31 @@ function createFolderCard(folder, count, options = {}) {
 
 async function renameCustomFolder(folder) {
   if (!folder) return;
-  const next = String(window.prompt(`重命名“${folder}”`, folder) || "").trim().slice(0, 40);
-  if (!next || next === folder || next === "all") return;
-  if (knownFolders().includes(next)) {
+  const segment = normalizeFolderSegment(window.prompt(`重命名“${folderLabel(folder)}”`, folderLabel(folder)));
+  const parent = parentFolderOf(folder);
+  const next = parent ? `${parent}${folderPathSeparator}${segment}` : segment;
+  if (!segment || next === folder || next === "all") return;
+  if (knownFolders().some((name) => name === next && name !== folder)) {
     setStatus("已经有同名文件夹，请换一个名称。", true);
     return;
   }
 
-  const affectedNotes = state.notes.filter((note) => isMyNote(note) && note.folder === folder);
-  if (affectedNotes.length && !window.confirm(`将同步更新 ${affectedNotes.length} 篇笔记的文件夹名称，是否继续？`)) return;
+  const affectedNotes = state.notes.filter((note) => isMyNote(note) && isFolderBranch(note.folder, folder));
+  if (affectedNotes.length && !window.confirm(`将同步更新 ${affectedNotes.length} 篇笔记及子文件夹，是否继续？`)) return;
 
   try {
     for (let index = 0; index < affectedNotes.length; index += 1) {
       const note = affectedNotes[index];
       setStatus(`正在重命名文件夹… ${index + 1}/${affectedNotes.length}`);
-      await saveNoteOrganization(note, { folder: next });
-      note.folder = next;
+      const nextFolder = replaceFolderBranch(note.folder, folder, next);
+      await saveNoteOrganization(note, { folder: nextFolder });
+      note.folder = nextFolder;
     }
-    saveFolderRegistry(knownFolders().filter((name) => name !== folder).concat(next));
-    if (state.folder === folder) state.folder = next;
-    if (state.currentDetailNote?.folder === folder) state.currentDetailNote.folder = next;
+    saveFolderRegistry(knownFolders().map((name) => replaceFolderBranch(name, folder, next)));
+    state.folder = replaceFolderBranch(state.folder, folder, next);
+    if (state.currentDetailNote?.folder) {
+      state.currentDetailNote.folder = replaceFolderBranch(state.currentDetailNote.folder, folder, next);
+    }
     state.detailCache.clear();
     hydrateFilters();
     render();
@@ -2140,10 +2208,10 @@ async function renameCustomFolder(folder) {
 
 async function deleteCustomFolder(folder) {
   if (!folder) return;
-  const affectedNotes = state.notes.filter((note) => isMyNote(note) && note.folder === folder);
+  const affectedNotes = state.notes.filter((note) => isMyNote(note) && isFolderBranch(note.folder, folder));
   const message = affectedNotes.length
-    ? `删除“${folder}”后，其中 ${affectedNotes.length} 篇笔记会移至未归档；笔记内容不会删除。确定继续吗？`
-    : `确定删除空文件夹“${folder}”吗？`;
+    ? `删除“${folderLabel(folder)}”及其子文件夹后，其中 ${affectedNotes.length} 篇笔记会移至未归档；笔记内容不会删除。确定继续吗？`
+    : `确定删除空文件夹“${folderLabel(folder)}”吗？`;
   if (!window.confirm(message)) return;
 
   try {
@@ -2153,9 +2221,11 @@ async function deleteCustomFolder(folder) {
       await saveNoteOrganization(note, { folder: "" });
       note.folder = "";
     }
-    saveFolderRegistry(knownFolders().filter((name) => name !== folder));
-    if (state.folder === folder) state.folder = "all";
-    if (state.currentDetailNote?.folder === folder) state.currentDetailNote.folder = "";
+    saveFolderRegistry(knownFolders().filter((name) => !isFolderBranch(name, folder)));
+    if (isFolderBranch(state.folder, folder)) state.folder = "all";
+    if (state.currentDetailNote?.folder && isFolderBranch(state.currentDetailNote.folder, folder)) {
+      state.currentDetailNote.folder = "";
+    }
     state.detailCache.clear();
     hydrateFilters();
     render();
