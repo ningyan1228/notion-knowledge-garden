@@ -2063,16 +2063,17 @@ function renderOrganization() {
   elements.folderList.innerHTML = "";
   const allButton = document.createElement("button");
   allButton.type = "button";
-  allButton.className = `folder-chip${state.folder === "all" ? " is-active" : ""}`;
+  allButton.className = `folder-chip is-all${state.folder === "all" ? " is-active" : ""}`;
   allButton.dataset.folder = "all";
-  allButton.textContent = `全部文件夹 ${ownNotes.length}`;
+  allButton.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">全部文件夹</span><span class="folder-chip-count">${ownNotes.length}</span>`;
   elements.folderList.append(allButton);
   for (const folder of folders) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `folder-chip${state.folder === folder ? " is-active" : ""}`;
     button.dataset.folder = folder;
-    button.textContent = `${folder} ${ownNotes.filter((note) => note.folder === folder).length}`;
+    const count = ownNotes.filter((note) => note.folder === folder).length;
+    button.innerHTML = `<span class="folder-chip-icon" aria-hidden="true"></span><span class="folder-chip-name">${escapeHtml(folder)}</span><span class="folder-chip-count">${count}</span>`;
     elements.folderList.append(button);
   }
 }
