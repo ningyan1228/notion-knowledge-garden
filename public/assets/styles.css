@@ -2606,7 +2606,8 @@ h1 {
     font-size: 15px;
   }
 
-  .mac-nav a[href="#notes"]::after {
+.mac-nav a[href="#notes"]::after,
+.mac-nav a[href="#notesLibrary"]::after {
     content: "笔";
     font-size: 15px;
   }
@@ -4204,4 +4205,96 @@ body.graph-open {
   .hero-visual.graph-panel { padding: 14px; }
   .hero-visual.graph-panel .graph-tools p { display: none; }
   .hero-visual.graph-panel .knowledge-graph { flex-basis: 178px; height: 178px; min-height: 178px; }
+}
+
+/* App views: every sidebar item now opens one focused workspace. */
+body:not([data-app-view]) [data-view],
+body[data-app-view] [data-view] {
+  display: none !important;
+}
+
+body:not([data-app-view]) [data-view="graph"],
+body[data-app-view="graph"] [data-view="graph"] {
+  display: block !important;
+}
+
+body[data-app-view="today"] [data-view="today"] {
+  display: grid !important;
+}
+
+body[data-app-view="diaries"] [data-view="diaries"],
+body[data-app-view="notes"] [data-view="notes"] {
+  display: block !important;
+}
+
+body[data-app-view="growth"] [data-view="growth"] {
+  display: grid !important;
+}
+
+body[data-app-view] .topbar {
+  display: flex;
+}
+
+.mac-nav a.is-active {
+  color: #087f69;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.11), rgba(52, 199, 89, 0.14));
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.11), 0 3px 12px rgba(26, 97, 126, 0.08);
+}
+
+body[data-app-view="graph"] .mac-main {
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-app-view="graph"] .hero {
+  display: block !important;
+  flex: 1 1 auto;
+  min-height: calc(100vh - 132px);
+}
+
+body[data-app-view="graph"] .hero-copy {
+  display: none;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel {
+  height: calc(100vh - 132px);
+  min-height: 540px;
+  padding: 24px;
+  gap: 14px;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-header {
+  flex: 0 0 auto;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .knowledge-graph {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 360px;
+  margin: 0;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-legend {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+body[data-app-view="notes"] .library-shortcut-bar {
+  display: flex;
+}
+
+@media (max-width: 620px) {
+  body[data-app-view="graph"] .hero {
+    min-height: calc(100svh - 108px);
+  }
+
+  body[data-app-view="graph"] .hero-visual.graph-panel {
+    height: calc(100svh - 108px);
+    min-height: 440px;
+    padding: 16px;
+  }
+
+  body[data-app-view="graph"] .hero-visual.graph-panel .knowledge-graph {
+    min-height: 280px;
+  }
 }

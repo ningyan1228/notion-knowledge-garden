@@ -19,7 +19,7 @@
             <i class="mac-dot yellow"></i>
             <i class="mac-dot green"></i>
           </div>
-          <a class="mac-sidebar-brand" href="#">
+          <a class="mac-sidebar-brand" href="#knowledgeGraph">
             <span>朝</span>
             <strong>朝夕拾光</strong>
           </a>
@@ -39,11 +39,11 @@
         </aside>
         <div class="mac-main">
       <header class="topbar">
-        <a class="brand-mark" href="#">朝夕拾光</a>
+        <a class="brand-mark" href="#knowledgeGraph">朝夕拾光</a>
         <span>收集每天的灵感与知识碎片</span>
       </header>
 
-      <section class="hero">
+      <section class="hero" data-view="graph">
         <div class="hero-copy">
           <span class="eyebrow">记录思考，沉淀成长</span>
           <h1>朝夕拾光</h1>
@@ -77,7 +77,7 @@
         </div>
       </section>
 
-      <section class="stats" aria-label="知识库概览">
+      <section class="stats" data-view="today" aria-label="知识库概览">
         <article class="stat-card">
           <span>总笔记数</span>
           <strong id="totalNotes">-</strong>
@@ -96,7 +96,7 @@
         </article>
       </section>
 
-      <section class="garden-workbench" id="today" aria-label="知识工作台">
+      <section class="garden-workbench" id="today" data-view="today" aria-label="知识工作台">
         <article class="module-card module-feature">
           <div>
             <span class="module-kicker">Today</span>
@@ -155,7 +155,7 @@
         </article>
       </section>
 
-      <section class="growth-map" id="growthMap" aria-label="热力成长地图">
+      <section class="growth-map" id="growthMap" data-view="growth" aria-label="热力成长地图">
         <div class="growth-intro">
           <span>Knowledge Contribution</span>
           <h2><strong id="growthYear">2026</strong> 学习热力图</h2>
@@ -201,7 +201,7 @@
         </div>
       </section>
 
-      <section class="diary-section" id="diaries" aria-label="拾光日记">
+      <section class="diary-section" id="diaries" data-view="diaries" aria-label="拾光日记">
         <div class="section-head">
           <div>
             <span>Daily Journal</span>
@@ -212,6 +212,7 @@
         <div class="diary-grid" id="diaryList"></div>
       </section>
 
+      <div class="notes-page" data-view="notes">
       <section class="notes-manager" id="notesLibrary" aria-labelledby="notesManagerTitle">
         <div class="notes-manager-head">
           <div>
@@ -324,6 +325,7 @@
       <div class="notes-actions" aria-label="笔记列表操作">
         <button class="button ghost" id="collapseNotes" type="button" hidden>收起列表</button>
         <button class="button primary" id="loadMoreNotes" type="button" hidden>加载更多</button>
+      </div>
       </div>
         </div>
       </div>

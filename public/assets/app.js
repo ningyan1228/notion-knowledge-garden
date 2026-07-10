@@ -2152,17 +2152,51 @@ async function saveNoteOrganization(note, changes) {
 }
 
 function openNotesLibrary() {
+  document.body.dataset.appView = "notes";
   document.body.classList.add("notes-library-mode");
 }
 
 function closeNotesLibrary() {
-  history.pushState("", document.title, `${window.location.pathname}${window.location.search}`);
-  document.body.classList.remove("notes-library-mode");
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.location.hash = "#knowledgeGraph";
 }
 
 function syncPageViewFromHash() {
-  document.body.classList.toggle("notes-library-mode", window.location.hash === "#notesLibrary");
+  const hash = window.location.hash;
+  const view = hash === "#today"
+    ? "today"
+    : hash === "#notesLibrary" || hash === "#notes"
+      ? "notes"
+      : hash === "#diaries"
+        ? "diaries"
+        : hash === "#growthMap"
+          ? "growth"
+          : "graph";
+
+  document.body.dataset.appView = view;
+  document.body.classList.toggle("notes-library-mode", view === "notes");
+
+  const activeHash = view === "notes"
+    ? "#notesLibrary"
+    : view === "growth"
+      ? "#growthMap"
+      : view === "graph"
+        ? "#knowledgeGraph"
+        : `#${view}`;
+  document.querySelectorAll(".mac-nav a").forEach((link) => {
+    const active = link.getAttribute("href") === activeHash;
+    link.classList.toggle("is-active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+
+  if (view === "graph") {
+    requestAnimationFrame(() => {
+      renderKnowledgeGraph(state.notes, 0, true);
+      scheduleKnowledgeGraphResize();
+    });
+  }
+
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function renderStats(notes) {
@@ -2864,10 +2898,18 @@ function emptyInline(text) {
 }
 
 function scrollToNotes() {
-  document.querySelector("#notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (window.location.hash !== "#notesLibrary") {
+    window.location.hash = "#notesLibrary";
+    return;
+  }
+  document.querySelector("#notesLibrary")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function scrollToKnowledgeMap() {
+  if (window.location.hash !== "#knowledgeGraph") {
+    window.location.hash = "#knowledgeGraph";
+    return;
+  }
   elements.knowledgeGraph?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
