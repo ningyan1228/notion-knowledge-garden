@@ -3003,9 +3003,10 @@ body.notes-library-mode .library-shortcut-bar {
   display: flex;
   align-items: flex-start;
   min-height: 116px;
+  max-height: 292px;
   gap: 12px;
   min-width: 0;
-  overflow-x: auto;
+  overflow: auto;
   padding: 3px 3px 9px;
   scrollbar-width: thin;
 }
@@ -3022,9 +3023,10 @@ body.notes-library-mode .library-shortcut-bar {
   margin-left: 13px;
   border-left: 2px solid rgba(67, 142, 223, 0.19);
   padding-left: 10px;
-  display: grid;
+  display: none;
   gap: 8px;
 }
+.folder-tree-branch.is-expanded > .folder-child-list { display: grid; }
 .folder-chip.is-subfolder {
   min-height: 82px;
   border-radius: 14px;
@@ -3100,6 +3102,24 @@ body.notes-library-mode .library-shortcut-bar {
 }
 .folder-chip-menu:hover { color: #0765cb; background: #eef7ff; }
 .folder-chip-menu.danger:hover { color: #c64040; background: #fff0f0; }
+.folder-tree-toggle {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(35, 96, 160, 0.12);
+  border-radius: 8px;
+  padding: 0;
+  color: #4178aa;
+  background: rgba(245, 250, 255, 0.92);
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+.folder-tree-toggle:hover { color: #075ec7; background: #e8f4ff; }
+.folder-chip:has(.folder-tree-toggle) .folder-chip-count { padding-right: 30px; }
 .folder-chip.is-all .folder-chip-icon { background: linear-gradient(145deg, #b1bbc8, #7f8b99); box-shadow: none; }
 .folder-chip.is-all .folder-chip-icon::before { background: #c3cbd6; }
 .folder-chip.is-active { border-color: #529cf7; color: #075ec7; background: linear-gradient(145deg, #edf7ff, #ddecff); box-shadow: 0 8px 19px rgba(32, 124, 237, .17), inset 0 1px 0 rgba(255,255,255,.95); }

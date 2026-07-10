@@ -6,6 +6,7 @@ const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
 const folderRegistryPrefix = "kgFolders:v1";
 const folderPathSeparator = " / ";
+const expandedFolderPaths = new Set();
 const writerDraftDelayMs = 500;
 let authToken =
   sessionStorage.getItem(authTokenSessionKey) ||
@@ -272,6 +273,7 @@ elements.folderList?.addEventListener("click", (event) => {
     event.stopPropagation();
     const folder = action.dataset.folder || "";
     if (action.dataset.folderAction === "add-child") promptNewSubfolder(folder);
+    if (action.dataset.folderAction === "toggle") toggleFolderBranch(folder);
     if (action.dataset.folderAction === "rename") renameCustomFolder(folder);
     if (action.dataset.folderAction === "delete") deleteCustomFolder(folder);
     return;
@@ -1929,7 +1931,7 @@ function filteredNotes() {
     })
     .filter((note) => state.category === "all" || note.category === state.category)
     .filter((note) => state.tag === "all" || note.tags.includes(state.tag))
-    .filter((note) => state.folder === "all" || note.folder === state.folder)
+    .filter((note) => state.folder === "all" || isFolderBranch(note.folder, state.folder))
     .filter((note) => !state.favoritesOnly || (isMyNote(note) && note.favorite))
     .filter((note) => state.author === "all" || noteAuthorLabel(note) === state.author)
     .filter((note) => state.month === "all" || noteMonth(note) === state.month)
@@ -2127,11 +2129,16 @@ function renderOrganization() {
 function createFolderBranch(folder, folders, ownNotes) {
   const branch = document.createElement("div");
   const parent = parentFolderOf(folder);
-  branch.className = `folder-tree-branch${parent ? " is-nested" : ""}`;
-  const count = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
-  branch.append(createFolderCard(folder, count, { subfolder: Boolean(parent) }));
-
   const children = folders.filter((candidate) => parentFolderOf(candidate) === folder);
+  const expanded = expandedFolderPaths.has(folder);
+  branch.className = `folder-tree-branch${parent ? " is-nested" : ""}${expanded ? " is-expanded" : ""}`;
+  const count = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
+  branch.append(createFolderCard(folder, count, {
+    subfolder: Boolean(parent),
+    hasChildren: children.length > 0,
+    expanded
+  }));
+
   if (children.length) {
     const childList = document.createElement("div");
     childList.className = "folder-child-list";
@@ -2139,6 +2146,13 @@ function createFolderBranch(folder, folders, ownNotes) {
     branch.append(childList);
   }
   return branch;
+}
+
+function toggleFolderBranch(folder) {
+  if (!folder) return;
+  if (expandedFolderPaths.has(folder)) expandedFolderPaths.delete(folder);
+  else expandedFolderPaths.add(folder);
+  renderOrganization();
 }
 
 function createFolderCard(folder, count, options = {}) {
@@ -2163,6 +2177,18 @@ function createFolderCard(folder, count, options = {}) {
       <button type="button" class="folder-chip-menu danger" data-folder-action="delete" data-folder="${escapeHtml(folder)}" aria-label="删除文件夹" title="删除">×</button>
     `;
     card.append(actions);
+  }
+  if (options.hasChildren) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "folder-tree-toggle";
+    toggle.dataset.folderAction = "toggle";
+    toggle.dataset.folder = folder;
+    toggle.setAttribute("aria-label", options.expanded ? "收起子文件夹" : "展开子文件夹");
+    toggle.setAttribute("aria-expanded", String(Boolean(options.expanded)));
+    toggle.title = options.expanded ? "收起子文件夹" : "展开子文件夹";
+    toggle.textContent = options.expanded ? "⌃" : "⌄";
+    card.append(toggle);
   }
   return card;
 }
