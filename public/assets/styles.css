@@ -2925,26 +2925,28 @@ body.notes-library-mode .library-shortcut-bar {
 /* 收藏夹与自定义文件夹 */
 .folder-hub {
   margin-top: 18px;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(180px, 1fr) max-content;
+  grid-template-areas: "heading favorite folders create";
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid rgba(0, 0, 0, 0.075);
   border-radius: 20px;
-  padding: 14px;
+  padding: 10px 12px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(246, 248, 251, 0.72));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 10px 28px rgba(28, 37, 47, 0.05);
 }
 
 .folder-hub-heading {
+  grid-area: heading;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 9px;
-  padding: 0 5px;
+  gap: 8px;
+  padding: 0 3px;
 }
 .folder-hub-heading strong { display: block; color: var(--ink); font-size: 14px; }
-.folder-hub-heading small { display: block; margin-top: 3px; color: var(--subtle); font-size: 11px; }
+.folder-hub-heading small { display: none; }
 .finder-folder-icon,
 .folder-chip-icon {
   position: relative;
@@ -2967,7 +2969,8 @@ body.notes-library-mode .library-shortcut-bar {
   background: #8fc5ff;
 }
 .folder-favorite {
-  min-height: 52px;
+  grid-area: favorite;
+  min-height: 46px;
   flex: 0 0 auto;
   border: 1px solid rgba(226, 173, 64, 0.24);
   border-radius: 14px;
@@ -2982,22 +2985,23 @@ body.notes-library-mode .library-shortcut-bar {
 .folder-favorite b { margin-left: 5px; color: var(--subtle); }
 .folder-favorite.is-active { border-color: #e7b33e; background: linear-gradient(145deg, #fff8dd, #ffe9a1); box-shadow: 0 5px 14px rgba(217, 145, 61, .16); }
 .folder-list {
+  grid-area: folders;
   display: flex;
   flex: 1 1 320px;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   overflow-x: auto;
-  padding: 3px 2px 6px;
+  padding: 2px 2px 4px;
   scrollbar-width: thin;
 }
 .folder-chip {
   position: relative;
-  flex: 0 0 118px;
-  min-height: 64px;
+  flex: 0 0 106px;
+  min-height: 50px;
   overflow: hidden;
   border: 1px solid rgba(37, 96, 166, 0.12);
-  border-radius: 13px;
-  padding: 10px 9px 8px;
+  border-radius: 11px;
+  padding: 7px 8px 6px;
   display: grid;
   grid-template-columns: 28px 1fr;
   grid-template-rows: 1fr auto;
@@ -3015,10 +3019,18 @@ body.notes-library-mode .library-shortcut-bar {
 .folder-chip.is-all .folder-chip-icon::before { background: #c3cbd6; }
 .folder-chip.is-active { border-color: #529cf7; color: #075ec7; background: linear-gradient(145deg, #edf7ff, #ddecff); box-shadow: 0 5px 15px rgba(32, 124, 237, .14), inset 0 1px 0 rgba(255,255,255,.9); }
 .folder-chip.is-active .folder-chip-icon { background: linear-gradient(145deg, #77b7ff, #287ce6); }
-.folder-create { display: flex; flex: 0 0 auto; gap: 6px; }
-.folder-create input { width: 130px; height: 36px; border-radius: 11px; font-size: 12px; }
-.folder-create button { width: 38px; min-height: 36px; border: 1px solid rgba(0,122,255,.2); border-radius: 11px; padding: 0; color: #fff; background: linear-gradient(145deg, #2e97ff, #1474df); font-size: 0; }
-.folder-create button::after { content: "+"; font-size: 21px; font-weight: 500; }
+.folder-create {
+  grid-area: create;
+  min-height: 38px;
+  border: 1px solid rgba(0,122,255,.18);
+  border-radius: 11px;
+  padding: 0 11px;
+  color: #0864cc;
+  background: rgba(237, 247, 255, .9);
+  font-size: 12px;
+  font-weight: 900;
+}
+.folder-create::before { content: "+"; margin-right: 5px; font-size: 18px; font-weight: 500; vertical-align: -1px; }
 .note-favorite {
   position: absolute;
   z-index: 2;
@@ -3153,12 +3165,14 @@ body.notes-library-mode .library-shortcut-bar {
   .detail-body { padding: 28px 20px 44px; }
   .article-content { font-size: 17px; line-height: 1.95; }
   .library-shortcut-bar { align-items: flex-start; flex-direction: column; }
-  .folder-hub { align-items: stretch; }
+  .folder-hub {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "heading heading" "favorite create" "folders folders";
+    align-items: stretch;
+  }
   .folder-hub-heading { width: 100%; }
-  .folder-favorite { flex: 1; }
-  .folder-list { flex-basis: 100%; }
-  .folder-create { width: 100%; }
-  .folder-create input { flex: 1; width: auto; }
+  .folder-favorite { min-width: 0; }
+  .folder-list { min-width: 0; }
 }
 
 .growth-intro {

@@ -142,8 +142,7 @@ const elements = {
   favoriteFilterButton: document.querySelector("#favoriteFilterButton"),
   favoriteCount: document.querySelector("#favoriteCount"),
   folderList: document.querySelector("#folderList"),
-  folderCreateForm: document.querySelector("#folderCreateForm"),
-  newFolderInput: document.querySelector("#newFolderInput"),
+  newFolderButton: document.querySelector("#newFolderButton"),
   activeFilters: document.querySelector("#activeFilters"),
   filterResultCount: document.querySelector("#filterResultCount"),
   resetFilters: document.querySelector("#resetFilters"),
@@ -274,7 +273,7 @@ elements.folderList?.addEventListener("click", (event) => {
   render();
 });
 
-elements.folderCreateForm?.addEventListener("submit", createCustomFolder);
+elements.newFolderButton?.addEventListener("click", promptNewFolder);
 
 elements.authorFilter?.addEventListener("change", (event) => {
   state.author = event.target.value;
@@ -2036,13 +2035,17 @@ function saveFolderRegistry(folders) {
   localStorage.setItem(folderRegistryKey(), JSON.stringify(unique(folders.map((value) => String(value).trim()).filter(Boolean))));
 }
 
-function createCustomFolder(event) {
-  event.preventDefault();
-  const folder = elements.newFolderInput?.value.trim().slice(0, 40);
+function promptNewFolder() {
+  const value = window.prompt("新建文件夹", "");
+  if (value === null) return;
+  createCustomFolder(value);
+}
+
+function createCustomFolder(value) {
+  const folder = String(value || "").trim().slice(0, 40);
   if (!folder) return;
   const folders = knownFolders();
   if (!folders.includes(folder)) saveFolderRegistry([...folders, folder]);
-  if (elements.newFolderInput) elements.newFolderInput.value = "";
   state.folder = folder;
   hydrateFilters();
   if (elements.folderFilter) elements.folderFilter.value = folder;
