@@ -2971,6 +2971,10 @@ body.notes-library-mode .library-shortcut-bar {
 .note-favorite.is-active { border-color: rgba(217, 145, 61, 0.36); color: #d18a16; background: #fff7df; }
 .detail-favorite-button { width: 100%; justify-content: center; }
 .detail-favorite-button.is-active { border-color: rgba(217, 145, 61, 0.36); color: #b77900; background: #fff7df; }
+.detail-folder-actions { display: flex; gap: 7px; margin-top: 10px; }
+.detail-folder-actions input { min-width: 0; height: 36px; border-radius: 10px; font-size: 13px; }
+.detail-folder-actions button { flex: 0 0 auto; border: 1px solid rgba(47, 125, 100, 0.22); border-radius: 10px; padding: 0 10px; color: var(--leaf-dark); background: rgba(240, 249, 245, 0.88); font-size: 13px; font-weight: 900; }
+.detail-folder-widget small { display: block; margin-top: 8px; color: var(--subtle); font-size: 12px; line-height: 1.45; }
 
 .scope-switch {
   flex: 0 0 auto;

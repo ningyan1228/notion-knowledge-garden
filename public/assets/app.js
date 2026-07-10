@@ -199,6 +199,9 @@ const elements = {
   readingProgress: document.querySelector("#readingProgress"),
   detailEditButton: document.querySelector("#detailEditButton"),
   detailFavoriteButton: document.querySelector("#detailFavoriteButton"),
+  detailFolderWidget: document.querySelector("#detailFolderWidget"),
+  detailFolderInput: document.querySelector("#detailFolderInput"),
+  detailFolderSaveButton: document.querySelector("#detailFolderSaveButton"),
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
   previousNote: document.querySelector("#previousNote"),
@@ -364,6 +367,7 @@ elements.detailEditButton?.addEventListener("click", () => {
 elements.detailFavoriteButton?.addEventListener("click", () => {
   if (state.currentDetailNote) toggleFavorite(state.currentDetailNote);
 });
+elements.detailFolderSaveButton?.addEventListener("click", moveCurrentDetailToFolder);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
   node.addEventListener("click", closeDetail);
@@ -2091,6 +2095,30 @@ async function toggleFavorite(note) {
   }
 }
 
+async function moveCurrentDetailToFolder() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note)) return;
+  const folder = elements.detailFolderInput?.value.trim().slice(0, 40) || "";
+  const button = elements.detailFolderSaveButton;
+  if (button) button.disabled = true;
+  try {
+    await saveNoteOrganization(note, { folder });
+    note.folder = folder;
+    state.notes.forEach((item) => {
+      if (item.id === note.id || item.slug === note.slug) item.folder = folder;
+    });
+    if (folder) saveFolderRegistry([...knownFolders(), folder]);
+    hydrateFilters();
+    render();
+    renderDetail(note);
+    setStatus(folder ? `已移入“${folder}”。` : "已移出文件夹。");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "移动笔记失败。", true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function saveNoteOrganization(note, changes) {
   if (!authToken) throw new Error("请先登录，再整理笔记。");
   const payload = {
@@ -2260,6 +2288,8 @@ function renderDetail(note) {
     elements.detailFavoriteButton.classList.toggle("is-active", Boolean(note.favorite));
     elements.detailFavoriteButton.textContent = note.favorite ? "★ 已收藏" : "☆ 收藏笔记";
   }
+  if (elements.detailFolderWidget) elements.detailFolderWidget.hidden = !isMyNote(note);
+  if (elements.detailFolderInput) elements.detailFolderInput.value = note.folder || "";
   if (elements.detailCard) elements.detailCard.scrollTop = 0;
   updateReadingProgress();
 }

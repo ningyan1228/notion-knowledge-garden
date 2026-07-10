@@ -543,6 +543,14 @@
             <section class="reader-widget">
               <button class="button ghost detail-favorite-button" id="detailFavoriteButton" type="button">☆ 收藏笔记</button>
             </section>
+            <section class="reader-widget detail-folder-widget" id="detailFolderWidget">
+              <span>移动到文件夹</span>
+              <div class="detail-folder-actions">
+                <input id="detailFolderInput" type="text" list="writerFolderOptions" maxlength="40" placeholder="输入已有或新建文件夹" />
+                <button id="detailFolderSaveButton" type="button">移动</button>
+              </div>
+              <small>留空后点击移动，可将笔记移出文件夹。</small>
+            </section>
             <section class="reader-widget">
               <button class="button primary detail-edit-button" id="detailEditButton" type="button">编辑笔记</button>
             </section>
