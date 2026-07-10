@@ -4,6 +4,7 @@ const authTokenLocalKey = "kgUserTokenRemembered";
 const authUserSessionKey = "kgCurrentUser";
 const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
+const folderRegistryPrefix = "kgFolders:v1";
 const writerDraftDelayMs = 500;
 let authToken =
   sessionStorage.getItem(authTokenSessionKey) ||
@@ -22,6 +23,8 @@ const state = {
   visibility: "all",
   category: "all",
   tag: "all",
+  folder: "all",
+  favoritesOnly: false,
   author: "all",
   month: "all",
   sort: "updated",
@@ -129,11 +132,17 @@ const elements = {
   visibilityFilter: document.querySelector("#visibilityFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
   tagFilter: document.querySelector("#tagFilter"),
+  folderFilter: document.querySelector("#folderFilter"),
   authorFilter: document.querySelector("#authorFilter"),
   monthFilter: document.querySelector("#monthFilter"),
   sortSelect: document.querySelector("#sortSelect"),
   scopeSwitch: document.querySelector("#scopeSwitch"),
   closeNotesLibrary: document.querySelector("#closeNotesLibrary"),
+  favoriteFilterButton: document.querySelector("#favoriteFilterButton"),
+  favoriteCount: document.querySelector("#favoriteCount"),
+  folderList: document.querySelector("#folderList"),
+  folderCreateForm: document.querySelector("#folderCreateForm"),
+  newFolderInput: document.querySelector("#newFolderInput"),
   activeFilters: document.querySelector("#activeFilters"),
   filterResultCount: document.querySelector("#filterResultCount"),
   resetFilters: document.querySelector("#resetFilters"),
@@ -159,6 +168,8 @@ const elements = {
   writerSummary: document.querySelector("#writerSummary"),
   writerCategory: document.querySelector("#writerCategory"),
   writerTags: document.querySelector("#writerTags"),
+  writerFolder: document.querySelector("#writerFolder"),
+  writerFolderOptions: document.querySelector("#writerFolderOptions"),
   writerContent: document.querySelector("#writerContent"),
   writerVisualEditor: document.querySelector("#writerVisualEditor"),
   editorModeSwitch: document.querySelector(".editor-mode-switch"),
@@ -186,6 +197,7 @@ const elements = {
   detailCard: document.querySelector(".detail-card"),
   readingProgress: document.querySelector("#readingProgress"),
   detailEditButton: document.querySelector("#detailEditButton"),
+  detailFavoriteButton: document.querySelector("#detailFavoriteButton"),
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
   previousNote: document.querySelector("#previousNote"),
@@ -234,6 +246,29 @@ elements.tagFilter.addEventListener("change", (event) => {
   resetNoteList();
   render();
 });
+
+elements.folderFilter?.addEventListener("change", (event) => {
+  state.folder = event.target.value;
+  resetNoteList();
+  render();
+});
+
+elements.favoriteFilterButton?.addEventListener("click", () => {
+  state.favoritesOnly = !state.favoritesOnly;
+  resetNoteList();
+  render();
+});
+
+elements.folderList?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-folder]");
+  if (!button) return;
+  state.folder = button.dataset.folder || "all";
+  if (elements.folderFilter) elements.folderFilter.value = state.folder;
+  resetNoteList();
+  render();
+});
+
+elements.folderCreateForm?.addEventListener("submit", createCustomFolder);
 
 elements.authorFilter?.addEventListener("change", (event) => {
   state.author = event.target.value;
@@ -318,6 +353,9 @@ elements.detailEditButton?.addEventListener("click", () => {
   const note = state.currentDetailNote;
   closeDetail();
   openEditor(note);
+});
+elements.detailFavoriteButton?.addEventListener("click", () => {
+  if (state.currentDetailNote) toggleFavorite(state.currentDetailNote);
 });
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
@@ -491,6 +529,7 @@ function openEditor(note) {
   if (elements.writerSummary) elements.writerSummary.value = note.summary || "";
   if (elements.writerCategory) elements.writerCategory.value = note.category || "";
   if (elements.writerTags) elements.writerTags.value = (note.tags || []).join(", ");
+  if (elements.writerFolder) elements.writerFolder.value = note.folder || "";
   setWriterMarkdown(blocksToMarkdown(note.content || []));
   if (elements.writerPublished) elements.writerPublished.checked = Boolean(note.published);
   if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
@@ -811,6 +850,7 @@ function collectWriterDraft() {
     summary: elements.writerSummary?.value || "",
     category: elements.writerCategory?.value || "",
     tags: elements.writerTags?.value || "",
+    folder: elements.writerFolder?.value || "",
     content: elements.writerContent?.value || "",
     published: Boolean(elements.writerPublished?.checked),
     pinned: Boolean(elements.writerPinned?.checked)
@@ -853,6 +893,7 @@ function restoreWriterDraft() {
     if (elements.writerSummary) elements.writerSummary.value = draft.summary || "";
     if (elements.writerCategory) elements.writerCategory.value = draft.category || "";
     if (elements.writerTags) elements.writerTags.value = draft.tags || "";
+    if (elements.writerFolder) elements.writerFolder.value = draft.folder || "";
     setWriterMarkdown(draft.content || "");
     if (elements.writerPublished) elements.writerPublished.checked = Boolean(draft.published);
     if (elements.writerPinned) elements.writerPinned.checked = Boolean(draft.pinned);
@@ -1111,6 +1152,7 @@ async function createNoteFromWriter(event) {
     status: String(formData.get("status") || "").trim(),
     studyMinutes: Number(formData.get("studyMinutes") || 0),
     tags: splitTags(String(formData.get("tags") || "")),
+    folder: String(formData.get("folder") || "").trim(),
     content: String(formData.get("content") || "").trim(),
     published: formData.get("published") === "on",
     pinned: formData.get("pinned") === "on"
@@ -1205,6 +1247,8 @@ function normalizeNotes(notes) {
     studyMinutes: Number(note.studyMinutes || note.readingMinutes || 0),
     author: String(note.author || ""),
     userId: String(note.userId || ""),
+    folder: String(note.folder || "").trim(),
+    favorite: Boolean(note.favorite),
     visibility: String(note.visibility || ""),
     published: Boolean(note.published),
     pinned: Boolean(note.pinned),
@@ -1218,23 +1262,31 @@ function hydrateFilters() {
   const currentTag = elements.tagFilter.value;
   const currentAuthor = elements.authorFilter?.value || "all";
   const currentMonth = elements.monthFilter?.value || "all";
+  const currentFolder = elements.folderFilter?.value || "all";
   const types = unique([...NOTE_TYPES, ...state.notes.map((note) => note.type).filter(Boolean)]);
   const categories = unique([...CATEGORY_OPTIONS, ...state.notes.map((note) => note.category).filter(Boolean)]);
   const tags = unique(state.notes.flatMap((note) => note.tags));
   const authors = unique(state.notes.map(noteAuthorLabel).filter(Boolean));
   const months = unique(state.notes.map(noteMonth).filter(Boolean)).sort().reverse();
+  const folders = knownFolders();
 
   if (elements.typeFilter) fillSelect(elements.typeFilter, "全部类型", types);
   fillSelect(elements.categoryFilter, "全部分类", categories);
   fillSelect(elements.tagFilter, "全部标签", tags);
   if (elements.authorFilter) fillSelect(elements.authorFilter, "全部作者", authors);
   if (elements.monthFilter) fillSelect(elements.monthFilter, "全部月份", months, formatMonthLabel);
+  if (elements.folderFilter) fillSelect(elements.folderFilter, "全部文件夹", folders);
+  if (elements.writerFolderOptions) {
+    elements.writerFolderOptions.innerHTML = "";
+    folders.forEach((folder) => elements.writerFolderOptions.append(new Option(folder, folder)));
+  }
 
   if (types.includes(currentType)) elements.typeFilter.value = currentType;
   if (categories.includes(currentCategory)) elements.categoryFilter.value = currentCategory;
   if (tags.includes(currentTag)) elements.tagFilter.value = currentTag;
   if (authors.includes(currentAuthor)) elements.authorFilter.value = currentAuthor;
   if (months.includes(currentMonth)) elements.monthFilter.value = currentMonth;
+  if (folders.includes(currentFolder)) elements.folderFilter.value = currentFolder;
 }
 
 function fillSelect(select, label, values, labelFormatter = (value) => value) {
@@ -1249,6 +1301,7 @@ function render() {
   renderWorkbench(state.notes);
   renderGrid(notes);
   renderFilterSummary(notes.length);
+  renderOrganization();
 }
 
 function resetNoteList() {
@@ -1798,6 +1851,8 @@ function filteredNotes() {
     })
     .filter((note) => state.category === "all" || note.category === state.category)
     .filter((note) => state.tag === "all" || note.tags.includes(state.tag))
+    .filter((note) => state.folder === "all" || note.folder === state.folder)
+    .filter((note) => !state.favoritesOnly || (isMyNote(note) && note.favorite))
     .filter((note) => state.author === "all" || noteAuthorLabel(note) === state.author)
     .filter((note) => state.month === "all" || noteMonth(note) === state.month)
     .filter((note) => {
@@ -1855,6 +1910,8 @@ function renderFilterSummary(count) {
     ["visibility", state.visibility !== "all" && elements.visibilityFilter?.selectedOptions[0]?.textContent],
     ["category", state.category !== "all" && state.category],
     ["tag", state.tag !== "all" && `#${state.tag}`],
+    ["folder", state.folder !== "all" && `文件夹：${state.folder}`],
+    ["favoritesOnly", state.favoritesOnly && "我的收藏"],
     ["author", state.author !== "all" && `作者：${state.author}`],
     ["month", state.month !== "all" && formatMonthLabel(state.month)]
   ].filter(([, value]) => value);
@@ -1877,10 +1934,10 @@ function renderFilterSummary(count) {
 }
 
 function clearFilter(key) {
-  const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", author: "all", month: "all" };
+  const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", folder: "all", favoritesOnly: false, author: "all", month: "all" };
   if (!(key in defaults)) return;
   state[key] = defaults[key];
-  const controls = { query: elements.searchInput, type: elements.typeFilter, visibility: elements.visibilityFilter, category: elements.categoryFilter, tag: elements.tagFilter, author: elements.authorFilter, month: elements.monthFilter };
+  const controls = { query: elements.searchInput, type: elements.typeFilter, visibility: elements.visibilityFilter, category: elements.categoryFilter, tag: elements.tagFilter, folder: elements.folderFilter, author: elements.authorFilter, month: elements.monthFilter };
   if (controls[key]) controls[key].value = defaults[key];
   resetNoteList();
   render();
@@ -1888,14 +1945,120 @@ function clearFilter(key) {
 
 function resetFilters() {
   state.scope = "all";
-  ["query", "type", "visibility", "category", "tag", "author", "month"].forEach((key) => {
-    const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", author: "all", month: "all" };
+  ["query", "type", "visibility", "category", "tag", "folder", "author", "month"].forEach((key) => {
+    const defaults = { query: "", type: "all", visibility: "all", category: "all", tag: "all", folder: "all", author: "all", month: "all" };
     state[key] = defaults[key];
   });
-  [elements.searchInput, elements.typeFilter, elements.visibilityFilter, elements.categoryFilter, elements.tagFilter, elements.authorFilter, elements.monthFilter]
+  state.favoritesOnly = false;
+  [elements.searchInput, elements.typeFilter, elements.visibilityFilter, elements.categoryFilter, elements.tagFilter, elements.folderFilter, elements.authorFilter, elements.monthFilter]
     .filter(Boolean).forEach((control) => { control.value = control === elements.searchInput ? "" : "all"; });
   resetNoteList();
   render();
+}
+
+function folderRegistryKey() {
+  return `${folderRegistryPrefix}:${currentUser?.id || currentUser?.username || "guest"}`;
+}
+
+function knownFolders() {
+  const fromNotes = state.notes.filter(isMyNote).map((note) => note.folder).filter(Boolean);
+  try {
+    const saved = JSON.parse(localStorage.getItem(folderRegistryKey()) || "[]");
+    return unique([...fromNotes, ...(Array.isArray(saved) ? saved : [])]).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+  } catch {
+    return unique(fromNotes);
+  }
+}
+
+function saveFolderRegistry(folders) {
+  localStorage.setItem(folderRegistryKey(), JSON.stringify(unique(folders.map((value) => String(value).trim()).filter(Boolean))));
+}
+
+function createCustomFolder(event) {
+  event.preventDefault();
+  const folder = elements.newFolderInput?.value.trim().slice(0, 40);
+  if (!folder) return;
+  const folders = knownFolders();
+  if (!folders.includes(folder)) saveFolderRegistry([...folders, folder]);
+  if (elements.newFolderInput) elements.newFolderInput.value = "";
+  state.folder = folder;
+  hydrateFilters();
+  if (elements.folderFilter) elements.folderFilter.value = folder;
+  resetNoteList();
+  render();
+}
+
+function renderOrganization() {
+  const folders = knownFolders();
+  const ownNotes = state.notes.filter(isMyNote);
+  const favorites = ownNotes.filter((note) => note.favorite).length;
+  if (elements.favoriteCount) elements.favoriteCount.textContent = String(favorites);
+  if (elements.favoriteFilterButton) {
+    elements.favoriteFilterButton.classList.toggle("is-active", state.favoritesOnly);
+    elements.favoriteFilterButton.setAttribute("aria-pressed", String(state.favoritesOnly));
+  }
+  if (!elements.folderList) return;
+  elements.folderList.innerHTML = "";
+  const allButton = document.createElement("button");
+  allButton.type = "button";
+  allButton.className = `folder-chip${state.folder === "all" ? " is-active" : ""}`;
+  allButton.dataset.folder = "all";
+  allButton.textContent = `全部文件夹 ${ownNotes.length}`;
+  elements.folderList.append(allButton);
+  for (const folder of folders) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `folder-chip${state.folder === folder ? " is-active" : ""}`;
+    button.dataset.folder = folder;
+    button.textContent = `${folder} ${ownNotes.filter((note) => note.folder === folder).length}`;
+    elements.folderList.append(button);
+  }
+}
+
+async function toggleFavorite(note) {
+  if (!isMyNote(note)) return;
+  const next = !note.favorite;
+  try {
+    await saveNoteOrganization(note, { favorite: next });
+    note.favorite = next;
+    state.notes.forEach((item) => {
+      if (item.id === note.id || item.slug === note.slug) item.favorite = next;
+    });
+    state.detailCache.clear();
+    render();
+    if (state.currentDetailNote?.id === note.id) renderDetail({ ...state.currentDetailNote, favorite: next });
+    setStatus(next ? "已加入收藏。" : "已取消收藏。");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "更新收藏失败。", true);
+  }
+}
+
+async function saveNoteOrganization(note, changes) {
+  if (!authToken) throw new Error("请先登录，再整理笔记。");
+  const payload = {
+    title: note.title,
+    type: note.type,
+    slug: note.slug,
+    summary: note.summary,
+    category: note.category,
+    cover: note.cover,
+    status: note.status,
+    studyMinutes: note.studyMinutes,
+    tags: note.tags,
+    folder: note.folder || "",
+    favorite: Boolean(note.favorite),
+    published: Boolean(note.published),
+    pinned: Boolean(note.pinned),
+    ...changes
+  };
+  const response = await fetch(`${apiBase}/api/admin/notes/${encodeURIComponent(note.id || note.slug)}`, {
+    method: "PATCH",
+    headers: siteHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload)
+  });
+  const data = await readJsonResponse(response);
+  if (!response.ok) throw new Error(data.error || "更新笔记组织信息失败");
+  return data.note;
 }
 
 function openNotesLibrary() {
@@ -1957,6 +2120,7 @@ function renderNoteListActions(total, visible) {
 function createCard(note) {
   const node = elements.template.content.firstElementChild.cloneNode(true);
   const button = node.querySelector(".note-open");
+  const favoriteButton = node.querySelector(".note-favorite");
   const cover = node.querySelector(".note-cover");
   const category = node.querySelector(".note-category");
   const date = node.querySelector(".note-date");
@@ -1975,6 +2139,13 @@ function createCard(note) {
   summary.textContent = note.summary || "这篇笔记还没有摘要。";
   renderTags(tags, note.tags.slice(0, 4));
   button.addEventListener("click", () => openDetail(note));
+  if (favoriteButton) {
+    favoriteButton.hidden = !isMyNote(note);
+    favoriteButton.classList.toggle("is-active", Boolean(note.favorite));
+    favoriteButton.textContent = note.favorite ? "★" : "☆";
+    favoriteButton.setAttribute("aria-label", note.favorite ? "取消收藏笔记" : "收藏笔记");
+    favoriteButton.addEventListener("click", () => toggleFavorite(note));
+  }
 
   return node;
 }
@@ -2026,6 +2197,11 @@ function renderDetail(note) {
   renderRelatedNotes(note);
   renderDetailNavigation(note);
   if (elements.detailEditButton) elements.detailEditButton.hidden = !isMyNote(note);
+  if (elements.detailFavoriteButton) {
+    elements.detailFavoriteButton.hidden = !isMyNote(note);
+    elements.detailFavoriteButton.classList.toggle("is-active", Boolean(note.favorite));
+    elements.detailFavoriteButton.textContent = note.favorite ? "★ 已收藏" : "☆ 收藏笔记";
+  }
   if (elements.detailCard) elements.detailCard.scrollTop = 0;
   updateReadingProgress();
 }

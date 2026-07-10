@@ -2922,6 +2922,56 @@ body.notes-library-mode .library-shortcut-bar {
   display: flex;
 }
 
+/* 收藏夹与自定义文件夹 */
+.folder-hub {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  padding-top: 16px;
+}
+.folder-favorite,
+.folder-chip,
+.folder-create button {
+  min-height: 34px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 11px;
+  padding: 0 11px;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+}
+.folder-favorite { color: #b77900; }
+.folder-favorite span { margin-right: 3px; font-size: 16px; }
+.folder-favorite b { margin-left: 5px; color: var(--subtle); }
+.folder-favorite.is-active,
+.folder-chip.is-active { border-color: rgba(47, 125, 100, 0.28); color: var(--leaf-dark); background: rgba(47, 125, 100, 0.1); }
+.folder-list { display: flex; flex: 1 1 260px; flex-wrap: wrap; gap: 7px; }
+.folder-create { display: flex; gap: 6px; }
+.folder-create input { width: 150px; height: 34px; border-radius: 11px; font-size: 13px; }
+.folder-create button { color: var(--leaf-dark); background: rgba(240, 249, 245, 0.82); }
+.note-favorite {
+  position: absolute;
+  z-index: 2;
+  top: 13px;
+  right: 13px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 999px;
+  color: rgba(46, 48, 52, 0.74);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 4px 16px rgba(30, 36, 42, 0.12);
+  font-size: 20px;
+  line-height: 1;
+}
+.note-favorite.is-active { border-color: rgba(217, 145, 61, 0.36); color: #d18a16; background: #fff7df; }
+.detail-favorite-button { width: 100%; justify-content: center; }
+.detail-favorite-button.is-active { border-color: rgba(217, 145, 61, 0.36); color: #b77900; background: #fff7df; }
+
 .scope-switch {
   flex: 0 0 auto;
   gap: 4px;
@@ -3033,6 +3083,10 @@ body.notes-library-mode .library-shortcut-bar {
   .detail-body { padding: 28px 20px 44px; }
   .article-content { font-size: 17px; line-height: 1.95; }
   .library-shortcut-bar { align-items: flex-start; flex-direction: column; }
+  .folder-hub { align-items: stretch; }
+  .folder-list { flex-basis: 100%; }
+  .folder-create { width: 100%; }
+  .folder-create input { flex: 1; width: auto; }
 }
 
 .growth-intro {

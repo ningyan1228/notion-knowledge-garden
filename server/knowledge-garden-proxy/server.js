@@ -19,13 +19,15 @@ const AUTH_SECRET = String(process.env.AUTH_SECRET || process.env.ADMIN_TOKEN ||
 const FIELDS = {
   title: ["Title", "\u6807\u9898", "Name", "\u540d\u79f0"],
   summary: ["Summary", "\u6458\u8981", "Description", "\u7b80\u4ecb"],
-  category: ["Category", "\u5206\u7c7b", "Folder", "\u680f\u76ee"],
+  category: ["Category", "\u5206\u7c7b", "\u680f\u76ee"],
+  folder: ["Folder", "\u6587\u4ef6\u5939", "\u7b14\u8bb0\u6587\u4ef6\u5939", "\u81ea\u5b9a\u4e49\u6587\u4ef6\u5939"],
   tags: ["Tags", "\u6807\u7b7e", "Keywords", "\u5173\u952e\u8bcd"],
   type: ["Type", "\u7c7b\u578b", "Kind", "\u5185\u5bb9\u7c7b\u578b"],
   cover: ["Cover", "\u5c01\u9762", "Banner", "\u6a2a\u5e45\u56fe"],
   status: ["Status", "\u72b6\u6001"],
   published: ["Published", "\u662f\u5426\u516c\u5f00", "\u516c\u5f00"],
   pinned: ["Pinned", "\u7f6e\u9876"],
+  favorite: ["Favorite", "\u6536\u85cf", "\u662f\u5426\u6536\u85cf"],
   slug: ["Slug", "slug", "\u77ed\u94fe\u63a5", "\u8def\u5f84"],
   author: ["Author", "\u4f5c\u8005"],
   userId: ["User ID", "UserID", "userId", "\u7528\u6237ID", "\u7528\u6237 ID"],
@@ -395,11 +397,13 @@ async function buildNoteProperties(input, options = {}) {
   const summary = cleanText(input?.summary);
   const noteType = cleanText(input?.type) || "笔记";
   const category = cleanText(input?.category);
+  const folder = cleanText(input?.folder);
   const tags = normalizeTags(input?.tags);
   const slug = cleanText(input?.slug) || slugify(title);
   const cover = cleanText(input?.cover);
   const published = Boolean(input?.published);
   const pinned = Boolean(input?.pinned);
+  const favorite = Boolean(input?.favorite);
   const status = cleanText(input?.status) || (published ? "完成" : "进行中");
   const studyMinutes = Number(input?.studyMinutes || 0);
   const author = cleanText(input?.author);
@@ -421,6 +425,16 @@ async function buildNoteProperties(input, options = {}) {
   if (slugProperty) properties[slugProperty] = { rich_text: richTextChunks(slug) };
   const typeProperty = await optionalDatabaseProperty(FIELDS.type, "select");
   if (typeProperty) properties[typeProperty] = { select: { name: noteType } };
+  const folderProperty = await optionalDatabaseProperty(FIELDS.folder, "select");
+  if (SITE_USERS.length && folder && !folderProperty) {
+    throw new Error("Notion 数据库缺少选择字段：文件夹");
+  }
+  if (folderProperty) properties[folderProperty] = { select: folder ? { name: folder } : null };
+  const favoriteProperty = await optionalDatabaseProperty(FIELDS.favorite, "checkbox");
+  if (SITE_USERS.length && !favoriteProperty) {
+    throw new Error("Notion 数据库缺少复选框字段：收藏");
+  }
+  if (favoriteProperty) properties[favoriteProperty] = { checkbox: favorite };
   const authorProperty = author ? await optionalDatabaseProperty(FIELDS.author, "rich_text") : "";
   if (SITE_USERS.length && author && !authorProperty) {
     throw new Error("Notion 数据库缺少富文本字段：作者");
@@ -825,6 +839,7 @@ function normalizeNote(page) {
     summary: textProp(pick(props, FIELDS.summary)),
     type: optionProp(pick(props, FIELDS.type)) || "笔记",
     category: optionProp(pick(props, FIELDS.category)) || "\u672a\u5206\u7c7b",
+    folder: optionProp(pick(props, FIELDS.folder)),
     tags: multiSelectProp(pick(props, FIELDS.tags)),
     cover: coverUrl(page, pick(props, FIELDS.cover)),
     status: optionProp(pick(props, FIELDS.status)),
@@ -836,6 +851,7 @@ function normalizeNote(page) {
     visibility: optionProp(pick(props, FIELDS.visibility)) || (checkboxProp(pick(props, FIELDS.published)) ? "公开" : "私密"),
     published: checkboxProp(pick(props, FIELDS.published)),
     pinned: checkboxProp(pick(props, FIELDS.pinned)),
+    favorite: checkboxProp(pick(props, FIELDS.favorite)),
     notionUrl: page.url || ""
   };
 }

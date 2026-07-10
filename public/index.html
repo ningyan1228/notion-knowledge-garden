@@ -228,6 +228,16 @@
           <span>笔记库模式 · 专注浏览、搜索与整理全部笔记</span>
           <button class="text-button" id="closeNotesLibrary" type="button">← 返回首页</button>
         </div>
+        <section class="folder-hub" aria-label="收藏夹与文件夹">
+          <button class="folder-favorite" id="favoriteFilterButton" type="button" aria-pressed="false">
+            <span>★</span> 我的收藏 <b id="favoriteCount">0</b>
+          </button>
+          <div class="folder-list" id="folderList"></div>
+          <form class="folder-create" id="folderCreateForm">
+            <input id="newFolderInput" type="text" maxlength="40" placeholder="新建文件夹" autocomplete="off" />
+            <button type="submit">新建</button>
+          </form>
+        </section>
       <section class="toolbar" aria-label="筛选工具">
         <label class="search-box">
           <span>搜索</span>
@@ -258,6 +268,12 @@
           <span>标签</span>
           <select id="tagFilter">
             <option value="all">全部标签</option>
+          </select>
+        </label>
+        <label>
+          <span>文件夹</span>
+          <select id="folderFilter">
+            <option value="all">全部文件夹</option>
           </select>
         </label>
         <label>
@@ -418,6 +434,11 @@
               <span>标签</span>
               <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
             </label>
+            <label>
+              <span>文件夹</span>
+              <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
+              <datalist id="writerFolderOptions"></datalist>
+            </label>
             <div class="writer-field full">
               <span class="writer-field-label">正文</span>
               <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
@@ -519,6 +540,9 @@
           </main>
           <aside class="detail-sidebar" aria-label="阅读辅助">
             <section class="reader-widget">
+              <button class="button ghost detail-favorite-button" id="detailFavoriteButton" type="button">☆ 收藏笔记</button>
+            </section>
+            <section class="reader-widget">
               <button class="button primary detail-edit-button" id="detailEditButton" type="button">编辑笔记</button>
             </section>
             <section class="reader-widget">
@@ -543,6 +567,7 @@
 
     <template id="noteCardTemplate">
       <article class="note-card">
+        <button class="note-favorite" type="button" aria-label="收藏笔记" title="收藏笔记">☆</button>
         <button class="note-open" type="button">
           <img class="note-cover" alt="" hidden />
           <div class="note-content">
