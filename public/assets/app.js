@@ -150,6 +150,13 @@ const elements = {
   folderBreadcrumb: document.querySelector("#folderBreadcrumb"),
   folderHub: document.querySelector("#folderHub"),
   folderPageMount: document.querySelector("#folderPageMount"),
+  folderContent: document.querySelector("#folderContent"),
+  folderContentMeta: document.querySelector("#folderContentMeta"),
+  folderLocationTitle: document.querySelector("#folderLocationTitle"),
+  folderBackButton: document.querySelector("#folderBackButton"),
+  folderRootButton: document.querySelector("#folderRootButton"),
+  folderOpenNotesButton: document.querySelector("#folderOpenNotesButton"),
+  finderFavoriteCount: document.querySelector("#finderFavoriteCount"),
   folderPickerButton: document.querySelector("#folderPickerButton"),
   folderPickerLabel: document.querySelector("#folderPickerLabel"),
   newFolderButton: document.querySelector("#newFolderButton"),
@@ -278,6 +285,7 @@ elements.favoriteFilterButton?.addEventListener("click", () => {
   state.favoritesOnly = !state.favoritesOnly;
   resetNoteList();
   render();
+  if (document.body.dataset.appView === "folders") window.location.hash = "#notesLibrary";
 });
 
 elements.folderList?.addEventListener("click", (event) => {
@@ -294,6 +302,12 @@ elements.folderList?.addEventListener("click", (event) => {
   }
   const button = event.target.closest("[data-folder]");
   if (!button) return;
+  if (document.body.dataset.appView === "folders") {
+    folderBrowserPath = button.dataset.folder === "all" ? "" : (button.dataset.folder || "");
+    state.folder = button.dataset.folder || "all";
+    renderOrganization();
+    return;
+  }
   state.folder = button.dataset.folder || "all";
   elements.folderHub?.classList.remove("is-open");
   elements.folderPickerButton?.setAttribute("aria-expanded", "false");
@@ -307,6 +321,60 @@ elements.folderBreadcrumb?.addEventListener("click", (event) => {
   if (!event.target.closest("[data-folder-back]")) return;
   folderBrowserPath = parentFolderOf(folderBrowserPath);
   renderOrganization();
+});
+
+elements.folderBackButton?.addEventListener("click", () => {
+  folderBrowserPath = parentFolderOf(folderBrowserPath);
+  renderOrganization();
+});
+
+elements.folderRootButton?.addEventListener("click", () => {
+  folderBrowserPath = "";
+  state.folder = "all";
+  renderOrganization();
+});
+
+elements.folderOpenNotesButton?.addEventListener("click", () => {
+  state.folder = folderBrowserPath || "all";
+  state.favoritesOnly = false;
+  if (elements.folderFilter) elements.folderFilter.value = state.folder;
+  resetNoteList();
+  render();
+  window.location.hash = "#notesLibrary";
+});
+
+document.querySelectorAll("[data-folder-favorites]").forEach((node) => {
+  node.addEventListener("click", () => {
+    state.favoritesOnly = true;
+    resetNoteList();
+    render();
+    window.location.hash = "#notesLibrary";
+  });
+});
+
+elements.folderContent?.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-folder-action]");
+  if (action) {
+    event.preventDefault();
+    event.stopPropagation();
+    const folder = action.dataset.folder || "";
+    if (action.dataset.folderAction === "add-child") promptNewSubfolder(folder);
+    if (action.dataset.folderAction === "rename") renameCustomFolder(folder);
+    if (action.dataset.folderAction === "delete") deleteCustomFolder(folder);
+    return;
+  }
+  const tile = event.target.closest("[data-folder-tile]");
+  if (!tile) return;
+  state.folder = tile.dataset.folderTile || "all";
+  elements.folderContent?.querySelectorAll("[data-folder-tile]").forEach((node) => {
+    node.classList.toggle("is-selected", node === tile);
+  });
+});
+
+elements.folderContent?.addEventListener("dblclick", (event) => {
+  const tile = event.target.closest("[data-folder-tile]");
+  if (!tile) return;
+  openFolderBrowser(tile.dataset.folderTile || "");
 });
 
 elements.newFolderButton?.addEventListener("click", promptNewFolder);
@@ -2222,6 +2290,7 @@ function renderOrganization() {
   const ownNotes = state.notes.filter(isMyNote);
   const favorites = ownNotes.filter((note) => note.favorite).length;
   if (elements.favoriteCount) elements.favoriteCount.textContent = String(favorites);
+  if (elements.finderFavoriteCount) elements.finderFavoriteCount.textContent = String(favorites);
   if (elements.favoriteFilterButton) {
     elements.favoriteFilterButton.classList.toggle("is-active", state.favoritesOnly);
     elements.favoriteFilterButton.setAttribute("aria-pressed", String(state.favoritesOnly));
@@ -2230,11 +2299,16 @@ function renderOrganization() {
   if (elements.folderPickerLabel) {
     elements.folderPickerLabel.textContent = state.folder === "all" ? "全部文件夹" : folderLabel(state.folder);
   }
+  if (elements.folderLocationTitle) {
+    elements.folderLocationTitle.textContent = folderBrowserPath ? folderLabel(folderBrowserPath) : "\u6211\u7684\u6587\u4ef6";
+  }
+  if (elements.folderBackButton) elements.folderBackButton.disabled = !folderBrowserPath;
   elements.folderList.innerHTML = "";
   elements.folderList.classList.add("folder-tree-list");
   elements.folderList.append(createFolderTreeRow("all", ownNotes.length, 0, false));
   renderFolderTreeRows("", 0, folders, ownNotes);
   renderFolderBreadcrumb();
+  renderFinderFolderContent(folders, ownNotes);
 }
 
 function renderFolderTreeRows(parentFolder, depth, folders, ownNotes) {
@@ -2252,7 +2326,8 @@ function renderFolderTreeRows(parentFolder, depth, folders, ownNotes) {
 function createFolderTreeRow(folder, count, depth, hasChildren) {
   const all = folder === "all";
   const row = document.createElement("div");
-  row.className = `folder-tree-row${all ? " is-all" : ""}${state.folder === folder ? " is-active" : ""}`;
+  const isCurrentLocation = all ? !folderBrowserPath : folderBrowserPath === folder;
+  row.className = `folder-tree-row${all ? " is-all" : ""}${isCurrentLocation ? " is-active" : ""}`;
   row.style.setProperty("--folder-depth", String(depth));
 
   const disclosure = document.createElement("button");
@@ -2286,6 +2361,11 @@ function createFolderTreeRow(folder, count, depth, hasChildren) {
 
 function renderFolderBreadcrumb() {
   if (!elements.folderBreadcrumb) return;
+  const pieces = folderBrowserPath ? folderBrowserPath.split(folderPathSeparator).map(escapeHtml) : [];
+  elements.folderBreadcrumb.innerHTML = pieces.length
+    ? `<button type="button" data-folder-back aria-label="\u8fd4\u56de\u4e0a\u4e00\u7ea7">\u6211\u7684\u6587\u4ef6</button>${pieces.map((piece) => `<i>/</i><strong>${piece}</strong>`).join("")}`
+    : `<span>\u6211\u7684\u6587\u4ef6</span><i>/</i><strong>\u6839\u76ee\u5f55</strong>`;
+  return;
   if (!folderBrowserPath) {
     elements.folderBreadcrumb.textContent = "根目录 · 显示一级文件夹";
     return;
@@ -2299,6 +2379,52 @@ function openFolderBrowser(folder) {
   if (expandedFolderPaths.has(folder)) expandedFolderPaths.delete(folder);
   else expandedFolderPaths.add(folder);
   renderOrganization();
+}
+
+function renderFinderFolderContent(folders, ownNotes) {
+  if (!elements.folderContent) return;
+  const currentFolder = folderBrowserPath;
+  const children = folders.filter((folder) => parentFolderOf(folder) === currentFolder);
+  const directNotes = ownNotes.filter((note) => currentFolder ? note.folder === currentFolder : !note.folder);
+
+  if (elements.folderContentMeta) {
+    const location = currentFolder ? folderLabel(currentFolder) : "\u6211\u7684\u6587\u4ef6";
+    elements.folderContentMeta.textContent = `${location} · ${children.length} \u4e2a\u6587\u4ef6\u5939 · ${directNotes.length} \u7bc7\u7b14\u8bb0`;
+  }
+  if (elements.folderOpenNotesButton) {
+    elements.folderOpenNotesButton.textContent = currentFolder ? "\u67e5\u770b\u6b64\u6587\u4ef6\u5939\u7b14\u8bb0" : "\u67e5\u770b\u5168\u90e8\u7b14\u8bb0";
+  }
+
+  elements.folderContent.innerHTML = "";
+  if (!children.length) {
+    const empty = document.createElement("div");
+    empty.className = "finder-empty-folder";
+    empty.innerHTML = `<span class="finder-empty-folder-icon" aria-hidden="true"></span><strong>${currentFolder ? "\u8fd9\u4e2a\u6587\u4ef6\u5939\u8fd8\u6ca1\u6709\u5b50\u76ee\u5f55" : "\u8fd8\u6ca1\u6709\u6587\u4ef6\u5939"}</strong><p>${currentFolder ? "\u53ef\u5728\u53f3\u4e0a\u89d2\u65b0\u5efa\u5b50\u6587\u4ef6\u5939\uff0c\u6216\u76f4\u63a5\u628a\u7b14\u8bb0\u653e\u5728\u8fd9\u91cc\u3002" : "\u4ece\u53f3\u4e0a\u89d2\u65b0\u5efa\u7b2c\u4e00\u4e2a\u6587\u4ef6\u5939\uff0c\u5f00\u59cb\u6574\u7406\u4f60\u7684\u7b14\u8bb0\u3002"}</p>`;
+    elements.folderContent.append(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  children.forEach((folder) => {
+    const noteCount = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
+    const childCount = folders.filter((candidate) => parentFolderOf(candidate) === folder).length;
+    const tile = document.createElement("article");
+    tile.className = `finder-folder-tile${state.folder === folder ? " is-selected" : ""}`;
+    tile.title = `${folderLabel(folder)} \uff08\u53cc\u51fb\u8fdb\u5165\uff09`;
+    tile.innerHTML = `
+      <button class="finder-folder-open" type="button" data-folder-tile="${escapeHtml(folder)}">
+        <span class="finder-folder-large" aria-hidden="true"></span>
+        <strong>${escapeHtml(folderLabel(folder))}</strong>
+        <small>${noteCount} \u7bc7\u7b14\u8bb0${childCount ? ` · ${childCount} \u4e2a\u5b50\u6587\u4ef6\u5939` : ""}</small>
+      </button>
+      <span class="finder-tile-actions">
+        <button type="button" data-folder-action="add-child" data-folder="${escapeHtml(folder)}" aria-label="\u65b0\u5efa\u5b50\u6587\u4ef6\u5939" title="\u65b0\u5efa\u5b50\u6587\u4ef6\u5939">+</button>
+        <button type="button" data-folder-action="rename" data-folder="${escapeHtml(folder)}" aria-label="\u91cd\u547d\u540d" title="\u91cd\u547d\u540d">✎</button>
+        <button type="button" data-folder-action="delete" data-folder="${escapeHtml(folder)}" aria-label="\u5220\u9664" title="\u5220\u9664">×</button>
+      </span>`;
+    fragment.append(tile);
+  });
+  elements.folderContent.append(fragment);
 }
 
 function createFolderCard(folder, count, options = {}) {

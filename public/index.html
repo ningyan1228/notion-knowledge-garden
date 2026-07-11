@@ -275,25 +275,48 @@
           <span>笔记库模式 · 专注浏览、搜索与整理全部笔记</span>
           <button class="text-button" id="closeNotesLibrary" type="button">← 返回首页</button>
         </div>
-        <section class="folder-hub" id="folderHub" aria-label="收藏夹与文件夹">
-          <div class="folder-hub-heading">
-            <i class="finder-folder-icon" aria-hidden="true"></i>
-            <div>
-              <strong>我的文件夹</strong>
-              <small>按项目、主题或阅读计划整理笔记</small>
-              <div class="folder-breadcrumb" id="folderBreadcrumb"></div>
+        <section class="folder-hub" id="folderHub" aria-label="文件空间">
+          <header class="finder-toolbar">
+            <div class="finder-toolbar-location">
+              <button class="finder-back-button" id="folderBackButton" type="button" aria-label="返回上一级">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 4-6 6 6 6"/></svg>
+              </button>
+              <span class="finder-toolbar-folder" aria-hidden="true"></span>
+              <strong id="folderLocationTitle">我的文件夹</strong>
             </div>
+            <div class="finder-toolbar-actions">
+              <button class="folder-favorite" id="favoriteFilterButton" type="button" aria-pressed="false">
+                <span>★</span> 我的收藏 <b id="favoriteCount">0</b>
+              </button>
+              <button class="folder-create" id="newFolderButton" type="button">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>新建文件夹
+              </button>
+            </div>
+          </header>
+          <div class="finder-window">
+            <aside class="finder-sidebar" aria-label="文件夹导航">
+              <span class="finder-sidebar-label">个人收藏</span>
+              <button class="finder-sidebar-link" id="folderRootButton" type="button">
+                <i class="finder-sidebar-icon finder-sidebar-icon-folder" aria-hidden="true"></i>我的文件夹
+              </button>
+              <button class="finder-sidebar-link" type="button" data-folder-favorites>
+                <i class="finder-sidebar-icon finder-sidebar-icon-star" aria-hidden="true"></i>收藏
+                <b id="finderFavoriteCount">0</b>
+              </button>
+              <span class="finder-sidebar-label finder-sidebar-label-folders">文件夹</span>
+              <div class="folder-list" id="folderList"></div>
+            </aside>
+            <section class="finder-content" aria-label="当前文件夹内容">
+              <header class="finder-content-header">
+                <div>
+                  <div class="folder-breadcrumb" id="folderBreadcrumb"></div>
+                  <p id="folderContentMeta">双击文件夹进入，单击选中。</p>
+                </div>
+                <button class="finder-open-notes" id="folderOpenNotesButton" type="button">查看笔记</button>
+              </header>
+              <div class="finder-folder-grid" id="folderContent"></div>
+            </section>
           </div>
-          <button class="folder-picker" id="folderPickerButton" type="button" aria-expanded="false">
-            <span class="folder-picker-icon" aria-hidden="true"></span>
-            <span id="folderPickerLabel">全部文件夹</span>
-            <i class="folder-picker-chevron" aria-hidden="true"></i>
-          </button>
-          <button class="folder-favorite" id="favoriteFilterButton" type="button" aria-pressed="false">
-            <span>★</span> 我的收藏 <b id="favoriteCount">0</b>
-          </button>
-          <div class="folder-list" id="folderList"></div>
-          <button class="folder-create" id="newFolderButton" type="button">新建文件夹</button>
         </section>
       <section class="toolbar" aria-label="筛选工具">
         <label class="search-box">
