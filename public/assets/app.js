@@ -6,6 +6,7 @@ const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
 const folderRegistryPrefix = "kgFolders:v1";
 const folderPathSeparator = " / ";
+let folderBrowserPath = "";
 const expandedFolderPaths = new Set();
 const writerDraftDelayMs = 500;
 let authToken =
@@ -146,6 +147,7 @@ const elements = {
   favoriteFilterButton: document.querySelector("#favoriteFilterButton"),
   favoriteCount: document.querySelector("#favoriteCount"),
   folderList: document.querySelector("#folderList"),
+  folderBreadcrumb: document.querySelector("#folderBreadcrumb"),
   newFolderButton: document.querySelector("#newFolderButton"),
   activeFilters: document.querySelector("#activeFilters"),
   filterResultCount: document.querySelector("#filterResultCount"),
@@ -281,7 +283,7 @@ elements.folderList?.addEventListener("click", (event) => {
     event.stopPropagation();
     const folder = action.dataset.folder || "";
     if (action.dataset.folderAction === "add-child") promptNewSubfolder(folder);
-    if (action.dataset.folderAction === "toggle") toggleFolderBranch(folder);
+    if (action.dataset.folderAction === "open-folder") openFolderBrowser(folder);
     if (action.dataset.folderAction === "rename") renameCustomFolder(folder);
     if (action.dataset.folderAction === "delete") deleteCustomFolder(folder);
     return;
@@ -292,6 +294,12 @@ elements.folderList?.addEventListener("click", (event) => {
   if (elements.folderFilter) elements.folderFilter.value = state.folder;
   resetNoteList();
   render();
+});
+
+elements.folderBreadcrumb?.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-folder-back]")) return;
+  folderBrowserPath = parentFolderOf(folderBrowserPath);
+  renderOrganization();
 });
 
 elements.newFolderButton?.addEventListener("click", promptNewFolder);
@@ -2138,9 +2146,9 @@ function saveFolderRegistry(folders) {
 }
 
 function promptNewFolder() {
-  const value = window.prompt("新建文件夹", "");
+  const value = window.prompt(folderBrowserPath ? `在“${folderLabel(folderBrowserPath)}”中新建子文件夹` : "新建文件夹", "");
   if (value === null) return;
-  createCustomFolder(value);
+  createCustomFolder(value, folderBrowserPath);
 }
 
 function normalizeFolderSegment(value) {
@@ -2202,37 +2210,71 @@ function renderOrganization() {
   }
   if (!elements.folderList) return;
   elements.folderList.innerHTML = "";
-  elements.folderList.append(createFolderCard("all", ownNotes.length, { all: true }));
-  const roots = folders.filter((folder) => !folders.includes(parentFolderOf(folder)));
-  for (const folder of roots) {
-    elements.folderList.append(createFolderBranch(folder, folders, ownNotes));
+  elements.folderList.classList.add("folder-tree-list");
+  elements.folderList.append(createFolderTreeRow("all", ownNotes.length, 0, false));
+  renderFolderTreeRows("", 0, folders, ownNotes);
+  renderFolderBreadcrumb();
+}
+
+function renderFolderTreeRows(parentFolder, depth, folders, ownNotes) {
+  const children = folders.filter((folder) => parentFolderOf(folder) === parentFolder);
+  for (const folder of children) {
+    const hasChildren = folders.some((candidate) => parentFolderOf(candidate) === folder);
+    const count = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
+    elements.folderList.append(createFolderTreeRow(folder, count, depth, hasChildren));
+    if (hasChildren && expandedFolderPaths.has(folder)) {
+      renderFolderTreeRows(folder, depth + 1, folders, ownNotes);
+    }
   }
 }
 
-function createFolderBranch(folder, folders, ownNotes) {
-  const branch = document.createElement("div");
-  const parent = parentFolderOf(folder);
-  const children = folders.filter((candidate) => parentFolderOf(candidate) === folder);
-  const expanded = expandedFolderPaths.has(folder);
-  branch.className = `folder-tree-branch${parent ? " is-nested" : ""}${expanded ? " is-expanded" : ""}`;
-  const count = ownNotes.filter((note) => isFolderBranch(note.folder, folder)).length;
-  branch.append(createFolderCard(folder, count, {
-    subfolder: Boolean(parent),
-    hasChildren: children.length > 0,
-    expanded
-  }));
+function createFolderTreeRow(folder, count, depth, hasChildren) {
+  const all = folder === "all";
+  const row = document.createElement("div");
+  row.className = `folder-tree-row${all ? " is-all" : ""}${state.folder === folder ? " is-active" : ""}`;
+  row.style.setProperty("--folder-depth", String(depth));
 
-  if (children.length) {
-    const childList = document.createElement("div");
-    childList.className = "folder-child-list";
-    for (const child of children) childList.append(createFolderBranch(child, folders, ownNotes));
-    branch.append(childList);
+  const disclosure = document.createElement("button");
+  disclosure.type = "button";
+  disclosure.className = "folder-tree-disclosure";
+  disclosure.dataset.folderAction = "open-folder";
+  disclosure.dataset.folder = folder;
+  disclosure.disabled = !hasChildren;
+  disclosure.setAttribute("aria-label", hasChildren ? "展开或收起子文件夹" : "没有子文件夹");
+  disclosure.textContent = hasChildren ? (expandedFolderPaths.has(folder) ? "⌄" : "›") : "";
+
+  const select = document.createElement("button");
+  select.type = "button";
+  select.className = "folder-tree-select";
+  select.dataset.folder = folder;
+  select.innerHTML = `<span class="folder-tree-icon" aria-hidden="true"></span><strong>${all ? "全部文件夹" : escapeHtml(folderLabel(folder))}</strong><small>${count}</small>`;
+  row.append(disclosure, select);
+
+  if (!all) {
+    const actions = document.createElement("span");
+    actions.className = "folder-tree-actions";
+    actions.innerHTML = `
+      <button type="button" data-folder-action="add-child" data-folder="${escapeHtml(folder)}" title="新建子文件夹">+</button>
+      <button type="button" data-folder-action="rename" data-folder="${escapeHtml(folder)}" title="重命名">✎</button>
+      <button type="button" data-folder-action="delete" data-folder="${escapeHtml(folder)}" title="删除">×</button>
+    `;
+    row.append(actions);
   }
-  return branch;
+  return row;
 }
 
-function toggleFolderBranch(folder) {
+function renderFolderBreadcrumb() {
+  if (!elements.folderBreadcrumb) return;
+  if (!folderBrowserPath) {
+    elements.folderBreadcrumb.textContent = "根目录 · 显示一级文件夹";
+    return;
+  }
+  elements.folderBreadcrumb.innerHTML = `<button type="button" data-folder-back>‹ 返回上层</button><span>${escapeHtml(folderBrowserPath)}</span>`;
+}
+
+function openFolderBrowser(folder) {
   if (!folder) return;
+  folderBrowserPath = folder;
   if (expandedFolderPaths.has(folder)) expandedFolderPaths.delete(folder);
   else expandedFolderPaths.add(folder);
   renderOrganization();
@@ -2240,9 +2282,8 @@ function toggleFolderBranch(folder) {
 
 function createFolderCard(folder, count, options = {}) {
   const all = Boolean(options.all);
-  const subfolder = Boolean(options.subfolder);
   const card = document.createElement("div");
-  card.className = `folder-chip${all ? " is-all" : ""}${subfolder ? " is-subfolder" : ""}${state.folder === folder ? " is-active" : ""}`;
+  card.className = `folder-chip${all ? " is-all" : ""}${state.folder === folder ? " is-active" : ""}`;
 
   const select = document.createElement("button");
   select.type = "button";
@@ -2265,12 +2306,11 @@ function createFolderCard(folder, count, options = {}) {
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "folder-tree-toggle";
-    toggle.dataset.folderAction = "toggle";
+    toggle.dataset.folderAction = "open-folder";
     toggle.dataset.folder = folder;
-    toggle.setAttribute("aria-label", options.expanded ? "收起子文件夹" : "展开子文件夹");
-    toggle.setAttribute("aria-expanded", String(Boolean(options.expanded)));
-    toggle.title = options.expanded ? "收起子文件夹" : "展开子文件夹";
-    toggle.textContent = options.expanded ? "⌃" : "⌄";
+    toggle.setAttribute("aria-label", "进入子文件夹");
+    toggle.title = "进入子文件夹";
+    toggle.textContent = "›";
     card.append(toggle);
   }
   return card;
@@ -2299,6 +2339,7 @@ async function renameCustomFolder(folder) {
       note.folder = nextFolder;
     }
     saveFolderRegistry(knownFolders().map((name) => replaceFolderBranch(name, folder, next)));
+    folderBrowserPath = replaceFolderBranch(folderBrowserPath, folder, next);
     state.folder = replaceFolderBranch(state.folder, folder, next);
     if (state.currentDetailNote?.folder) {
       state.currentDetailNote.folder = replaceFolderBranch(state.currentDetailNote.folder, folder, next);
@@ -2331,6 +2372,7 @@ async function deleteCustomFolder(folder) {
       note.folder = "";
     }
     saveFolderRegistry(knownFolders().filter((name) => !isFolderBranch(name, folder)));
+    if (isFolderBranch(folderBrowserPath, folder)) folderBrowserPath = parentFolderOf(folder);
     if (isFolderBranch(state.folder, folder)) state.folder = "all";
     if (state.currentDetailNote?.folder && isFolderBranch(state.currentDetailNote.folder, folder)) {
       state.currentDetailNote.folder = "";
