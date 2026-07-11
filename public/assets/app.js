@@ -2258,8 +2258,8 @@ function createFolderTreeRow(folder, count, depth, hasChildren) {
   disclosure.dataset.folderAction = "open-folder";
   disclosure.dataset.folder = folder;
   disclosure.disabled = !hasChildren;
+  disclosure.classList.toggle("is-expanded", hasChildren && expandedFolderPaths.has(folder));
   disclosure.setAttribute("aria-label", hasChildren ? "展开或收起子文件夹" : "没有子文件夹");
-  disclosure.textContent = hasChildren ? (expandedFolderPaths.has(folder) ? "⌄" : "›") : "";
 
   const select = document.createElement("button");
   select.type = "button";

@@ -4829,13 +4829,25 @@ button.calendar-day:hover {
   height: 28px;
   border: 0;
   padding: 0;
-  color: #6a8ba7;
+  position: relative;
   background: transparent;
-  font-size: 18px;
-  line-height: 1;
 }
 
 .folder-tree-disclosure:disabled { cursor: default; }
+.folder-tree-disclosure:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 6px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid #7792aa;
+  border-bottom: 1.5px solid #7792aa;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+.folder-tree-disclosure:not(:disabled):hover::after { border-color: #087cff; }
+.folder-tree-disclosure.is-expanded::after { transform: rotate(45deg) translate(-1px, -1px); }
 
 .folder-tree-select {
   min-width: 0;
@@ -4944,8 +4956,16 @@ button.calendar-day:hover {
 .folder-picker:hover,
 .folder-hub.is-open .folder-picker { border-color: rgba(0, 122, 255, 0.46); background: #edf7ff; }
 .folder-picker span:not(.folder-picker-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.folder-picker i { color: #4f81b3; font-size: 16px; font-style: normal; text-align: center; transition: transform 160ms ease; }
-.folder-hub.is-open .folder-picker i { transform: rotate(180deg); }
+.folder-picker-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid #4f81b3;
+  border-bottom: 1.5px solid #4f81b3;
+  justify-self: center;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 160ms ease;
+}
+.folder-hub.is-open .folder-picker-chevron { transform: rotate(225deg) translate(-1px, -1px); }
 .folder-picker-icon { width: 20px; height: 14px; border-radius: 3px 4px 4px 4px; background: linear-gradient(145deg, #80bbff, #3f8ef5); box-shadow: inset 0 1px 0 rgba(255,255,255,.56); }
 
 .folder-favorite,
