@@ -3219,6 +3219,11 @@ body.notes-library-mode .library-shortcut-bar {
 .detail-folder-actions input { min-width: 0; height: 36px; border-radius: 10px; font-size: 13px; }
 .detail-folder-actions button { flex: 0 0 auto; border: 1px solid rgba(47, 125, 100, 0.22); border-radius: 10px; padding: 0 10px; color: var(--leaf-dark); background: rgba(240, 249, 245, 0.88); font-size: 13px; font-weight: 900; }
 .detail-folder-widget small { display: block; margin-top: 8px; color: var(--subtle); font-size: 12px; line-height: 1.45; }
+.detail-folder-actions button.is-success { border-color: rgba(31, 174, 110, .38); color: #087c50; background: #e6f8ee; }
+.detail-folder-actions button.is-error { border-color: rgba(210, 84, 77, .35); color: #b8403d; background: #fff0ef; }
+.detail-folder-feedback { margin: 9px 0 0; padding: 8px 10px; border: 1px solid transparent; border-radius: 9px; font-size: 12px; font-weight: 750; line-height: 1.4; }
+.detail-folder-feedback.is-success { border-color: rgba(31, 174, 110, .22); color: #087c50; background: #eaf8ef; }
+.detail-folder-feedback.is-error { border-color: rgba(210, 84, 77, .22); color: #b8403d; background: #fff1f0; }
 
 .scope-switch {
   flex: 0 0 auto;

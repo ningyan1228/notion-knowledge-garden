@@ -5,6 +5,7 @@ const PORT = Number(process.env.PORT || 3000);
 const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
+const NOTION_REQUEST_TIMEOUT_MS = Number(process.env.NOTION_REQUEST_TIMEOUT_MS || 15000);
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || "https://ningyan1228.github.io,https://notes.101921.xyz,http://127.0.0.1:4173,http://localhost:4173")
     .split(",")
@@ -801,22 +802,34 @@ function splitText(value, size = 1900) {
 
 async function notionRequest(path, method, body) {
   const token = requiredEnv("NOTION_TOKEN");
-  const response = await fetch(`https://api.notion.com/v1/${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "Notion-Version": NOTION_VERSION
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NOTION_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`https://api.notion.com/v1/${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Notion-Version": NOTION_VERSION
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
 
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!response.ok) {
-    throw new Error(data.message || `Notion API failed: ${response.status}`);
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
+    if (!response.ok) {
+      throw new Error(data.message || `Notion API failed: ${response.status}`);
+    }
+    return data;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Notion request timed out. Please retry.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return data;
 }
 
 function queryPath() {

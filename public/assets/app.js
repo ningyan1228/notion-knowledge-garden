@@ -9,6 +9,8 @@ const folderPathSeparator = " / ";
 let folderBrowserPath = "";
 const expandedFolderPaths = new Set();
 const writerDraftDelayMs = 500;
+const detailRequestTimeoutMs = 12000;
+let detailFolderFeedbackTimer = null;
 let authToken =
   sessionStorage.getItem(authTokenSessionKey) ||
   localStorage.getItem(authTokenLocalKey) ||
@@ -224,6 +226,7 @@ const elements = {
   detailFolderWidget: document.querySelector("#detailFolderWidget"),
   detailFolderInput: document.querySelector("#detailFolderInput"),
   detailFolderSaveButton: document.querySelector("#detailFolderSaveButton"),
+  detailFolderFeedback: document.querySelector("#detailFolderFeedback"),
   detailToc: document.querySelector("#detailToc"),
   relatedNotes: document.querySelector("#relatedNotes"),
   previousNote: document.querySelector("#previousNote"),
@@ -2559,7 +2562,11 @@ async function moveCurrentDetailToFolder() {
   if (!note || !isMyNote(note)) return;
   const folder = elements.detailFolderInput?.value.trim().slice(0, 40) || "";
   const button = elements.detailFolderSaveButton;
-  if (button) button.disabled = true;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "\u79fb\u52a8\u4e2d…";
+    button.classList.remove("is-success", "is-error");
+  }
   try {
     await saveNoteOrganization(note, { folder });
     note.folder = folder;
@@ -2570,12 +2577,51 @@ async function moveCurrentDetailToFolder() {
     hydrateFilters();
     render();
     renderDetail(note);
-    setStatus(folder ? `已移入“${folder}”。` : "已移出文件夹。");
+    const message = folder ? `\u5df2\u79fb\u52a8\u5230\uff1a${folder}` : "\u5df2\u79fb\u51fa\u6587\u4ef6\u5939";
+    setStatus(message);
+    showDetailFolderFeedback(message, "success");
+    if (button) {
+      button.textContent = "\u5df2\u79fb\u52a8 ✓";
+      button.classList.add("is-success");
+    }
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : "移动笔记失败。", true);
+    const message = error instanceof Error ? error.message : "\u79fb\u52a8\u7b14\u8bb0\u5931\u8d25\u3002";
+    setStatus(message, true);
+    showDetailFolderFeedback(message, "error");
+    if (button) {
+      button.textContent = "\u79fb\u52a8\u5931\u8d25";
+      button.classList.add("is-error");
+    }
   } finally {
-    if (button) button.disabled = false;
+    if (button) {
+      button.disabled = false;
+      window.setTimeout(() => {
+        button.textContent = "\u79fb\u52a8";
+        button.classList.remove("is-success", "is-error");
+      }, 2600);
+    }
   }
+}
+
+function showDetailFolderFeedback(message, tone = "success") {
+  const feedback = elements.detailFolderFeedback;
+  if (!feedback) return;
+  window.clearTimeout(detailFolderFeedbackTimer);
+  feedback.textContent = tone === "success" ? `✓ ${message}` : message;
+  feedback.hidden = false;
+  feedback.className = `detail-folder-feedback is-${tone}`;
+  detailFolderFeedbackTimer = window.setTimeout(() => {
+    feedback.hidden = true;
+  }, 4200);
+}
+
+function clearDetailFolderFeedback() {
+  const feedback = elements.detailFolderFeedback;
+  if (!feedback) return;
+  window.clearTimeout(detailFolderFeedbackTimer);
+  feedback.hidden = true;
+  feedback.textContent = "";
+  feedback.className = "detail-folder-feedback";
 }
 
 async function saveNoteOrganization(note, changes) {
@@ -2758,12 +2804,22 @@ async function openDetail(note) {
 }
 
 async function fetchDetail(key) {
-  const response = await fetch(`${apiBase}/api/notes/${encodeURIComponent(key)}`, {
-    headers: siteHeaders()
-  });
-  const data = await readJsonResponse(response);
-  if (!response.ok) throw new Error(data.error || "读取详情失败");
-  return data;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), detailRequestTimeoutMs);
+  try {
+    const response = await fetch(`${apiBase}/api/notes/${encodeURIComponent(key)}`, {
+      headers: siteHeaders(),
+      signal: controller.signal
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || "读取详情失败");
+    return data;
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("正文读取超时，请关闭后重试。");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function renderDetail(note) {
@@ -2796,6 +2852,7 @@ function renderDetail(note) {
   }
   if (elements.detailFolderWidget) elements.detailFolderWidget.hidden = !isMyNote(note);
   if (elements.detailFolderInput) elements.detailFolderInput.value = note.folder || "";
+  clearDetailFolderFeedback();
   if (elements.detailCard) elements.detailCard.scrollTop = 0;
   updateReadingProgress();
 }
