@@ -27,6 +27,7 @@
           <nav class="mac-nav">
             <a href="#today">今日</a>
             <a href="#notesLibrary" data-open-notes-library>我的笔记</a>
+            <a href="#folders">文件空间</a>
             <a href="#diaries">拾光日记</a>
             <a href="#calendar">日历</a>
             <a href="#growthMap">成长热力</a>
@@ -242,6 +243,18 @@
         </div>
         <div class="calendar-grid" id="calendarGrid" aria-live="polite"></div>
         <p class="calendar-tip">有颜色的日期代表已有记录；点击当天可打开已有日记或新建日记。</p>
+      </section>
+
+      <section class="folders-page" id="folders" data-view="folders" aria-labelledby="foldersPageTitle">
+        <div class="folders-page-head">
+          <div>
+            <span>File Space</span>
+            <h2 id="foldersPageTitle">文件空间</h2>
+            <p>在这里整理文件夹、子目录与收藏；选择一个文件夹后即可查看对应笔记。</p>
+          </div>
+          <div class="folders-page-note">按项目、主题或长期计划建立属于你的知识结构。</div>
+        </div>
+        <div class="folder-page-mount" id="folderPageMount"></div>
       </section>
 
       <div class="notes-page" data-view="notes">

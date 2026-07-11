@@ -149,6 +149,7 @@ const elements = {
   folderList: document.querySelector("#folderList"),
   folderBreadcrumb: document.querySelector("#folderBreadcrumb"),
   folderHub: document.querySelector("#folderHub"),
+  folderPageMount: document.querySelector("#folderPageMount"),
   folderPickerButton: document.querySelector("#folderPickerButton"),
   folderPickerLabel: document.querySelector("#folderPickerLabel"),
   newFolderButton: document.querySelector("#newFolderButton"),
@@ -299,6 +300,7 @@ elements.folderList?.addEventListener("click", (event) => {
   if (elements.folderFilter) elements.folderFilter.value = state.folder;
   resetNoteList();
   render();
+  if (document.body.dataset.appView === "folders") window.location.hash = "#notesLibrary";
 });
 
 elements.folderBreadcrumb?.addEventListener("click", (event) => {
@@ -432,6 +434,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+mountFolderHub();
 syncPageViewFromHash();
 
 bootSite();
@@ -2272,9 +2275,9 @@ function createFolderTreeRow(folder, count, depth, hasChildren) {
     const actions = document.createElement("span");
     actions.className = "folder-tree-actions";
     actions.innerHTML = `
-      <button type="button" data-folder-action="add-child" data-folder="${escapeHtml(folder)}" title="新建子文件夹">+</button>
-      <button type="button" data-folder-action="rename" data-folder="${escapeHtml(folder)}" title="重命名">✎</button>
-      <button type="button" data-folder-action="delete" data-folder="${escapeHtml(folder)}" title="删除">×</button>
+      <button type="button" data-folder-action="add-child" data-folder="${escapeHtml(folder)}" title="新建子文件夹" aria-label="新建子文件夹"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+      <button type="button" data-folder-action="rename" data-folder="${escapeHtml(folder)}" title="重命名" aria-label="重命名"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 14.8.7-3.1L12.9 3.5a1.6 1.6 0 0 1 2.3 2.3l-8.2 8.2-3 .8Z"/><path d="m11.8 4.6 3.6 3.6"/></svg></button>
+      <button type="button" data-folder-action="delete" data-folder="${escapeHtml(folder)}" title="删除" aria-label="删除"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2m-7 0 .7 10h8.6L15 6M8 9v4m4-4v4"/></svg></button>
     `;
     row.append(actions);
   }
@@ -2482,6 +2485,14 @@ function openNotesLibrary() {
   document.body.classList.add("notes-library-mode");
 }
 
+function mountFolderHub() {
+  if (!elements.folderHub || !elements.folderPageMount) return;
+  if (elements.folderHub.parentElement !== elements.folderPageMount) {
+    elements.folderPageMount.append(elements.folderHub);
+  }
+  elements.folderHub.classList.add("is-page-mode");
+}
+
 function closeNotesLibrary() {
   window.location.hash = "#knowledgeGraph";
 }
@@ -2494,14 +2505,17 @@ function syncPageViewFromHash() {
       ? "notes"
     : hash === "#diaries"
       ? "diaries"
-      : hash === "#calendar"
-        ? "calendar"
+    : hash === "#calendar"
+      ? "calendar"
+      : hash === "#folders"
+        ? "folders"
       : hash === "#growthMap"
           ? "growth"
           : "graph";
 
   document.body.dataset.appView = view;
   document.body.classList.toggle("notes-library-mode", view === "notes");
+  elements.folderHub?.classList.toggle("is-page-mode", view === "folders");
 
   const activeHash = view === "notes"
     ? "#notesLibrary"

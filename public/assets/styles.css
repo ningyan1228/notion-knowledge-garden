@@ -4392,7 +4392,8 @@ body[data-app-view="today"] [data-view="today"] {
 
 body[data-app-view="diaries"] [data-view="diaries"],
 body[data-app-view="calendar"] [data-view="calendar"],
-body[data-app-view="notes"] [data-view="notes"] {
+body[data-app-view="notes"] [data-view="notes"],
+body[data-app-view="folders"] [data-view="folders"] {
   display: block !important;
 }
 
@@ -5017,4 +5018,206 @@ button.calendar-day:hover {
   .folder-favorite { margin-left: 0; }
   .folder-create { flex: 0 0 auto; width: auto; }
   .folder-list.folder-tree-list { width: calc(100vw - 40px); }
+}
+
+/* File Space: folders have their own calm, Finder-inspired workspace. */
+body[data-app-view="folders"] .mac-app-shell {
+  min-height: 0;
+  align-items: start;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-app-view="folders"] .mac-sidebar {
+  position: sticky;
+  top: 18px;
+  height: auto;
+  min-height: 0;
+  align-self: start;
+}
+
+body[data-app-view="folders"] .mac-main {
+  align-self: start;
+  padding-bottom: 18px;
+}
+
+.folders-page {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 14px 0 0;
+}
+
+.folders-page-head {
+  min-height: 150px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px 32px;
+  border: 1px solid rgba(28, 72, 109, 0.08);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 91% 18%, rgba(80, 164, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 76% 112%, rgba(42, 195, 143, 0.12), transparent 32%),
+    rgba(255, 255, 255, 0.78);
+  box-shadow: 0 16px 42px rgba(33, 63, 91, 0.06), inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+.folders-page-head > div:first-child > span {
+  color: #07856c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.folders-page-head h2 {
+  margin: 7px 0 8px;
+  color: #192a3b;
+  font-size: clamp(31px, 3.2vw, 43px);
+  line-height: 1;
+  letter-spacing: -.065em;
+}
+
+.folders-page-head p {
+  max-width: 660px;
+  margin: 0;
+  color: #6c7784;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.folders-page-note {
+  max-width: 240px;
+  padding: 13px 15px;
+  border-left: 2px solid #51bfa0;
+  color: #597183;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.folder-page-mount { margin-top: 16px; }
+
+.folder-hub.is-page-mode {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(210px, .88fr) minmax(180px, .85fr) max-content max-content;
+  grid-template-areas:
+    "heading picker favorite create"
+    "folders folders folders folders";
+  gap: 18px 12px;
+  min-height: 0;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(65, 137, 205, 0.16);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(79, 165, 255, .16), transparent 29%),
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,249,255,.9));
+  box-shadow: 0 22px 50px rgba(28, 69, 107, 0.10), inset 0 1px 0 rgba(255,255,255,.96);
+}
+
+.folder-hub.is-page-mode::after {
+  content: "";
+  position: absolute;
+  width: 310px;
+  height: 310px;
+  right: -155px;
+  bottom: -210px;
+  border-radius: 50%;
+  background: rgba(53, 190, 143, 0.08);
+  pointer-events: none;
+}
+
+.folder-hub.is-page-mode .folder-hub-heading {
+  grid-area: heading;
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+}
+
+.folder-hub.is-page-mode .folder-hub-heading .finder-folder-icon {
+  width: 42px;
+  height: 30px;
+  margin-right: 12px;
+  filter: drop-shadow(0 8px 9px rgba(40, 122, 216, .18));
+}
+
+.folder-hub.is-page-mode .folder-hub-heading .finder-folder-icon::before { width: 20px; height: 9px; }
+.folder-hub.is-page-mode .folder-hub-heading strong { display: block; color: #21384d; font-size: 18px; }
+.folder-hub.is-page-mode .folder-hub-heading small { display: block; margin-top: 3px; color: #84909c; font-size: 12px; }
+.folder-hub.is-page-mode .folder-breadcrumb { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #5180a4; font-size: 11px; }
+.folder-hub.is-page-mode .folder-breadcrumb button { padding: 0; border: 0; color: #087f69; background: transparent; font: inherit; font-weight: 800; cursor: pointer; }
+
+.folder-hub.is-page-mode .folder-picker {
+  grid-area: picker;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  pointer-events: none;
+  border-color: rgba(66, 145, 220, .22);
+  border-radius: 15px;
+  background: rgba(240, 248, 255, .84);
+}
+
+.folder-hub.is-page-mode .folder-picker-chevron { display: none; }
+.folder-hub.is-page-mode .folder-favorite { grid-area: favorite; min-height: 48px; margin-left: 0; border-radius: 15px; }
+.folder-hub.is-page-mode .folder-create { grid-area: create; min-height: 48px; border-radius: 15px; }
+
+.folder-hub.is-page-mode .folder-list.folder-tree-list {
+  position: relative;
+  z-index: 1;
+  grid-area: folders;
+  width: auto;
+  min-height: 350px;
+  max-height: min(560px, calc(100vh - 335px));
+  margin: 0;
+  padding: 12px;
+  display: block !important;
+  overflow: auto;
+  border: 1px solid rgba(42, 113, 180, .13);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .76);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+  scrollbar-color: rgba(87, 143, 190, .45) transparent;
+}
+
+.folder-hub.is-page-mode .folder-tree-row {
+  min-height: 52px;
+  margin: 2px 4px 2px calc(4px + var(--folder-depth) * 24px);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  grid-template-columns: 25px minmax(0, 1fr) auto;
+}
+
+.folder-hub.is-page-mode .folder-tree-row:hover { border-color: rgba(53, 138, 225, .14); background: rgba(234, 245, 255, .8); }
+.folder-hub.is-page-mode .folder-tree-row.is-active { border-color: rgba(47, 137, 235, .34); background: linear-gradient(90deg, rgba(112, 183, 255, .22), rgba(245, 251, 255, .65)); }
+.folder-hub.is-page-mode .folder-tree-select { min-height: 48px; padding-right: 12px; }
+.folder-hub.is-page-mode .folder-tree-select strong { color: #2b4660; font-size: 14px; }
+.folder-hub.is-page-mode .folder-tree-select small { min-width: 28px; padding: 3px 7px; border-radius: 9px; color: #668196; background: #eef4f8; text-align: center; }
+.folder-hub.is-page-mode .folder-tree-actions { opacity: .64; padding-right: 8px; }
+.folder-hub.is-page-mode .folder-tree-actions button { width: 28px; height: 28px; border: 1px solid rgba(52, 125, 191, .14); border-radius: 9px; color: #4e79a0; background: rgba(255,255,255,.86); }
+.folder-hub.is-page-mode .folder-tree-actions button:hover { border-color: rgba(42, 135, 225, .35); color: #087fce; background: #edf7ff; }
+.folder-tree-actions svg { width: 14px; height: 14px; display: block; margin: auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (max-width: 980px) {
+  .folder-hub.is-page-mode { grid-template-columns: minmax(0, 1fr) max-content max-content; grid-template-areas: "heading favorite create" "picker picker picker" "folders folders folders"; }
+  .folder-hub.is-page-mode .folder-picker { width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .folders-page { padding-top: 0; }
+  .folders-page-head { min-height: 0; align-items: start; flex-direction: column; gap: 16px; padding: 24px 20px; border-radius: 22px; }
+  .folders-page-note { max-width: none; }
+  .folder-hub.is-page-mode { grid-template-columns: minmax(0, 1fr) max-content; grid-template-areas: "heading heading" "picker picker" "favorite create" "folders folders"; padding: 15px; border-radius: 22px; }
+  .folder-hub.is-page-mode .folder-hub-heading { min-height: 46px; }
+  .folder-hub.is-page-mode .folder-hub-heading small { display: none; }
+  .folder-hub.is-page-mode .folder-list.folder-tree-list { min-height: 330px; max-height: 520px; padding: 8px; }
+  .folder-hub.is-page-mode .folder-tree-row { margin-left: calc(1px + var(--folder-depth) * 15px); }
+  .folder-hub.is-page-mode .folder-tree-actions { opacity: 1; padding-right: 3px; }
+  .folder-hub.is-page-mode .folder-tree-actions button { width: 25px; height: 25px; }
 }
