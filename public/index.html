@@ -28,12 +28,17 @@
             <a href="#today">今日</a>
             <a href="#notesLibrary" data-open-notes-library>我的笔记</a>
             <a href="#diaries">拾光日记</a>
+            <a href="#calendar">日历</a>
             <a href="#growthMap">成长热力</a>
             <a href="#knowledgeGraph">知识星图</a>
           </nav>
           <button class="sidebar-write-button" id="sidebarWriteButton" type="button">
             <span aria-hidden="true">✦</span>
             写笔记
+          </button>
+          <button class="sidebar-diary-button" id="sidebarDiaryButton" type="button">
+            <span aria-hidden="true">☾</span>
+            写日记
           </button>
           <div class="mac-sidebar-card">
             <span>Notion Sync</span>
@@ -217,6 +222,26 @@
           <p class="status-line">只展示你勾选公开的日记，私密日记会留在 Notion。</p>
         </div>
         <div class="diary-grid" id="diaryList"></div>
+      </section>
+
+      <section class="calendar-section" id="calendar" data-view="calendar" aria-labelledby="calendarTitle">
+        <div class="calendar-head">
+          <div>
+            <span>Daily Calendar</span>
+            <h2 id="calendarTitle">记录日历</h2>
+            <p>查看每天留下的笔记与日记；点击日期可继续记录。</p>
+          </div>
+          <div class="calendar-controls" aria-label="切换月份">
+            <button id="calendarPrev" type="button" aria-label="上个月">‹</button>
+            <strong id="calendarLabel">-</strong>
+            <button id="calendarNext" type="button" aria-label="下个月">›</button>
+          </div>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid" aria-live="polite"></div>
+        <p class="calendar-tip">有颜色的日期代表已有记录；点击当天可打开已有日记或新建日记。</p>
       </section>
 
       <div class="notes-page" data-view="notes">

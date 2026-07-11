@@ -30,6 +30,8 @@ const state = {
   author: "all",
   month: "all",
   sort: "updated",
+  calendarYear: new Date().getFullYear(),
+  calendarMonth: new Date().getMonth(),
   visibleNotes: 6,
   notesPageSize: 6
 };
@@ -153,6 +155,11 @@ const elements = {
   refreshButton: document.querySelector("#refreshButton"),
   writerButton: document.querySelector("#writerButton"),
   sidebarWriteButton: document.querySelector("#sidebarWriteButton"),
+  sidebarDiaryButton: document.querySelector("#sidebarDiaryButton"),
+  calendarPrev: document.querySelector("#calendarPrev"),
+  calendarNext: document.querySelector("#calendarNext"),
+  calendarLabel: document.querySelector("#calendarLabel"),
+  calendarGrid: document.querySelector("#calendarGrid"),
   writerPanel: document.querySelector("#writerPanel"),
   writerForm: document.querySelector("#writerForm"),
   writerNoteId: document.querySelector("#writerNoteId"),
@@ -332,6 +339,9 @@ elements.sortSelect.addEventListener("change", (event) => {
 elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true }));
 elements.writerButton?.addEventListener("click", () => openWriter("笔记"));
 elements.sidebarWriteButton?.addEventListener("click", () => openWriter("笔记"));
+elements.sidebarDiaryButton?.addEventListener("click", () => openWriter("日记"));
+elements.calendarPrev?.addEventListener("click", () => changeCalendarMonth(-1));
+elements.calendarNext?.addEventListener("click", () => changeCalendarMonth(1));
 elements.quickWriteButton?.addEventListener("click", () => openWriter("灵感"));
 elements.dailyWriteButton?.addEventListener("click", () => openWriter("日记"));
 elements.randomNoteButton?.addEventListener("click", openRandomNote);
@@ -515,7 +525,7 @@ async function readJsonResponse(response) {
   return data;
 }
 
-function openWriter(preferredType = "笔记") {
+function openWriter(preferredType = "笔记", diaryDate = "") {
   state.editingNote = null;
   elements.writerForm?.reset();
   setWriterMarkdown("");
@@ -528,7 +538,12 @@ function openWriter(preferredType = "笔记") {
   if (elements.writerTypeSelect) elements.writerTypeSelect.value = nextType;
   updateWriterPrivacyDefault();
   const restored = restoreWriterDraft();
-  if (!restored && nextType === "日记") applyDiaryDefaults({ forceTemplate: true });
+  if (!restored && nextType === "日记") {
+    applyDiaryDefaults({ forceTemplate: true });
+    if (diaryDate && elements.writerNoteTitle) {
+      elements.writerNoteTitle.value = `${formatDate(new Date(`${diaryDate}T12:00:00`))} 日记`;
+    }
+  }
   syncVisualFromMarkdown();
   renderWriterPreview();
   if (elements.writerToken) {
@@ -1339,6 +1354,7 @@ function renderWorkbench(notes) {
   renderGrowthMap(notes);
   renderDailyPanel(notes);
   renderDiarySection(notes);
+  renderCalendar(notes);
   renderFocusPanel(notes);
   renderTimeline(notes);
   renderTopicMap(notes);
@@ -1503,6 +1519,60 @@ function renderDiarySection(notes) {
     `;
     button.addEventListener("click", () => openDetail(note));
     elements.diaryList.append(button);
+  }
+}
+
+function changeCalendarMonth(offset) {
+  const next = new Date(state.calendarYear, state.calendarMonth + offset, 1);
+  state.calendarYear = next.getFullYear();
+  state.calendarMonth = next.getMonth();
+  renderCalendar(state.notes);
+}
+
+function renderCalendar(notes) {
+  if (!elements.calendarGrid || !elements.calendarLabel) return;
+  const year = state.calendarYear;
+  const month = state.calendarMonth;
+  const monthStart = new Date(year, month, 1);
+  const today = dateKey(new Date());
+  const ownNotes = authToken ? notes.filter(isMyNote) : notes;
+  const byDate = new Map();
+
+  for (const note of ownNotes) {
+    const key = dateKey(note.updated || note.created);
+    if (!key) continue;
+    const values = byDate.get(key) || [];
+    values.push(note);
+    byDate.set(key, values);
+  }
+
+  elements.calendarLabel.textContent = `${year} 年 ${month + 1} 月`;
+  elements.calendarGrid.innerHTML = "";
+  const leadingDays = (monthStart.getDay() + 6) % 7;
+  for (let index = 0; index < leadingDays; index += 1) {
+    const blank = document.createElement("div");
+    blank.className = "calendar-day is-empty";
+    blank.setAttribute("aria-hidden", "true");
+    elements.calendarGrid.append(blank);
+  }
+
+  const totalDays = daysInMonth(year, month);
+  for (let day = 1; day <= totalDays; day += 1) {
+    const key = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+    const dayNotes = byDate.get(key) || [];
+    const diaries = dayNotes.filter(isDiary);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `calendar-day${key === today ? " is-today" : ""}${dayNotes.length ? " has-record" : ""}${diaries.length ? " has-diary" : ""}`;
+    button.innerHTML = `<span class="calendar-day-number">${day}</span><span class="calendar-day-count">${dayNotes.length ? `${dayNotes.length} 条记录` : ""}</span>`;
+    button.title = dayNotes.length
+      ? `${key}：${dayNotes.length} 条记录${diaries.length ? `，其中 ${diaries.length} 篇日记` : ""}`
+      : `${key}：写一篇日记`;
+    button.addEventListener("click", () => {
+      if (diaries.length === 1) openDetail(diaries[0]);
+      else openWriter("日记", key);
+    });
+    elements.calendarGrid.append(button);
   }
 }
 
@@ -2362,9 +2432,11 @@ function syncPageViewFromHash() {
     ? "today"
     : hash === "#notesLibrary" || hash === "#notes"
       ? "notes"
-      : hash === "#diaries"
-        ? "diaries"
-        : hash === "#growthMap"
+    : hash === "#diaries"
+      ? "diaries"
+      : hash === "#calendar"
+        ? "calendar"
+      : hash === "#growthMap"
           ? "growth"
           : "graph";
 
