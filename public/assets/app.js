@@ -148,6 +148,9 @@ const elements = {
   favoriteCount: document.querySelector("#favoriteCount"),
   folderList: document.querySelector("#folderList"),
   folderBreadcrumb: document.querySelector("#folderBreadcrumb"),
+  folderHub: document.querySelector("#folderHub"),
+  folderPickerButton: document.querySelector("#folderPickerButton"),
+  folderPickerLabel: document.querySelector("#folderPickerLabel"),
   newFolderButton: document.querySelector("#newFolderButton"),
   activeFilters: document.querySelector("#activeFilters"),
   filterResultCount: document.querySelector("#filterResultCount"),
@@ -291,6 +294,8 @@ elements.folderList?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-folder]");
   if (!button) return;
   state.folder = button.dataset.folder || "all";
+  elements.folderHub?.classList.remove("is-open");
+  elements.folderPickerButton?.setAttribute("aria-expanded", "false");
   if (elements.folderFilter) elements.folderFilter.value = state.folder;
   resetNoteList();
   render();
@@ -303,6 +308,16 @@ elements.folderBreadcrumb?.addEventListener("click", (event) => {
 });
 
 elements.newFolderButton?.addEventListener("click", promptNewFolder);
+elements.folderPickerButton?.addEventListener("click", () => {
+  const open = elements.folderHub?.classList.toggle("is-open");
+  elements.folderPickerButton?.setAttribute("aria-expanded", String(Boolean(open)));
+});
+document.addEventListener("click", (event) => {
+  if (!elements.folderHub?.contains(event.target)) {
+    elements.folderHub?.classList.remove("is-open");
+    elements.folderPickerButton?.setAttribute("aria-expanded", "false");
+  }
+});
 
 elements.authorFilter?.addEventListener("change", (event) => {
   state.author = event.target.value;
@@ -2209,6 +2224,9 @@ function renderOrganization() {
     elements.favoriteFilterButton.setAttribute("aria-pressed", String(state.favoritesOnly));
   }
   if (!elements.folderList) return;
+  if (elements.folderPickerLabel) {
+    elements.folderPickerLabel.textContent = state.folder === "all" ? "全部文件夹" : folderLabel(state.folder);
+  }
   elements.folderList.innerHTML = "";
   elements.folderList.classList.add("folder-tree-list");
   elements.folderList.append(createFolderTreeRow("all", ownNotes.length, 0, false));
