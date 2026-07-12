@@ -2954,7 +2954,8 @@ async function openDetail(note) {
 
   let settled = false;
   const fallbackTimer = window.setTimeout(() => {
-    if (settled || elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
+    if (settled) return;
+    openPanel();
     renderDetail({
       ...note,
       content: detailUnavailableBlocks(new Error("详情服务响应超时，请稍后重试。"))
@@ -2963,7 +2964,6 @@ async function openDetail(note) {
 
   try {
     const detail = await fetchDetail(key);
-    if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
     if (!detail?.note) throw new Error("详情服务未返回笔记内容。");
     const loadedNote = {
       ...note,
@@ -2972,10 +2972,11 @@ async function openDetail(note) {
       tags: Array.isArray(detail.note.tags) ? detail.note.tags : (note.tags || [])
     };
     state.detailCache.set(key, detail);
+    openPanel();
     renderDetailContent(loadedNote.content);
     renderDetail(loadedNote);
   } catch (error) {
-    if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
+    openPanel();
     const content = note.content?.length ? note.content : detailUnavailableBlocks(error);
     renderDetail({ ...note, content });
   } finally {
