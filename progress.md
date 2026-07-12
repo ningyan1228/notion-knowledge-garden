@@ -162,3 +162,11 @@
 - 侧栏加入简洁的自绘线性图标，并重新压缩品牌区、导航行、按钮与账号卡片的间距和圆角，视觉接近 Finder/备忘录而非营销页面。
 - 星图移除开发者网格，替换为更细腻的点阵画布和柔和聚焦光晕；工具栏、节点和图例继续沿用系统蓝、橙、紫、灰的层级语义。
 - 本轮需发布 `public/index.html`、`public/assets/styles.css` 与本文档；服务器无需操作。
+
+### 2026-07-12 Personal Knowledge OS 组件重构
+
+- 按 Apple Personal Knowledge OS 方向拆分了组件结构：Sidebar 增加产品身份区、`空间 / 知识` 导航分组和更轻的 iOS Settings 选中态；不再只是修改原页面颜色。
+- 知识星图改为 `graph-workspace`：左侧为空间化玻璃画布，右侧为“今日洞察”组件，动态呈现阅读时长、新增笔记和新想法。
+- 图谱节点系统重做：中心节点是带副标题的 Personal Knowledge OS 玻璃卡，分类为圆角胶囊，标签和普通笔记降级为更轻的层级；连接线降低默认存在感。
+- 新增右下角 AI 整理浮层。当前提供不依赖密钥的本地归档建议（分类、标签、文件夹）；如需真正大模型对话，后续需要接入 AI API 和密钥。
+- 本轮需发布 `public/index.html`、`public/assets/app.js`、`public/assets/styles.css` 与本文档；服务器无需操作。

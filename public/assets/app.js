@@ -118,6 +118,15 @@ const elements = {
   graphRetryButton: document.querySelector("#graphRetryButton"),
   graphResetButton: document.querySelector("#graphResetButton"),
   graphFullscreenButton: document.querySelector("#graphFullscreenButton"),
+  insightReading: document.querySelector("#insightReading"),
+  insightNewNotes: document.querySelector("#insightNewNotes"),
+  insightIdeas: document.querySelector("#insightIdeas"),
+  aiAssistantButton: document.querySelector("#aiAssistantButton"),
+  aiAssistantPanel: document.querySelector("#aiAssistantPanel"),
+  aiAssistantClose: document.querySelector("#aiAssistantClose"),
+  aiAssistantInput: document.querySelector("#aiAssistantInput"),
+  aiAssistantOrganize: document.querySelector("#aiAssistantOrganize"),
+  aiAssistantResult: document.querySelector("#aiAssistantResult"),
   topicMap: document.querySelector("#topicMap"),
   tagCloud: document.querySelector("#tagCloud"),
   recentList: document.querySelector("#recentList"),
@@ -450,6 +459,9 @@ elements.graphRetryButton?.addEventListener("click", () => {
   renderKnowledgeGraph(state.notes, 0, true);
 });
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
+elements.aiAssistantButton?.addEventListener("click", toggleAiAssistant);
+elements.aiAssistantClose?.addEventListener("click", () => setAiAssistantOpen(false));
+elements.aiAssistantOrganize?.addEventListener("click", organizeWithLocalAssistant);
 elements.loadMoreNotes?.addEventListener("click", () => {
   state.visibleNotes += state.notesPageSize;
   render();
@@ -502,6 +514,7 @@ document.addEventListener("keydown", (event) => {
     closeKnowledgeGraphFullscreen();
     closeDetail();
     closeWriter();
+    setAiAssistantOpen(false);
   }
 });
 
@@ -1448,6 +1461,7 @@ function resetNoteList() {
 
 function renderWorkbench(notes) {
   renderKnowledgeGraph(notes);
+  renderGraphInsights(notes);
   renderGrowthMap(notes);
   renderDailyPanel(notes);
   renderDiarySection(notes);
@@ -1457,6 +1471,56 @@ function renderWorkbench(notes) {
   renderTopicMap(notes);
   renderTagCloud(notes);
   renderRecentList(notes);
+}
+
+function renderGraphInsights(notes) {
+  const today = dateKey(new Date());
+  const todayNotes = notes.filter((note) => dateKey(note.created || note.updated) === today);
+  const monthPrefix = today.slice(0, 7);
+  const monthNotes = notes.filter((note) => dateKey(note.created || note.updated).startsWith(monthPrefix));
+  const minutes = monthNotes.reduce((total, note) => total + (Number(note.studyMinutes) || 0), 0);
+  const ideas = monthNotes.filter((note) => String(note.type || "").includes("灵感") || String(note.category || "").includes("灵感")).length;
+  if (elements.insightReading) elements.insightReading.textContent = `${minutes || Math.max(0, monthNotes.length * 8)} 分钟`;
+  if (elements.insightNewNotes) elements.insightNewNotes.textContent = `${todayNotes.length} 条`;
+  if (elements.insightIdeas) elements.insightIdeas.textContent = `${ideas} 个`;
+}
+
+function toggleAiAssistant() {
+  const open = elements.aiAssistantPanel?.getAttribute("aria-hidden") !== "false";
+  setAiAssistantOpen(open);
+}
+
+function setAiAssistantOpen(open) {
+  if (!elements.aiAssistantPanel) return;
+  elements.aiAssistantPanel.setAttribute("aria-hidden", String(!open));
+  elements.aiAssistantButton?.setAttribute("aria-expanded", String(open));
+  if (open) window.setTimeout(() => elements.aiAssistantInput?.focus(), 120);
+}
+
+function organizeWithLocalAssistant() {
+  const text = String(elements.aiAssistantInput?.value || "").trim();
+  if (!elements.aiAssistantResult) return;
+  if (!text) {
+    elements.aiAssistantResult.innerHTML = `<p>先写下一段内容，我再帮你梳理方向。</p>`;
+    return;
+  }
+  const lower = text.toLowerCase();
+  const rules = [
+    { match: /linux|服务器|docker|nginx|域名/, category: "服务器与域名", tags: ["Linux", "实践"] },
+    { match: /代码|c\+\+|qt|javascript|python|编程/, category: "学习笔记", tags: ["编程", "学习"] },
+    { match: /阅读|书|读书/, category: "书单", tags: ["阅读", "摘录"] },
+    { match: /项目|产品|网站|设计/, category: "项目", tags: ["项目", "复盘"] }
+  ];
+  const matched = rules.find((rule) => rule.match.test(lower));
+  const category = matched?.category || "常识";
+  const tags = matched?.tags || ["灵感", "待整理"];
+  const folders = knownFolders();
+  const folder = folders.find((name) => lower.includes(String(folderLabel(name)).toLowerCase())) || folders.find((name) => name.includes(category)) || "收件箱";
+  elements.aiAssistantResult.innerHTML = `
+    <span>本地整理建议</span>
+    <strong>${escapeHtml(category)}</strong>
+    <p>建议归档至：${escapeHtml(folder)}</p>
+    <div>${tags.map((tag) => `<i>${escapeHtml(tag)}</i>`).join("")}</div>`;
 }
 
 function renderGrowthMap(notes) {
@@ -1935,13 +1999,18 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
   };
 
   addNode("root", {
-    name: "朝夕拾光",
+    name: "\u671d\u5915\u62fe\u5149",
     kind: "root",
     value: "root",
-    symbolSize: 58,
-    tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: { color: "#0a84ff", shadowBlur: 14, shadowColor: "rgba(10, 132, 255, 0.28)" },
-    label: { fontSize: 15 }
+    symbol: "roundRect",
+    symbolSize: [142, 66],
+    tooltip: "\u671d\u5915\u62fe\u5149\uff1a\u4f60\u7684\u77e5\u8bc6\u4e2d\u5fc3",
+    itemStyle: { color: "rgba(255,255,255,.88)", borderColor: "rgba(10,132,255,.38)", borderWidth: 1, shadowBlur: 22, shadowColor: "rgba(18, 45, 76, .16)", shadowOffsetY: 8 },
+    label: {
+      show: true,
+      formatter: "{title|\u671d\u5915\u62fe\u5149}\n{caption|Personal Knowledge OS}",
+      rich: { title: { color: "#1d1d1f", fontSize: 16, fontWeight: 800, lineHeight: 23 }, caption: { color: "#86868b", fontSize: 9, fontWeight: 600, lineHeight: 13 } }
+    }
   });
 
   const categoryCounts = countValues(notes.map((note) => note.category).filter(Boolean));
@@ -1954,10 +2023,11 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       name: category,
       kind: "category",
       value: category,
-      symbolSize: 38 + Math.min((categoryCounts[category] || 1) * 4, 18),
+      symbol: "roundRect",
+      symbolSize: [88 + Math.min((categoryCounts[category] || 1) * 6, 28), 42],
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
-      itemStyle: { color: "#ff9f0a" },
-      label: { show: true, fontSize: 13, fontWeight: 800, textBorderWidth: 3 }
+      itemStyle: { color: "#fff8ed", borderColor: "rgba(255,149,0,.42)", borderWidth: 1, shadowBlur: 10, shadowColor: "rgba(255,149,0,.13)" },
+      label: { show: true, color: "#ae6500", fontSize: 13, fontWeight: 750, textBorderWidth: 0 }
     });
     addLink("root", categoryId);
 
@@ -1966,7 +2036,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       name: compactLabel(note.title),
       kind: "note",
       noteId: note.id,
-      symbolSize: note.pinned ? 30 : 21,
+      symbolSize: note.pinned ? 26 : 15,
       tooltip: `笔记：${note.title}`,
       itemStyle: { color: note.pinned ? "#ffcc66" : "#e5e5ea" },
       label: {
@@ -1993,8 +2063,8 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
         value: tag,
         symbolSize: 24 + Math.min((tagCounts[tag] || 1) * 3, 14),
         tooltip: `标签：${tag} / ${tagCounts[tag] || 1} 次`,
-        itemStyle: { color: "#5e5ce6" },
-        label: { show: true, fontSize: 12, fontWeight: 800, textBorderWidth: 3 }
+        itemStyle: { color: "#f2f0ff", borderColor: "rgba(94,92,230,.42)", borderWidth: 1 },
+        label: { show: true, color: "#504ebf", fontSize: 11, fontWeight: 720, textBorderWidth: 3, textBorderColor: "rgba(255,255,255,.92)" }
       });
       addLink(categoryId, tagId);
       addLink(tagId, noteId);

@@ -22,16 +22,21 @@
           </div>
           <a class="mac-sidebar-brand" href="#knowledgeGraph">
             <span>朝</span>
-            <strong>朝夕拾光</strong>
+            <div>
+              <strong>朝夕拾光</strong>
+              <small>Personal Knowledge OS</small>
+            </div>
           </a>
           <nav class="mac-nav">
+            <span class="mac-nav-group">空间</span>
             <a href="#today" data-nav-icon="today">今日</a>
             <a href="#notesLibrary" data-open-notes-library data-nav-icon="notes">我的笔记</a>
             <a href="#folders" data-nav-icon="folders">文件空间</a>
-            <a href="#diaries" data-nav-icon="diaries">拾光日记</a>
             <a href="#calendar" data-nav-icon="calendar">日历</a>
-            <a href="#growthMap" data-nav-icon="growth">成长热力</a>
+            <span class="mac-nav-group">知识</span>
             <a href="#knowledgeGraph" data-nav-icon="graph">知识星图</a>
+            <a href="#diaries" data-nav-icon="diaries">拾光日记</a>
+            <a href="#growthMap" data-nav-icon="growth">成长轨迹</a>
           </nav>
           <button class="sidebar-write-button" id="sidebarWriteButton" type="button">
             <span aria-hidden="true">✦</span>
@@ -78,12 +83,26 @@
               <button type="button" id="graphFullscreenButton">全屏</button>
             </div>
           </div>
-          <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
-          <div class="graph-legend" aria-hidden="true">
-            <span><i class="legend-root"></i>中心</span>
-            <span><i class="legend-topic"></i>分类</span>
-            <span><i class="legend-tag"></i>标签</span>
-            <span><i class="legend-note"></i>笔记</span>
+          <div class="graph-workspace">
+            <div class="graph-stage">
+              <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
+              <div class="graph-legend" aria-hidden="true">
+                <span><i class="legend-root"></i>中心</span>
+                <span><i class="legend-topic"></i>分类</span>
+                <span><i class="legend-tag"></i>标签</span>
+                <span><i class="legend-note"></i>笔记</span>
+              </div>
+            </div>
+            <aside class="graph-insight-card" aria-label="今日洞察">
+              <span>今日洞察</span>
+              <strong>你的知识正在生长</strong>
+              <div class="graph-insight-metrics">
+                <div><i class="insight-reading" aria-hidden="true"></i><small>阅读</small><b id="insightReading">-</b></div>
+                <div><i class="insight-notes" aria-hidden="true"></i><small>新增笔记</small><b id="insightNewNotes">-</b></div>
+                <div><i class="insight-ideas" aria-hidden="true"></i><small>新想法</small><b id="insightIdeas">-</b></div>
+              </div>
+              <p>每一次记录，都会让你的知识宇宙更清晰。</p>
+            </aside>
           </div>
         </div>
       </section>
@@ -672,5 +691,19 @@
         </button>
       </article>
     </template>
+
+    <button class="ai-assistant-fab" id="aiAssistantButton" type="button" aria-expanded="false" aria-controls="aiAssistantPanel">
+      <span aria-hidden="true">✦</span><b>AI 整理</b>
+    </button>
+    <aside class="ai-assistant-panel" id="aiAssistantPanel" aria-hidden="true" aria-label="AI 知识整理">
+      <div class="ai-assistant-head">
+        <div><span>Personal Intelligence</span><strong>AI 知识整理</strong></div>
+        <button type="button" id="aiAssistantClose" aria-label="关闭">×</button>
+      </div>
+      <p>粘贴一个想法、链接或笔记片段，获得本地整理建议。</p>
+      <textarea id="aiAssistantInput" maxlength="1000" placeholder="例如：今天学习了 Linux 文件权限和进程管理…"></textarea>
+      <button class="ai-assistant-submit" id="aiAssistantOrganize" type="button">生成整理建议</button>
+      <div class="ai-assistant-result" id="aiAssistantResult" aria-live="polite"></div>
+    </aside>
   </body>
 </html>
