@@ -3,7 +3,7 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
 const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
-const BUILD_ID = "2026-07-12-detail-observability-fix";
+const BUILD_ID = "2026-07-12-detail-cache-fix";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
 const NOTION_REQUEST_TIMEOUT_MS = Number(process.env.NOTION_REQUEST_TIMEOUT_MS || 15000);
@@ -1294,7 +1294,8 @@ function setCors(req, res) {
 function sendJson(res, status, data) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": status === 200 ? "public, max-age=60, s-maxage=600" : "no-store"
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    "Pragma": "no-cache"
   });
   res.end(JSON.stringify(data));
 }

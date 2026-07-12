@@ -2982,9 +2982,11 @@ async function fetchDetail(key) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), detailRequestTimeoutMs);
   try {
-    const response = await fetch(`${apiBase}/api/notes/${encodeURIComponent(key)}`, {
+    const requestUrl = `${apiBase}/api/notes/${encodeURIComponent(key)}?v=${Date.now()}`;
+    const response = await fetch(requestUrl, {
       headers: siteHeaders(),
-      signal: controller.signal
+      signal: controller.signal,
+      cache: "no-store"
     });
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "读取详情失败");
