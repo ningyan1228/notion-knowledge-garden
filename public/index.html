@@ -47,16 +47,24 @@
             写日记
           </button>
           <div class="mac-sidebar-card">
-            <span>Notion Sync</span>
-            <strong>按登录用户同步</strong>
-            <p>当前用户：<b id="currentUserLabel">未登录</b></p>
-            <button class="mini-button" id="logoutButton" type="button">退出登录</button>
+            <span class="account-avatar" aria-hidden="true">朝</span>
+            <div class="account-copy">
+              <strong id="currentUserLabel">未登录</strong>
+              <p><i aria-hidden="true"></i>已同步到 Notion</p>
+            </div>
+            <button class="mini-button" id="logoutButton" type="button" aria-label="退出登录">退出</button>
           </div>
         </aside>
         <div class="mac-main">
       <header class="topbar">
-        <a class="brand-mark" href="#knowledgeGraph">朝夕拾光</a>
-        <span>收集每天的灵感与知识碎片</span>
+        <div class="topbar-page">
+          <a class="brand-mark" id="pageTitle" href="#knowledgeGraph">知识星图</a>
+          <span id="pageSubtitle">探索你的知识连接</span>
+        </div>
+        <label class="global-search" aria-label="搜索全部笔记">
+          <input id="globalSearch" type="search" placeholder="搜索笔记" autocomplete="off" />
+          <kbd>⌘ K</kbd>
+        </label>
       </header>
 
       <section class="hero" data-view="graph">
@@ -132,6 +140,12 @@
             <span class="module-kicker">Today</span>
             <h2>今日拾光</h2>
             <p id="dailyPrompt">从一个念头开始，把它放进你的知识世界。</p>
+            <div class="today-inline-metrics" aria-label="知识库概览">
+              <span><b id="todayMetricNotes">-</b> 篇笔记</span>
+              <span><b id="todayMetricCategories">-</b> 个分类</span>
+              <span><b id="todayMetricTags">-</b> 个标签</span>
+              <span>更新于 <b id="todayMetricUpdated">-</b></span>
+            </div>
           </div>
           <button class="button primary" type="button" id="quickWriteButton">记录灵感</button>
         </article>
@@ -257,10 +271,24 @@
             <button id="calendarNext" type="button" aria-label="下个月">›</button>
           </div>
         </div>
+        <div class="calendar-workspace">
+          <div class="calendar-main">
         <div class="calendar-weekdays" aria-hidden="true">
           <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
         </div>
         <div class="calendar-grid" id="calendarGrid" aria-live="polite"></div>
+          </div>
+          <aside class="calendar-detail-panel" id="calendarDetailPanel" aria-live="polite">
+            <span>当日记录</span>
+            <strong id="calendarDetailDate">-</strong>
+            <p id="calendarDetailSummary">选择一个日期查看记录。</p>
+            <div class="calendar-detail-list" id="calendarDetailList"></div>
+            <div class="calendar-detail-actions">
+              <button type="button" id="calendarWriteDiary">新建日记</button>
+              <button type="button" id="calendarWriteNote">新建笔记</button>
+            </div>
+          </aside>
+        </div>
         <p class="calendar-tip">有颜色的日期代表已有记录；点击当天可打开已有日记或新建日记。</p>
       </section>
 
@@ -348,6 +376,9 @@
             <option value="all">全部类型</option>
           </select>
         </label>
+        <details class="more-filters">
+          <summary>更多筛选</summary>
+          <div class="more-filter-grid">
         <label>
           <span>可见性</span>
           <select id="visibilityFilter">
@@ -387,6 +418,8 @@
             <option value="all">全部月份</option>
           </select>
         </label>
+          </div>
+        </details>
         <label>
           <span>排序</span>
           <select id="sortSelect">

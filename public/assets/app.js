@@ -35,6 +35,7 @@ const state = {
   sort: "updated",
   calendarYear: new Date().getFullYear(),
   calendarMonth: new Date().getMonth(),
+  calendarSelectedDate: dateKey(new Date()),
   visibleNotes: 6,
   notesPageSize: 6
 };
@@ -105,6 +106,10 @@ const elements = {
   totalCategories: document.querySelector("#totalCategories"),
   totalTags: document.querySelector("#totalTags"),
   lastUpdated: document.querySelector("#lastUpdated"),
+  todayMetricNotes: document.querySelector("#todayMetricNotes"),
+  todayMetricCategories: document.querySelector("#todayMetricCategories"),
+  todayMetricTags: document.querySelector("#todayMetricTags"),
+  todayMetricUpdated: document.querySelector("#todayMetricUpdated"),
   growthYear: document.querySelector("#growthYear"),
   growthNotes: document.querySelector("#growthNotes"),
   growthHours: document.querySelector("#growthHours"),
@@ -144,6 +149,9 @@ const elements = {
   focusWriteButton: document.querySelector("#focusWriteButton"),
   focusRandomButton: document.querySelector("#focusRandomButton"),
   focusMapButton: document.querySelector("#focusMapButton"),
+  pageTitle: document.querySelector("#pageTitle"),
+  pageSubtitle: document.querySelector("#pageSubtitle"),
+  globalSearch: document.querySelector("#globalSearch"),
   searchInput: document.querySelector("#searchInput"),
   typeFilter: document.querySelector("#typeFilter"),
   visibilityFilter: document.querySelector("#visibilityFilter"),
@@ -184,6 +192,11 @@ const elements = {
   calendarNext: document.querySelector("#calendarNext"),
   calendarLabel: document.querySelector("#calendarLabel"),
   calendarGrid: document.querySelector("#calendarGrid"),
+  calendarDetailDate: document.querySelector("#calendarDetailDate"),
+  calendarDetailSummary: document.querySelector("#calendarDetailSummary"),
+  calendarDetailList: document.querySelector("#calendarDetailList"),
+  calendarWriteDiary: document.querySelector("#calendarWriteDiary"),
+  calendarWriteNote: document.querySelector("#calendarWriteNote"),
   writerPanel: document.querySelector("#writerPanel"),
   writerForm: document.querySelector("#writerForm"),
   writerNoteId: document.querySelector("#writerNoteId"),
@@ -447,6 +460,8 @@ elements.sidebarWriteButton?.addEventListener("click", () => openWriter("笔记"
 elements.sidebarDiaryButton?.addEventListener("click", () => openWriter("日记"));
 elements.calendarPrev?.addEventListener("click", () => changeCalendarMonth(-1));
 elements.calendarNext?.addEventListener("click", () => changeCalendarMonth(1));
+elements.calendarWriteDiary?.addEventListener("click", () => openWriter("日记"));
+elements.calendarWriteNote?.addEventListener("click", () => openWriter("笔记"));
 elements.quickWriteButton?.addEventListener("click", () => openWriter("灵感"));
 elements.dailyWriteButton?.addEventListener("click", () => openWriter("日记"));
 elements.randomNoteButton?.addEventListener("click", openRandomNote);
@@ -459,6 +474,14 @@ elements.graphRetryButton?.addEventListener("click", () => {
   renderKnowledgeGraph(state.notes, 0, true);
 });
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
+elements.globalSearch?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  state.query = event.currentTarget.value.trim();
+  if (elements.searchInput) elements.searchInput.value = state.query;
+  resetNoteList();
+  render();
+  window.location.hash = "#notesLibrary";
+});
 elements.aiAssistantButton?.addEventListener("click", toggleAiAssistant);
 elements.aiAssistantClose?.addEventListener("click", () => setAiAssistantOpen(false));
 elements.aiAssistantOrganize?.addEventListener("click", organizeWithLocalAssistant);
@@ -510,6 +533,11 @@ document.querySelectorAll("[data-close-writer]").forEach((node) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    elements.globalSearch?.focus();
+    return;
+  }
   if (event.key === "Escape") {
     closeKnowledgeGraphFullscreen();
     closeDetail();
@@ -1665,7 +1693,15 @@ function renderDiarySection(notes) {
     .slice(0, 6);
 
   if (!diaries.length) {
-    elements.diaryList.append(emptyInline("还没有公开的拾光日记。私密日记会留在 Notion，不会显示在这里。"));
+    const empty = document.createElement("section");
+    empty.className = "diary-empty-state";
+    empty.innerHTML = `
+      <span class="diary-empty-icon" aria-hidden="true"></span>
+      <h3>还没有公开的拾光日记</h3>
+      <p>私密日记仍会安全保存在 Notion，公开后才会出现在这里。</p>
+      <div><button type="button" data-empty-diary-write>写一篇日记</button></div>`;
+    empty.querySelector("[data-empty-diary-write]")?.addEventListener("click", () => openWriter("日记"));
+    elements.diaryList.append(empty);
     return;
   }
 
@@ -1687,6 +1723,7 @@ function changeCalendarMonth(offset) {
   const next = new Date(state.calendarYear, state.calendarMonth + offset, 1);
   state.calendarYear = next.getFullYear();
   state.calendarMonth = next.getMonth();
+  state.calendarSelectedDate = `${state.calendarYear}-${pad2(state.calendarMonth + 1)}-01`;
   renderCalendar(state.notes);
 }
 
@@ -1724,17 +1761,48 @@ function renderCalendar(notes) {
     const diaries = dayNotes.filter(isDiary);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `calendar-day${key === today ? " is-today" : ""}${dayNotes.length ? " has-record" : ""}${diaries.length ? " has-diary" : ""}`;
+    button.className = `calendar-day${key === today ? " is-today" : ""}${key === state.calendarSelectedDate ? " is-selected" : ""}${dayNotes.length ? " has-record" : ""}${diaries.length ? " has-diary" : ""}`;
     button.innerHTML = `<span class="calendar-day-number">${day}</span><span class="calendar-day-count">${dayNotes.length ? `${dayNotes.length} 条记录` : ""}</span>`;
     button.title = dayNotes.length
       ? `${key}：${dayNotes.length} 条记录${diaries.length ? `，其中 ${diaries.length} 篇日记` : ""}`
       : `${key}：写一篇日记`;
     button.addEventListener("click", () => {
+      state.calendarSelectedDate = key;
+      renderCalendarDetail(key, dayNotes);
       if (diaries.length === 1) openDetail(diaries[0]);
       else openWriter("日记", key);
     });
+    button.addEventListener("mouseenter", () => {
+      state.calendarSelectedDate = key;
+      renderCalendarDetail(key, dayNotes);
+    });
+    button.addEventListener("focus", () => {
+      state.calendarSelectedDate = key;
+      renderCalendarDetail(key, dayNotes);
+    });
     elements.calendarGrid.append(button);
   }
+  const selectedNotes = byDate.get(state.calendarSelectedDate) || [];
+  renderCalendarDetail(state.calendarSelectedDate, selectedNotes);
+}
+
+function renderCalendarDetail(key, notes) {
+  if (elements.calendarDetailDate) elements.calendarDetailDate.textContent = formatDate(key) || key || "今天";
+  if (elements.calendarDetailSummary) {
+    elements.calendarDetailSummary.textContent = notes.length
+      ? `这一天留下了 ${notes.length} 条记录。`
+      : "这一天还没有留下内容。";
+  }
+  if (!elements.calendarDetailList) return;
+  elements.calendarDetailList.innerHTML = "";
+  if (!notes.length) return;
+  notes.slice(0, 4).forEach((note) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.innerHTML = `<strong>${escapeHtml(note.title)}</strong><span>${escapeHtml(note.type || "笔记")}</span>`;
+    button.addEventListener("click", () => openDetail(note));
+    elements.calendarDetailList.append(button);
+  });
 }
 
 function renderFocusPanel(notes) {
@@ -2756,6 +2824,7 @@ function syncPageViewFromHash() {
           : "graph";
 
   document.body.dataset.appView = view;
+  renderTopbar(view);
   document.body.classList.toggle("notes-library-mode", view === "notes");
   elements.folderHub?.classList.toggle("is-page-mode", view === "folders");
 
@@ -2783,6 +2852,21 @@ function syncPageViewFromHash() {
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
+function renderTopbar(view) {
+  const labels = {
+    today: ["\u4eca\u65e5", "\u4ece\u4e00\u4e2a\u5ff5\u5934\u5f00\u59cb"],
+    notes: ["\u6211\u7684\u7b14\u8bb0", "\u9605\u8bfb\u3001\u641c\u7d22\u4e0e\u6574\u7406\u4f60\u7684\u5185\u5bb9"],
+    folders: ["\u6587\u4ef6\u7a7a\u95f4", "\u4f60\u7684\u77e5\u8bc6\u7ed3\u6784"],
+    diaries: ["\u62fe\u5149\u65e5\u8bb0", "\u53ea\u6536\u85cf\u613f\u610f\u516c\u5f00\u7684\u65f6\u5149"],
+    calendar: ["\u8bb0\u5f55\u65e5\u5386", "\u56de\u770b\u6bcf\u4e00\u5929\u7684\u6c89\u6dc0"],
+    growth: ["\u6210\u957f\u8f68\u8ff9", "\u8fd9\u4e00\u5e74\u7684\u5b66\u4e60\u8db3\u8ff9"],
+    graph: ["\u77e5\u8bc6\u661f\u56fe", "\u63a2\u7d22\u4f60\u7684\u77e5\u8bc6\u8fde\u63a5"]
+  };
+  const [title, subtitle] = labels[view] || labels.graph;
+  if (elements.pageTitle) elements.pageTitle.textContent = title;
+  if (elements.pageSubtitle) elements.pageSubtitle.textContent = subtitle;
+}
+
 function renderStats(notes) {
   const categories = unique(notes.map((note) => note.category).filter(Boolean));
   const tags = unique(notes.flatMap((note) => note.tags));
@@ -2792,6 +2876,10 @@ function renderStats(notes) {
   elements.totalCategories.textContent = String(categories.length);
   elements.totalTags.textContent = String(tags.length);
   elements.lastUpdated.textContent = formatDate(latest) || "-";
+  if (elements.todayMetricNotes) elements.todayMetricNotes.textContent = String(notes.length);
+  if (elements.todayMetricCategories) elements.todayMetricCategories.textContent = String(categories.length);
+  if (elements.todayMetricTags) elements.todayMetricTags.textContent = String(tags.length);
+  if (elements.todayMetricUpdated) elements.todayMetricUpdated.textContent = formatDate(latest) || "-";
 }
 
 function renderGrid(notes) {
