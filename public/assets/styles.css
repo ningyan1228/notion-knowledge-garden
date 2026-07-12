@@ -5734,3 +5734,35 @@ body[data-app-view="graph"] .hero-visual.graph-panel { padding: 0; background: t
 @keyframes pk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 1040px) { .graph-workspace { grid-template-columns: 1fr; } .graph-insight-card { min-height: 188px; } .graph-insight-metrics { grid-template-columns: repeat(3,1fr); } .graph-insight-metrics div { grid-template-columns: 1fr; gap: 3px; padding: 10px; } }
 @media (max-width: 720px) { .mac-sidebar { width: auto; border-radius: 0; } .mac-sidebar-brand small, .mac-nav-group { display: none; } .graph-workspace { padding-bottom: 0; } .graph-insight-metrics { grid-template-columns: 1fr; } .ai-assistant-fab { right: 16px; bottom: 16px; } .ai-assistant-panel { right: 16px; bottom: 76px; } }
+
+/* Graph header must flow like a native toolbar; never overlay title and helper copy. */
+.hero-visual.graph-panel .graph-header {
+  min-height: 94px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  padding: 22px 2px 16px;
+}
+.hero-visual.graph-panel .graph-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.hero-visual.graph-panel .graph-tools p {
+  position: static;
+  max-width: 300px;
+  margin: 0 4px 0 0;
+  color: var(--pk-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: right;
+  white-space: normal;
+}
+@media (max-width: 880px) {
+  .hero-visual.graph-panel .graph-header { grid-template-columns: 1fr; align-items: start; gap: 10px; }
+  .hero-visual.graph-panel .graph-tools { justify-content: flex-start; }
+  .hero-visual.graph-panel .graph-tools p { max-width: none; text-align: left; flex: 1 0 100%; }
+}
