@@ -3,7 +3,7 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
 const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
-const BUILD_ID = "2026-07-12-detail-timeout-fix";
+const BUILD_ID = "2026-07-12-detail-observability-fix";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
 const NOTION_REQUEST_TIMEOUT_MS = Number(process.env.NOTION_REQUEST_TIMEOUT_MS || 15000);
@@ -173,6 +173,7 @@ const server = http.createServer(async (req, res) => {
 
     const detailMatch = url.pathname.match(/^\/api\/notes\/([^/]+)$/);
     if (req.method === "GET" && detailMatch) {
+      const startedAt = Date.now();
       const user = getAccessUser(req);
       if (!user) {
         sendJson(res, 401, { error: "请先登录", requiresAccess: true });
@@ -180,12 +181,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       const key = decodeURIComponent(detailMatch[1]);
+      console.info(`[detail] start key=${key} user=${user.username || user.id || "unknown"}`);
       const page = await withTimeout(
         findPage(key),
         DETAIL_REQUEST_TIMEOUT_MS,
         "读取笔记信息超时，请稍后重试。"
       );
       if (!page || !canReadPage(page, user)) {
+        console.info(`[detail] missing key=${key} durationMs=${Date.now() - startedAt}`);
         sendJson(res, 404, { error: "Note not found" });
         return;
       }
@@ -195,6 +198,7 @@ const server = http.createServer(async (req, res) => {
         DETAIL_REQUEST_TIMEOUT_MS,
         "读取笔记正文超时，请稍后重试。"
       );
+      console.info(`[detail] success key=${key} blocks=${blocks.length} durationMs=${Date.now() - startedAt}`);
       sendJson(res, 200, {
         note: {
           ...normalizeNote(page),
@@ -207,6 +211,7 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 404, { error: "Not Found" });
   } catch (error) {
     const status = Number(error?.statusCode || 500);
+    console.error(`[api] ${req.method || "GET"} ${req.url || "/"} status=${status}`, error instanceof Error ? error.message : error);
     sendJson(res, status, { error: error instanceof Error ? error.message : "Unknown error" });
   }
 });
