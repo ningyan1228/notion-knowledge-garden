@@ -2948,14 +2948,13 @@ function createCard(note) {
 }
 
 async function openDetail(note) {
-  const requestId = state.detailRequestId + 1;
-  state.detailRequestId = requestId;
+  const key = detailNoteKey(note);
   openPanel();
   renderDetail({ ...note, content: note.content?.length ? note.content : loadingBlocks() });
 
   let settled = false;
   const fallbackTimer = window.setTimeout(() => {
-    if (settled || state.detailRequestId !== requestId) return;
+    if (settled || !isShowingDetail(note)) return;
     renderDetail({
       ...note,
       content: detailUnavailableBlocks(new Error("详情服务响应超时，请稍后重试。"))
@@ -2963,19 +2962,34 @@ async function openDetail(note) {
   }, 9000);
 
   try {
-    const key = note.slug || note.id;
-    const detail = state.detailCache.get(key) || await fetchDetail(key);
-    if (state.detailRequestId !== requestId) return;
+    const detail = await fetchDetail(key);
+    if (!isShowingDetail(note)) return;
+    if (!detail?.note) throw new Error("详情服务未返回笔记内容。");
+    const loadedNote = {
+      ...note,
+      ...detail.note,
+      content: Array.isArray(detail.note.content) ? detail.note.content : [],
+      tags: Array.isArray(detail.note.tags) ? detail.note.tags : (note.tags || [])
+    };
     state.detailCache.set(key, detail);
-    renderDetail({ ...note, ...detail.note });
+    renderDetail(loadedNote);
   } catch (error) {
-    if (state.detailRequestId !== requestId) return;
+    if (!isShowingDetail(note)) return;
     const content = note.content?.length ? note.content : detailUnavailableBlocks(error);
     renderDetail({ ...note, content });
   } finally {
     settled = true;
     window.clearTimeout(fallbackTimer);
   }
+}
+
+function detailNoteKey(note) {
+  return String(note?.slug || note?.id || "").trim();
+}
+
+function isShowingDetail(note) {
+  return elements.detailPanel?.getAttribute("aria-hidden") === "false"
+    && detailNoteKey(state.currentDetailNote) === detailNoteKey(note);
 }
 
 async function fetchDetail(key) {
