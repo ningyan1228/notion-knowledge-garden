@@ -5994,3 +5994,188 @@ body[data-app-view="calendar"] .calendar-head h2 { font-size: 32px; font-weight:
 .calendar-day.is-selected { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .calendar-day.has-record::after { background: var(--accent); }
 @media (max-width: 920px) { .calendar-workspace { grid-template-columns: 1fr; } .calendar-detail-panel { min-height: 0; } }
+
+/*
+ * Stability pass (2026-07-12)
+ * This deliberately closes conflicts left by earlier dashboard experiments.
+ * Primary page layout must stay in normal grid flow: no overlapping cards,
+ * no clipped copy, and no height-based hiding of real content.
+ */
+body[data-app-view="today"] .garden-workbench {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(520px, 1.28fr) !important;
+  grid-template-areas:
+    "feature focus"
+    "daily focus"
+    "timeline timeline" !important;
+  grid-auto-flow: row !important;
+  gap: 20px !important;
+  align-items: start !important;
+  min-width: 0;
+}
+
+body[data-app-view="today"] .garden-workbench > .module-card {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+  height: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+
+body[data-app-view="today"] .module-feature {
+  grid-area: feature !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  min-height: 196px !important;
+}
+
+body[data-app-view="today"] .module-feature > div { width: 100%; min-width: 0; }
+body[data-app-view="today"] .module-feature .button { align-self: flex-start; }
+
+body[data-app-view="today"] .module-daily {
+  grid-area: daily !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+body[data-app-view="today"] .module-focus {
+  grid-area: focus !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  min-height: 100% !important;
+}
+
+body[data-app-view="today"] .module-timeline {
+  grid-area: timeline !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+body[data-app-view="today"] .timeline-list {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  overflow: visible !important;
+}
+
+body[data-app-view="today"] .timeline-item,
+body[data-app-view="today"] .focus-item,
+body[data-app-view="today"] .focus-column {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Growth view: an early dark-hero rule leaked white copy onto a light surface. */
+body[data-app-view="growth"] .growth-map {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: 100%;
+  min-width: 0;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body[data-app-view="growth"] .growth-intro {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.8fr) !important;
+  gap: 20px !important;
+  align-items: center !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 24px !important;
+  color: var(--text-primary) !important;
+  background: linear-gradient(120deg, rgba(48, 164, 108, 0.09), rgba(255, 255, 255, 0.96) 44%) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+body[data-app-view="growth"] .growth-intro *,
+body[data-app-view="growth"] .growth-intro-copy,
+body[data-app-view="growth"] .growth-intro h2,
+body[data-app-view="growth"] .growth-intro p {
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+
+body[data-app-view="growth"] .growth-intro span {
+  color: var(--accent) !important;
+  border-color: rgba(0, 122, 255, 0.16) !important;
+  background: rgba(0, 122, 255, 0.07) !important;
+}
+
+body[data-app-view="growth"] .growth-intro h2 {
+  color: var(--text-primary) !important;
+  white-space: normal !important;
+}
+
+body[data-app-view="growth"] .growth-intro h2 strong { color: var(--success) !important; }
+body[data-app-view="growth"] .growth-intro p { color: var(--text-secondary) !important; }
+
+/* Do not depend on theme-token inheritance inside the pale growth banner. */
+body[data-app-view="growth"] .growth-intro,
+body[data-app-view="growth"] .growth-intro-copy {
+  color: #1d1d1f !important;
+  text-shadow: none !important;
+}
+
+body[data-app-view="growth"] .growth-intro h2 {
+  color: #1d1d1f !important;
+}
+
+body[data-app-view="growth"] .growth-intro h2 strong {
+  color: #248a62 !important;
+}
+
+body[data-app-view="growth"] .growth-intro p {
+  color: #6e6e73 !important;
+}
+
+body[data-app-view="growth"] .growth-intro::before,
+body[data-app-view="growth"] .growth-intro::after {
+  display: none !important;
+  content: none !important;
+}
+
+body[data-app-view="growth"] .growth-stats,
+body[data-app-view="growth"] .heatmap-shell { min-width: 0; }
+
+body[data-app-view="growth"] .heatmap-months { min-width: 0; overflow-x: auto; }
+
+/* Preserve the current graph, but keep its canvas and inspector in one stable flow. */
+body[data-app-view="graph"] .graph-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 280px !important;
+  gap: 18px !important;
+  min-width: 0;
+  min-height: 700px;
+  height: auto !important;
+}
+
+body[data-app-view="graph"] .graph-stage,
+body[data-app-view="graph"] .graph-insight-card { min-width: 0; min-height: 0; }
+body[data-app-view="graph"] .graph-insight-card { padding-bottom: 78px; }
+
+/* Hover is intentionally quieter than selection, matching native sidebar behaviour. */
+.mac-nav a:not(.is-active) { background: transparent !important; box-shadow: none !important; }
+.mac-nav a:not(.is-active):hover { color: var(--text-primary) !important; background: rgba(60, 60, 67, 0.06) !important; }
+.mac-nav a.is-active { color: var(--accent) !important; background: rgba(0, 122, 255, 0.12) !important; box-shadow: none !important; }
+
+@media (max-width: 1180px) {
+  body[data-app-view="today"] .garden-workbench {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: "feature" "daily" "focus" "timeline" !important;
+  }
+  body[data-app-view="today"] .module-focus { min-height: 0 !important; }
+  body[data-app-view="growth"] .growth-intro { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 1040px) {
+  body[data-app-view="graph"] .graph-workspace { grid-template-columns: 1fr !important; min-height: 0; }
+}
