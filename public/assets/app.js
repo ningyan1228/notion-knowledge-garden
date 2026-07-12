@@ -1808,23 +1808,23 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
           gravity: 0.055
         },
         lineStyle: {
-          color: "rgba(214, 235, 226, 0.42)",
+          color: "rgba(138, 156, 174, 0.44)",
           width: 1.2,
           curveness: 0.08
         },
         label: {
           show: true,
-          color: "#f7fbf7",
+          color: "#2f3742",
           fontWeight: 700,
           fontSize: 13,
-          textBorderColor: "rgba(11, 31, 36, 0.72)",
-          textBorderWidth: 3,
+          textBorderColor: "rgba(255, 255, 255, 0.94)",
+          textBorderWidth: 4,
           formatter: "{b}"
         },
         labelLayout: { hideOverlap: true },
         emphasis: {
           focus: "adjacency",
-          lineStyle: { width: 2.5, color: "#b9e8d8" }
+          lineStyle: { width: 2.5, color: "#0a84ff" }
         },
         data: graph.nodes,
         links: graph.links
@@ -1940,7 +1940,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
     value: "root",
     symbolSize: 58,
     tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: { color: "#31a17d", shadowBlur: 18, shadowColor: "rgba(49, 161, 125, 0.45)" },
+    itemStyle: { color: "#0a84ff", shadowBlur: 14, shadowColor: "rgba(10, 132, 255, 0.28)" },
     label: { fontSize: 15 }
   });
 
@@ -1956,7 +1956,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       value: category,
       symbolSize: 38 + Math.min((categoryCounts[category] || 1) * 4, 18),
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
-      itemStyle: { color: "#c68a3a" },
+      itemStyle: { color: "#ff9f0a" },
       label: { show: true, fontSize: 13, fontWeight: 800, textBorderWidth: 3 }
     });
     addLink("root", categoryId);
@@ -1968,20 +1968,20 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
       noteId: note.id,
       symbolSize: note.pinned ? 30 : 21,
       tooltip: `笔记：${note.title}`,
-      itemStyle: { color: note.pinned ? "#f0d39d" : "#dce8e4" },
+      itemStyle: { color: note.pinned ? "#ffcc66" : "#e5e5ea" },
       label: {
         show: true,
         position: "bottom",
         distance: 7,
-        color: "#ffffff",
+        color: "#30343b",
         fontSize: 11,
         fontWeight: 800,
-        backgroundColor: "rgba(9, 30, 36, 0.78)",
+        backgroundColor: "rgba(255, 255, 255, 0.92)",
         borderRadius: 6,
         padding: [3, 5],
         textBorderWidth: 0
       },
-      emphasis: { label: { show: true, color: "#ffffff", fontSize: 12, backgroundColor: "rgba(3, 19, 24, 0.94)" } }
+      emphasis: { label: { show: true, color: "#1f252d", fontSize: 12, backgroundColor: "rgba(255, 255, 255, 0.98)" } }
     });
     addLink(categoryId, noteId);
 
@@ -1993,7 +1993,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
         value: tag,
         symbolSize: 24 + Math.min((tagCounts[tag] || 1) * 3, 14),
         tooltip: `标签：${tag} / ${tagCounts[tag] || 1} 次`,
-        itemStyle: { color: "#6f9fd2" },
+        itemStyle: { color: "#5e5ce6" },
         label: { show: true, fontSize: 12, fontWeight: 800, textBorderWidth: 3 }
       });
       addLink(categoryId, tagId);

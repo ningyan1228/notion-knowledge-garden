@@ -5505,3 +5505,112 @@ body[data-app-view="folders"] .finder-window { min-height: calc(100vh - 208px); 
   .finder-open-notes { padding: 0 8px; font-size: 11px; }
   .finder-folder-large { transform: scale(.83); margin-bottom: -5px; }
 }
+
+/* macOS visual system: one quiet material palette across sidebar, toolbar and canvas. */
+:root {
+  --mac-blue: #0a84ff;
+  --mac-green: #30d158;
+  --mac-ink: #1d1d1f;
+  --mac-secondary: #6e6e73;
+  --mac-separator: rgba(60, 60, 67, .18);
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(10,132,255,.10), transparent 26%),
+    radial-gradient(circle at 96% 3%, rgba(255,159,10,.10), transparent 24%),
+    #f5f5f7;
+  color: var(--mac-ink);
+}
+body::before { display: none; }
+
+.page-shell { width: min(1540px, calc(100% - 32px)); padding: 24px 0 32px; }
+.mac-app-shell {
+  grid-template-columns: 258px minmax(0, 1fr);
+  min-height: calc(100vh - 56px);
+  border-color: rgba(60,60,67,.12);
+  border-radius: 18px;
+  background: rgba(255,255,255,.74);
+  box-shadow: 0 24px 70px rgba(18, 22, 30, .12), inset 0 1px 0 rgba(255,255,255,.86);
+  backdrop-filter: blur(34px) saturate(1.25);
+}
+.mac-sidebar {
+  height: calc(100vh - 56px);
+  min-height: 680px;
+  padding: 18px 14px;
+  gap: 15px;
+  border-right-color: var(--mac-separator);
+  background: linear-gradient(180deg, rgba(244,244,247,.94), rgba(235,236,240,.86));
+}
+.mac-window-dots { gap: 8px; padding-left: 5px; }
+.mac-dot { width: 12px; height: 12px; }
+.mac-sidebar-brand {
+  margin-top: 6px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255,255,255,.68);
+  border-radius: 12px;
+  background: rgba(255,255,255,.46);
+  box-shadow: none;
+}
+.mac-sidebar-brand span { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0a84ff, #30d158); }
+.mac-sidebar-brand strong { font-size: 16px; letter-spacing: -.02em; }
+.mac-nav { gap: 2px; padding: 4px 0; }
+.mac-nav a { min-height: 34px; display: flex; align-items: center; padding: 0 11px; border-radius: 7px; color: #3a3a3c; font-size: 14px; font-weight: 650; }
+.mac-nav a:hover { background: rgba(60,60,67,.08); }
+.mac-nav a.is-active { color: #075fba; background: rgba(10,132,255,.17); box-shadow: none; }
+
+.sidebar-write-button { min-height: 38px; border-radius: 8px; background: #0a84ff; box-shadow: 0 4px 12px rgba(10,132,255,.24), inset 0 1px 0 rgba(255,255,255,.22); }
+.sidebar-write-button:hover { transform: none; background: #0077ed; box-shadow: 0 5px 14px rgba(10,132,255,.28), inset 0 1px 0 rgba(255,255,255,.22); }
+.sidebar-diary-button { min-height: 36px; margin-top: -7px; border-color: rgba(10,132,255,.19); border-radius: 8px; color: #0563bd; background: rgba(255,255,255,.56); box-shadow: none; }
+.mac-sidebar-card { border-color: rgba(60,60,67,.12); border-radius: 12px; padding: 13px; background: rgba(255,255,255,.52); box-shadow: none; }
+
+.mac-main { padding: 18px; }
+.topbar { min-height: 46px; margin-bottom: 14px; padding: 0 16px; border: 1px solid rgba(60,60,67,.10); border-radius: 12px; background: rgba(255,255,255,.76); box-shadow: none; }
+.brand-mark { color: #1d1d1f; font-size: 15px; }
+.topbar span { color: #6e6e73; font-size: 12px; }
+
+body[data-app-view="graph"] .hero { min-height: calc(100vh - 138px); }
+body[data-app-view="graph"] .hero-visual.graph-panel {
+  min-height: calc(100vh - 138px);
+  height: calc(100vh - 138px);
+  padding: 20px;
+  border: 1px solid rgba(60,60,67,.12);
+  border-radius: 16px;
+  color: #1d1d1f;
+  background:
+    radial-gradient(circle at 86% 8%, rgba(10,132,255,.10), transparent 24%),
+    radial-gradient(circle at 10% 94%, rgba(48,209,88,.08), transparent 26%),
+    rgba(255,255,255,.88);
+  box-shadow: 0 12px 34px rgba(30,35,43,.08);
+}
+.hero-visual.graph-panel::before { display: none; }
+.hero-visual.graph-panel .graph-header { padding: 1px 3px 10px; border-bottom: 1px solid rgba(60,60,67,.12); color: #1d1d1f; }
+.graph-header span { color: #0a84ff; font-size: 11px; letter-spacing: .08em; }
+.graph-header strong { color: #1d1d1f; font-size: 24px; letter-spacing: -.04em; }
+.graph-header p { color: #6e6e73; font-size: 12px; }
+.hero-visual.graph-panel .graph-tools button { min-height: 28px; border-color: rgba(60,60,67,.16); border-radius: 7px; color: #3a3a3c; background: rgba(118,118,128,.08); font-weight: 700; }
+.hero-visual.graph-panel .graph-tools button:hover { background: rgba(10,132,255,.12); color: #0563bd; }
+.hero-visual.graph-panel .knowledge-graph {
+  margin-top: 14px;
+  border-color: rgba(60,60,67,.12);
+  border-radius: 12px;
+  background:
+    linear-gradient(rgba(60,60,67,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(60,60,67,.035) 1px, transparent 1px),
+    rgba(250,250,252,.86);
+  background-size: 24px 24px, 24px 24px, auto;
+}
+.hero-visual.graph-panel .graph-legend { padding: 9px 3px 0; color: #6e6e73; font-size: 11px; }
+.hero-visual.graph-panel .legend-root { background: #0a84ff; }
+.hero-visual.graph-panel .legend-topic { background: #ff9f0a; }
+.hero-visual.graph-panel .legend-tag { background: #5e5ce6; }
+.hero-visual.graph-panel .legend-note { background: #a1a1a6; }
+
+body.graph-open .graph-fullscreen { inset: 22px; border-radius: 16px; box-shadow: 0 28px 90px rgba(25,30,40,.22); }
+
+@media (max-width: 880px) {
+  .page-shell { width: min(100% - 18px, 1540px); padding-top: 9px; }
+  .mac-app-shell { grid-template-columns: 212px minmax(0, 1fr); border-radius: 14px; }
+  .mac-sidebar { padding: 14px 10px; }
+  .mac-main { padding: 12px; }
+}

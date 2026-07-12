@@ -3,6 +3,7 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
 const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
+const BUILD_ID = "2026-07-11-detail-loading-fix";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
 const NOTION_REQUEST_TIMEOUT_MS = Number(process.env.NOTION_REQUEST_TIMEOUT_MS || 15000);
@@ -58,6 +59,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: SERVICE_NAME,
+        build: BUILD_ID,
         authMode: SITE_USERS.length ? "users" : "site-password",
         time: new Date().toISOString()
       });
