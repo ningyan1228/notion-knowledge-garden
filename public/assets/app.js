@@ -2954,7 +2954,7 @@ async function openDetail(note) {
 
   let settled = false;
   const fallbackTimer = window.setTimeout(() => {
-    if (settled || !isShowingDetail(note)) return;
+    if (settled || elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
     renderDetail({
       ...note,
       content: detailUnavailableBlocks(new Error("详情服务响应超时，请稍后重试。"))
@@ -2963,7 +2963,7 @@ async function openDetail(note) {
 
   try {
     const detail = await fetchDetail(key);
-    if (!isShowingDetail(note)) return;
+    if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
     if (!detail?.note) throw new Error("详情服务未返回笔记内容。");
     const loadedNote = {
       ...note,
@@ -2972,9 +2972,10 @@ async function openDetail(note) {
       tags: Array.isArray(detail.note.tags) ? detail.note.tags : (note.tags || [])
     };
     state.detailCache.set(key, detail);
+    renderDetailContent(loadedNote.content);
     renderDetail(loadedNote);
   } catch (error) {
-    if (!isShowingDetail(note)) return;
+    if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") return;
     const content = note.content?.length ? note.content : detailUnavailableBlocks(error);
     renderDetail({ ...note, content });
   } finally {
@@ -3030,7 +3031,7 @@ function renderDetail(note) {
   if (elements.detailAuthor) elements.detailAuthor.textContent = `作者 · ${noteAuthorLabel(note)}`;
   if (elements.detailReadingTime) elements.detailReadingTime.textContent = `${estimateReadingMinutes(note)} 分钟阅读`;
   renderTags(elements.detailTags, note.tags || []);
-  const headings = renderBlocks(elements.detailContent, note.content || []);
+  const headings = renderDetailContent(note.content);
   renderToc(headings);
   observeDetailHeadings();
   renderRelatedNotes(note);
@@ -3279,6 +3280,21 @@ function renderBlocks(container, blocks) {
   }
 
   return headings;
+}
+
+function renderDetailContent(blocks) {
+  const safeBlocks = Array.isArray(blocks) ? blocks : [];
+  try {
+    return renderBlocks(elements.detailContent, safeBlocks);
+  } catch (error) {
+    console.error("[detail] render failed", error);
+    if (!elements.detailContent) return [];
+    elements.detailContent.replaceChildren();
+    const fallback = document.createElement("p");
+    fallback.textContent = safeBlocks.map((block) => block?.text || block?.caption || "").filter(Boolean).join("\n") || "正文已读取，但暂时无法排版。";
+    elements.detailContent.append(fallback);
+    return [];
+  }
 }
 
 function renderBlock(block, headings = [], index = 0) {
