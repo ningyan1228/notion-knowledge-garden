@@ -21,6 +21,7 @@ const state = {
   notes: [],
   detailCache: new Map(),
   currentDetailNote: null,
+  detailRequestId: 0,
   editingNote: null,
   query: "",
   scope: "all",
@@ -2947,17 +2948,33 @@ function createCard(note) {
 }
 
 async function openDetail(note) {
+  const requestId = state.detailRequestId + 1;
+  state.detailRequestId = requestId;
   openPanel();
   renderDetail({ ...note, content: note.content?.length ? note.content : loadingBlocks() });
+
+  let settled = false;
+  const fallbackTimer = window.setTimeout(() => {
+    if (settled || state.detailRequestId !== requestId) return;
+    renderDetail({
+      ...note,
+      content: detailUnavailableBlocks(new Error("详情服务响应超时，请稍后重试。"))
+    });
+  }, 9000);
 
   try {
     const key = note.slug || note.id;
     const detail = state.detailCache.get(key) || await fetchDetail(key);
+    if (state.detailRequestId !== requestId) return;
     state.detailCache.set(key, detail);
     renderDetail({ ...note, ...detail.note });
   } catch (error) {
-    const content = note.content?.length ? note.content : sampleContent(note, error);
+    if (state.detailRequestId !== requestId) return;
+    const content = note.content?.length ? note.content : detailUnavailableBlocks(error);
     renderDetail({ ...note, content });
+  } finally {
+    settled = true;
+    window.clearTimeout(fallbackTimer);
   }
 }
 
@@ -3493,6 +3510,7 @@ function openPanel() {
 }
 
 function closeDetail() {
+  state.detailRequestId += 1;
   elements.detailPanel.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
   detailHeadingObserver?.disconnect();
@@ -3508,6 +3526,15 @@ function sampleContent(note, error) {
     { type: "paragraph", text: note.summary || "这里会显示 Notion 页面正文。" },
     { type: "quote", text: "只有 Published 勾选的笔记会出现在网站中。" },
     { type: "paragraph", text: error instanceof Error ? `详情 API 暂不可用：${error.message}` : "详情 API 暂不可用。" }
+  ];
+}
+
+function detailUnavailableBlocks(error) {
+  const message = error instanceof Error ? error.message : "详情服务暂时不可用。";
+  return [
+    { type: "heading_2", text: "正文暂时无法读取" },
+    { type: "paragraph", text: "笔记的标题、摘要和归档信息仍然可用。请关闭详情后重试；若持续出现此提示，说明 Notion 详情代理需要重启或检查。" },
+    { type: "quote", text: `读取结果：${message}` }
   ];
 }
 

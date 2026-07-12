@@ -3,10 +3,11 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
 const SERVICE_NAME = process.env.SERVICE_NAME || "knowledge-garden-proxy";
-const BUILD_ID = "2026-07-11-detail-loading-fix";
+const BUILD_ID = "2026-07-12-detail-timeout-fix";
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
 const NOTION_REQUEST_TIMEOUT_MS = Number(process.env.NOTION_REQUEST_TIMEOUT_MS || 15000);
+const DETAIL_REQUEST_TIMEOUT_MS = Number(process.env.DETAIL_REQUEST_TIMEOUT_MS || 10000);
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || "https://ningyan1228.github.io,https://notes.101921.xyz,http://127.0.0.1:4173,http://localhost:4173")
     .split(",")
@@ -179,13 +180,21 @@ const server = http.createServer(async (req, res) => {
       }
 
       const key = decodeURIComponent(detailMatch[1]);
-      const page = await findPage(key);
+      const page = await withTimeout(
+        findPage(key),
+        DETAIL_REQUEST_TIMEOUT_MS,
+        "读取笔记信息超时，请稍后重试。"
+      );
       if (!page || !canReadPage(page, user)) {
         sendJson(res, 404, { error: "Note not found" });
         return;
       }
 
-      const blocks = await listBlocks(page.id);
+      const blocks = await withTimeout(
+        listBlocks(page.id),
+        DETAIL_REQUEST_TIMEOUT_MS,
+        "读取笔记正文超时，请稍后重试。"
+      );
       sendJson(res, 200, {
         note: {
           ...normalizeNote(page),
@@ -832,6 +841,18 @@ async function notionRequest(path, method, body) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(message);
+      error.statusCode = 504;
+      reject(error);
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function queryPath() {
