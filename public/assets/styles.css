@@ -5614,3 +5614,48 @@ body.graph-open .graph-fullscreen { inset: 22px; border-radius: 16px; box-shadow
   .mac-sidebar { padding: 14px 10px; }
   .mac-main { padding: 12px; }
 }
+
+/* Final Finder pass: reduce web-card nesting and introduce a genuine native sidebar language. */
+body { background: #eef1f5; }
+.page-shell { width: min(1620px, calc(100% - 28px)); padding: 30px 0; }
+.mac-app-shell { min-height: calc(100vh - 60px); border-radius: 15px; background: rgba(255,255,255,.82); box-shadow: 0 32px 100px rgba(25,34,48,.14), 0 2px 4px rgba(20,28,40,.05); }
+.mac-sidebar { height: calc(100vh - 60px); padding: 19px 13px; background: linear-gradient(180deg, #f5f6f8 0%, #eef0f3 100%); }
+.mac-sidebar-brand { margin: 5px 4px 9px; padding: 8px 7px; border: 0; background: transparent; }
+.mac-sidebar-brand span { width: 35px; height: 35px; border-radius: 9px; box-shadow: 0 4px 12px rgba(10,132,255,.22); }
+.mac-sidebar-brand strong { font-size: 15px; font-weight: 750; }
+.mac-nav { padding: 0 3px; gap: 1px; }
+.mac-nav a { position: relative; min-height: 36px; gap: 10px; padding: 0 9px; border-radius: 7px; color: #3e4147; font-weight: 600; }
+.mac-nav a::before { content: ""; width: 16px; height: 16px; flex: 0 0 auto; box-sizing: border-box; color: #7b838e; }
+.mac-nav a:hover::before,
+.mac-nav a.is-active::before { color: #0877e8; }
+.mac-nav a[data-nav-icon="today"]::before { border: 1.7px solid currentColor; border-radius: 4px; background: linear-gradient(currentColor,currentColor) 3px 4px/8px 1.5px no-repeat, linear-gradient(currentColor,currentColor) 3px 8px/6px 1.5px no-repeat; }
+.mac-nav a[data-nav-icon="notes"]::before { border: 1.7px solid currentColor; border-radius: 3px; background: linear-gradient(currentColor,currentColor) 3px 4px/8px 1.4px no-repeat, linear-gradient(currentColor,currentColor) 3px 8px/8px 1.4px no-repeat, linear-gradient(currentColor,currentColor) 3px 12px/5px 1.4px no-repeat; }
+.mac-nav a[data-nav-icon="folders"]::before { height: 12px; margin-top: 3px; border-radius: 3px; background: currentColor; box-shadow: inset 0 2px 0 rgba(255,255,255,.32); }
+.mac-nav a[data-nav-icon="folders"]::before { clip-path: polygon(0 18%, 40% 18%, 48% 0, 70% 0, 76% 18%, 100% 18%, 100% 100%, 0 100%); }
+.mac-nav a[data-nav-icon="diaries"]::before { border: 1.7px solid currentColor; border-radius: 3px; background: linear-gradient(90deg, transparent 47%, currentColor 48% 54%, transparent 55%); }
+.mac-nav a[data-nav-icon="calendar"]::before { border: 1.7px solid currentColor; border-radius: 4px; background: linear-gradient(currentColor,currentColor) 0 4px/100% 1.7px no-repeat; }
+.mac-nav a[data-nav-icon="growth"]::before { border-bottom: 1.7px solid currentColor; background: linear-gradient(currentColor,currentColor) 1px 10px/3px 5px no-repeat, linear-gradient(currentColor,currentColor) 6px 6px/3px 9px no-repeat, linear-gradient(currentColor,currentColor) 11px 2px/3px 13px no-repeat; }
+.mac-nav a[data-nav-icon="graph"]::before { border-radius: 50%; background: radial-gradient(circle at 20% 28%, currentColor 0 2px, transparent 2.6px), radial-gradient(circle at 78% 23%, currentColor 0 2px, transparent 2.6px), radial-gradient(circle at 50% 76%, currentColor 0 2.5px, transparent 3px), linear-gradient(31deg, transparent 45%, currentColor 47% 52%, transparent 54%); }
+.mac-nav a.is-active { color: #076bcf; background: linear-gradient(180deg, rgba(10,132,255,.20), rgba(10,132,255,.13)); }
+.mac-sidebar-card { margin: auto 4px 0; padding: 12px; border-radius: 10px; background: rgba(255,255,255,.64); }
+
+.mac-main { padding: 0 24px 24px; }
+.topbar { min-height: 56px; margin: 0 -24px 0; padding: 0 24px; border: 0; border-bottom: 1px solid rgba(60,60,67,.12); border-radius: 0; background: rgba(255,255,255,.66); backdrop-filter: blur(28px); }
+.topbar .brand-mark { font-size: 16px; font-weight: 760; letter-spacing: -.02em; }
+
+body[data-app-view="graph"] .hero { min-height: calc(100vh - 116px); }
+body[data-app-view="graph"] .hero-visual.graph-panel { min-height: calc(100vh - 116px); height: calc(100vh - 116px); padding: 0; overflow: hidden; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.hero-visual.graph-panel .graph-header { min-height: 92px; padding: 22px 6px 14px; border-bottom-color: rgba(60,60,67,.12); }
+.graph-header strong { margin-top: 3px; font-size: 28px; font-weight: 760; }
+.hero-visual.graph-panel .graph-tools { align-self: center; gap: 6px; }
+.hero-visual.graph-panel .graph-tools p { position: absolute; top: 63px; left: 6px; color: #86868b; font-size: 12px; }
+.hero-visual.graph-panel .graph-tools button { min-height: 30px; padding: 0 11px; border-color: rgba(60,60,67,.14); border-radius: 8px; background: rgba(118,118,128,.10); }
+.hero-visual.graph-panel .knowledge-graph { flex: 1 1 auto; height: auto; min-height: 0; margin: 18px 0 0; border: 1px solid rgba(60,60,67,.10); border-radius: 12px; background: radial-gradient(circle at 50% 46%, rgba(10,132,255,.065), transparent 34%), radial-gradient(circle, rgba(142,142,147,.2) 1px, transparent 1.5px); background-size: auto, 18px 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.82); }
+.hero-visual.graph-panel .graph-legend { min-height: 48px; display: flex; align-items: center; padding: 0 6px; }
+
+@media (max-width: 880px) {
+  .page-shell { width: calc(100% - 14px); padding: 7px 0; }
+  .mac-main { padding: 0 14px 14px; }
+  .topbar { margin: 0 -14px; padding: 0 14px; }
+  .mac-nav a::before { display: none; }
+}
