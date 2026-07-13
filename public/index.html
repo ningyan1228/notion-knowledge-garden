@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>朝夕拾光</title>
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
+    <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/svg+xml" href="assets/note-favicon.svg" />
-    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260713-share-export" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-      <script defer src="assets/app.js?v=20260713-detail-panel-state-fix"></script>
+      <script defer src="assets/app.js?v=20260713-share-export"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -45,6 +46,10 @@
           <button class="sidebar-diary-button" id="sidebarDiaryButton" type="button">
             <span aria-hidden="true">☾</span>
             写日记
+          </button>
+          <button class="sidebar-refresh-button" id="sidebarRefreshButton" type="button" title="刷新当前页面">
+            <span aria-hidden="true">↻</span>
+            刷新页面
           </button>
           <div class="mac-sidebar-card">
             <span class="account-avatar" aria-hidden="true">朝</span>
@@ -457,6 +462,21 @@
       </div>
     </main>
 
+    <main class="shared-note-view" id="sharedNoteView" hidden aria-live="polite">
+      <header class="shared-note-header">
+        <a class="shared-note-brand" href="./">朝夕拾光</a>
+        <span>受保护的笔记分享</span>
+      </header>
+      <article class="shared-note-card">
+        <p class="shared-note-meta" id="sharedNoteMeta">正在打开分享笔记…</p>
+        <h1 id="sharedNoteTitle"></h1>
+        <p class="shared-note-summary" id="sharedNoteSummary"></p>
+        <div class="tag-row" id="sharedNoteTags"></div>
+        <div class="shared-note-content article-content" id="sharedNoteContent"></div>
+        <p class="shared-note-error" id="sharedNoteError" hidden></p>
+      </article>
+    </main>
+
     <aside class="site-lock" id="siteLock" aria-hidden="true">
       <div class="site-lock-backdrop"></div>
       <form class="site-lock-card" id="sitePasswordForm" autocomplete="off">
@@ -672,6 +692,26 @@
             <div class="article-content" id="detailContent"></div>
           </main>
           <aside class="detail-sidebar" aria-label="阅读辅助">
+            <section class="reader-widget" id="detailExportWidget">
+              <span>导出</span>
+              <div class="detail-export-actions">
+                <button type="button" id="detailExportMarkdown">导出 .md</button>
+                <button type="button" id="detailExportPdf">导出 PDF</button>
+              </div>
+            </section>
+            <section class="reader-widget" id="detailShareWidget">
+              <span>分享</span>
+              <p class="detail-share-help">创建后，持有链接的人无需登录即可阅读这篇笔记。</p>
+              <div class="detail-share-actions">
+                <button type="button" id="detailShareButton">创建并复制链接</button>
+                <button type="button" id="detailDisableShareButton" hidden>关闭分享</button>
+              </div>
+              <div class="detail-share-link" id="detailShareLinkWrap" hidden>
+                <input id="detailShareLink" type="text" readonly aria-label="分享链接" />
+                <button type="button" id="detailCopyShareButton">复制</button>
+              </div>
+              <p class="detail-share-status" id="detailShareStatus" aria-live="polite" hidden></p>
+            </section>
             <section class="reader-widget">
               <button class="button ghost detail-favorite-button" id="detailFavoriteButton" type="button">☆ 收藏笔记</button>
             </section>

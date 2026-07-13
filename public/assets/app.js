@@ -246,6 +246,16 @@ const elements = {
   detailCard: document.querySelector(".detail-card"),
   readingProgress: document.querySelector("#readingProgress"),
   detailEditButton: document.querySelector("#detailEditButton"),
+  detailExportWidget: document.querySelector("#detailExportWidget"),
+  detailExportMarkdown: document.querySelector("#detailExportMarkdown"),
+  detailExportPdf: document.querySelector("#detailExportPdf"),
+  detailShareWidget: document.querySelector("#detailShareWidget"),
+  detailShareButton: document.querySelector("#detailShareButton"),
+  detailDisableShareButton: document.querySelector("#detailDisableShareButton"),
+  detailShareLinkWrap: document.querySelector("#detailShareLinkWrap"),
+  detailShareLink: document.querySelector("#detailShareLink"),
+  detailCopyShareButton: document.querySelector("#detailCopyShareButton"),
+  detailShareStatus: document.querySelector("#detailShareStatus"),
   detailFavoriteButton: document.querySelector("#detailFavoriteButton"),
   detailFolderWidget: document.querySelector("#detailFolderWidget"),
   detailFolderInput: document.querySelector("#detailFolderInput"),
@@ -262,7 +272,14 @@ const elements = {
   sitePasswordRemember: document.querySelector("#sitePasswordRemember"),
   sitePasswordError: document.querySelector("#sitePasswordError"),
   currentUserLabel: document.querySelector("#currentUserLabel"),
-  logoutButton: document.querySelector("#logoutButton")
+  logoutButton: document.querySelector("#logoutButton"),
+  sharedNoteView: document.querySelector("#sharedNoteView"),
+  sharedNoteMeta: document.querySelector("#sharedNoteMeta"),
+  sharedNoteTitle: document.querySelector("#sharedNoteTitle"),
+  sharedNoteSummary: document.querySelector("#sharedNoteSummary"),
+  sharedNoteTags: document.querySelector("#sharedNoteTags"),
+  sharedNoteContent: document.querySelector("#sharedNoteContent"),
+  sharedNoteError: document.querySelector("#sharedNoteError")
 };
 
 let knowledgeChart = null;
@@ -526,6 +543,11 @@ elements.detailFavoriteButton?.addEventListener("click", () => {
   if (state.currentDetailNote) toggleFavorite(state.currentDetailNote);
 });
 elements.detailFolderSaveButton?.addEventListener("click", moveCurrentDetailToFolder);
+elements.detailExportMarkdown?.addEventListener("click", exportCurrentNoteMarkdown);
+elements.detailExportPdf?.addEventListener("click", exportCurrentNotePdf);
+elements.detailShareButton?.addEventListener("click", createCurrentNoteShare);
+elements.detailDisableShareButton?.addEventListener("click", disableCurrentNoteShare);
+elements.detailCopyShareButton?.addEventListener("click", copyCurrentShareLink);
 
 document.querySelectorAll("[data-close-detail]").forEach((node) => {
   node.addEventListener("click", closeDetail);
@@ -561,6 +583,7 @@ window.addEventListener("resize", () => {
 
 function bootSite() {
   updateCurrentUserLabel();
+  if (openSharedNoteFromLocation()) return;
   if (authToken) {
     hideSiteLock();
     loadNotes();
@@ -1431,6 +1454,8 @@ function normalizeNotes(notes) {
     userId: String(note.userId || ""),
     folder: String(note.folder || "").trim(),
     favorite: Boolean(note.favorite),
+    shareEnabled: Boolean(note.shareEnabled),
+    shareExpiresAt: String(note.shareExpiresAt || ""),
     visibility: String(note.visibility || ""),
     published: Boolean(note.published),
     pinned: Boolean(note.pinned),
@@ -3021,6 +3046,257 @@ async function fetchDetail(key) {
   }
 }
 
+function exportCurrentNoteMarkdown() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note)) return;
+  downloadTextFile(`${safeDownloadName(note.title)}.md`, noteToMarkdown(note), "text/markdown;charset=utf-8");
+}
+
+function exportCurrentNotePdf() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note)) return;
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    setDetailShareStatus("浏览器拦截了打印窗口，请允许弹窗后重试。", "error");
+    return;
+  }
+
+  printWindow.opener = null;
+  printWindow.document.open();
+  printWindow.document.write(buildPrintableNoteHtml(note));
+  printWindow.document.close();
+  window.setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+  }, 350);
+}
+
+function noteToMarkdown(note) {
+  const metadata = [
+    note.type && `- 类型：${note.type}`,
+    note.category && `- 分类：${note.category}`,
+    note.updated && `- 更新：${formatDate(note.updated)}`,
+    note.tags?.length && `- 标签：${note.tags.map((tag) => `#${tag}`).join(" ")}`
+  ].filter(Boolean);
+  const blocks = (note.content || []).map((block) => markdownForBlock(block)).filter(Boolean);
+  return [
+    `# ${note.title || "未命名笔记"}`,
+    note.summary ? `\n> ${note.summary}` : "",
+    metadata.length ? `\n${metadata.join("\n")}` : "",
+    blocks.length ? `\n---\n\n${blocks.join("\n\n")}` : ""
+  ].filter(Boolean).join("\n").replace(/\n{3,}/g, "\n\n") + "\n";
+}
+
+function markdownForBlock(block) {
+  const text = String(block?.text || "").trim();
+  if (block?.type === "image") return block.url ? `![${block.caption || "图片"}](${block.url})` : "";
+  if (block?.type === "divider") return "---";
+  if (!text) return "";
+  if (block.type === "heading_1") return `# ${text}`;
+  if (block.type === "heading_2") return `## ${text}`;
+  if (block.type === "heading_3") return `### ${text}`;
+  if (block.type === "quote" || block.type === "callout") return `> ${text}`;
+  if (block.type === "bulleted_list_item") return `- ${text}`;
+  if (block.type === "numbered_list_item") return `1. ${text}`;
+  if (block.type === "to_do") return `- [${block.checked ? "x" : " "}] ${text}`;
+  if (block.type === "code") return `\`\`\`\n${text}\n\`\`\``;
+  return text;
+}
+
+function safeDownloadName(value) {
+  return String(value || "笔记")
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .trim()
+    .slice(0, 80) || "笔记";
+}
+
+function downloadTextFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function buildPrintableNoteHtml(note) {
+  const metadata = [note.type, note.category, note.updated && formatDate(note.updated)].filter(Boolean).map(escapeHtml).join(" · ");
+  const tags = (note.tags || []).map((tag) => `<span>#${escapeHtml(tag)}</span>`).join("");
+  return `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>${escapeHtml(note.title || "笔记")}</title>
+<style>
+@page { size: A4; margin: 18mm 16mm; }
+* { box-sizing: border-box; }
+body { margin: 0; color: #1d1d1f; font: 11pt/1.8 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+article { max-width: 760px; margin: 0 auto; }
+h1 { margin: 0 0 8px; font-size: 25pt; line-height: 1.25; } h2 { margin: 28px 0 10px; font-size: 17pt; } h3 { margin: 20px 0 8px; font-size: 13pt; }
+.meta, .tags { color: #6e6e73; font-size: 9.5pt; } .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 24px; } .tags span { padding: 2px 7px; border: 1px solid #d9d9de; border-radius: 999px; }
+.summary { margin: 0 0 18px; color: #505057; font-size: 12pt; } p, li { margin: 0 0 10px; } blockquote { margin: 16px 0; padding: 8px 16px; border-left: 3px solid #0a84ff; color: #505057; background: #f7f9fc; } pre { overflow-wrap: anywhere; padding: 12px; border-radius: 8px; background: #f4f4f5; white-space: pre-wrap; } img { display: block; max-width: 100%; max-height: 210mm; margin: 16px auto; border-radius: 8px; } hr { margin: 24px 0; border: 0; border-top: 1px solid #dedee3; }
+</style></head><body><article>
+<h1>${escapeHtml(note.title || "未命名笔记")}</h1><div class="meta">${metadata}</div>${note.summary ? `<p class="summary">${escapeHtml(note.summary)}</p>` : ""}<div class="tags">${tags}</div>
+${printableBlocksHtml(note.content || [])}</article></body></html>`;
+}
+
+function printableBlocksHtml(blocks) {
+  return blocks.map((block) => {
+    const text = escapeHtml(block?.text || "");
+    if (block?.type === "image") return block.url ? `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.caption || "笔记图片")}" referrerpolicy="no-referrer">` : "";
+    if (block?.type === "divider") return "<hr>";
+    if (!text) return "";
+    if (block.type === "heading_1") return `<h2>${text}</h2>`;
+    if (block.type === "heading_2") return `<h2>${text}</h2>`;
+    if (block.type === "heading_3") return `<h3>${text}</h3>`;
+    if (block.type === "quote" || block.type === "callout") return `<blockquote>${text}</blockquote>`;
+    if (block.type === "bulleted_list_item") return `<ul><li>${text}</li></ul>`;
+    if (block.type === "numbered_list_item") return `<ol><li>${text}</li></ol>`;
+    if (block.type === "to_do") return `<p>${block.checked ? "☑" : "☐"} ${text}</p>`;
+    if (block.type === "code") return `<pre><code>${text}</code></pre>`;
+    return `<p>${text.replace(/\n/g, "<br>")}</p>`;
+  }).join("\n");
+}
+
+async function createCurrentNoteShare() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note)) return;
+  const button = elements.detailShareButton;
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(`${apiBase}/api/admin/notes/${encodeURIComponent(detailNoteKey(note))}/share`, {
+      method: "POST",
+      headers: siteHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ expiresInDays: 30 })
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok || !data.shareId || !data.secret) throw new Error(data.error || "创建分享链接失败。");
+    const link = buildShareUrl(data.shareId, data.secret);
+    updateCurrentShareState({ enabled: true, expiresAt: data.expiresAt });
+    if (elements.detailShareLink) elements.detailShareLink.value = link;
+    if (elements.detailShareLinkWrap) elements.detailShareLinkWrap.hidden = false;
+    if (elements.detailDisableShareButton) elements.detailDisableShareButton.hidden = false;
+    if (elements.detailShareButton) elements.detailShareButton.textContent = "重新生成并复制链接";
+    const copied = await copyText(link);
+    setDetailShareStatus(copied ? `分享链接已复制，有效至 ${formatDate(data.expiresAt)}。` : `链接已生成，有效至 ${formatDate(data.expiresAt)}，请手动复制。`);
+  } catch (error) {
+    setDetailShareStatus(error instanceof Error ? error.message : "创建分享链接失败。", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function disableCurrentNoteShare() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note) || !window.confirm("关闭分享后，现有链接将立即失效。是否继续？")) return;
+  const button = elements.detailDisableShareButton;
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(`${apiBase}/api/admin/notes/${encodeURIComponent(detailNoteKey(note))}/share`, {
+      method: "DELETE",
+      headers: siteHeaders()
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || "关闭分享失败。");
+    updateCurrentShareState({ enabled: false, expiresAt: "" });
+    if (elements.detailShareLink) elements.detailShareLink.value = "";
+    if (elements.detailShareLinkWrap) elements.detailShareLinkWrap.hidden = true;
+    if (elements.detailDisableShareButton) elements.detailDisableShareButton.hidden = true;
+    if (elements.detailShareButton) elements.detailShareButton.textContent = "创建并复制链接";
+    setDetailShareStatus("分享已关闭，旧链接已失效。");
+  } catch (error) {
+    setDetailShareStatus(error instanceof Error ? error.message : "关闭分享失败。", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function updateCurrentShareState({ enabled, expiresAt }) {
+  const note = state.currentDetailNote;
+  if (!note) return;
+  note.shareEnabled = Boolean(enabled);
+  note.shareExpiresAt = expiresAt || "";
+  state.notes.forEach((item) => {
+    if (detailNoteKey(item) === detailNoteKey(note)) {
+      item.shareEnabled = note.shareEnabled;
+      item.shareExpiresAt = note.shareExpiresAt;
+    }
+  });
+}
+
+function buildShareUrl(shareId, secret) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("share", `${shareId}.${secret}`);
+  return url.toString();
+}
+
+async function copyCurrentShareLink() {
+  const value = elements.detailShareLink?.value || "";
+  if (!value) return;
+  const copied = await copyText(value);
+  setDetailShareStatus(copied ? "分享链接已复制。" : "复制失败，请手动复制链接。", copied ? "success" : "error");
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+}
+
+function setDetailShareStatus(message, tone = "success") {
+  if (!elements.detailShareStatus) return;
+  elements.detailShareStatus.hidden = false;
+  elements.detailShareStatus.dataset.tone = tone;
+  elements.detailShareStatus.textContent = message;
+}
+
+function openSharedNoteFromLocation() {
+  const value = new URLSearchParams(window.location.search).get("share") || "";
+  const [shareId, secret, extra] = value.split(".");
+  if (!shareId || !secret || extra) return false;
+  document.body.classList.add("is-shared-note");
+  document.querySelector(".page-shell")?.setAttribute("hidden", "");
+  elements.sharedNoteView?.removeAttribute("hidden");
+  hideSiteLock();
+  loadSharedNote(shareId, secret);
+  return true;
+}
+
+async function loadSharedNote(shareId, secret) {
+  try {
+    const response = await fetch(`${apiBase}/api/shared/${encodeURIComponent(shareId)}/${encodeURIComponent(secret)}`, { cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.note) throw new Error(data.error || "分享链接无效或已过期。" );
+    const note = data.note;
+    document.title = `${note.title || "分享笔记"} · 朝夕拾光`;
+    if (elements.sharedNoteTitle) elements.sharedNoteTitle.textContent = note.title || "未命名笔记";
+    if (elements.sharedNoteSummary) elements.sharedNoteSummary.textContent = note.summary || "";
+    if (elements.sharedNoteMeta) elements.sharedNoteMeta.textContent = [note.type, note.category, note.updated && formatDate(note.updated), note.author && `作者 · ${note.author}`].filter(Boolean).join(" · ");
+    renderTags(elements.sharedNoteTags, note.tags || []);
+    renderBlocks(elements.sharedNoteContent, note.content || []);
+  } catch (error) {
+    if (elements.sharedNoteMeta) elements.sharedNoteMeta.textContent = "无法打开分享笔记";
+    if (elements.sharedNoteError) {
+      elements.sharedNoteError.hidden = false;
+      elements.sharedNoteError.textContent = error instanceof Error ? error.message : "分享链接无效或已过期。";
+    }
+  }
+}
+
 function renderDetail(note) {
   state.currentDetailNote = note;
   if (note.cover) {
@@ -3043,13 +3319,25 @@ function renderDetail(note) {
   observeDetailHeadings();
   renderRelatedNotes(note);
   renderDetailNavigation(note);
-  if (elements.detailEditButton) elements.detailEditButton.hidden = !isMyNote(note);
+  const isOwner = isMyNote(note);
+  if (elements.detailEditButton) elements.detailEditButton.hidden = !isOwner;
+  if (elements.detailExportWidget) elements.detailExportWidget.hidden = !isOwner;
+  if (elements.detailShareWidget) elements.detailShareWidget.hidden = !isOwner;
+  if (elements.detailShareButton) elements.detailShareButton.textContent = note.shareEnabled ? "重新生成并复制链接" : "创建并复制链接";
+  if (elements.detailDisableShareButton) elements.detailDisableShareButton.hidden = !note.shareEnabled;
+  if (elements.detailShareLinkWrap) elements.detailShareLinkWrap.hidden = true;
+  if (elements.detailShareStatus) {
+    elements.detailShareStatus.hidden = !note.shareEnabled;
+    elements.detailShareStatus.textContent = note.shareEnabled
+      ? `分享已启用${note.shareExpiresAt ? `，有效至 ${formatDate(note.shareExpiresAt)}` : ""}。重新生成会让旧链接失效。`
+      : "";
+  }
   if (elements.detailFavoriteButton) {
-    elements.detailFavoriteButton.hidden = !isMyNote(note);
+    elements.detailFavoriteButton.hidden = !isOwner;
     elements.detailFavoriteButton.classList.toggle("is-active", Boolean(note.favorite));
     elements.detailFavoriteButton.textContent = note.favorite ? "★ 已收藏" : "☆ 收藏笔记";
   }
-  if (elements.detailFolderWidget) elements.detailFolderWidget.hidden = !isMyNote(note);
+  if (elements.detailFolderWidget) elements.detailFolderWidget.hidden = !isOwner;
   if (elements.detailFolderInput) elements.detailFolderInput.value = note.folder || "";
   clearDetailFolderFeedback();
   if (elements.detailCard) elements.detailCard.scrollTop = 0;

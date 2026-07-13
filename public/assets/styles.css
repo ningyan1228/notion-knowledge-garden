@@ -6259,3 +6259,39 @@ body[data-app-view="growth"] .heat-cell.level-0 {
   body[data-app-view="growth"] .growth-stats,
   body[data-app-view="growth"] .heatmap-months { grid-template-columns: 1fr !important; }
 }
+
+/* Note export and protected sharing. */
+.detail-export-actions,
+.detail-share-actions,
+.detail-share-link { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+.detail-export-actions button,
+.detail-share-actions button,
+.detail-share-link button { min-height: 34px; padding: 0 10px; border: 1px solid var(--separator); border-radius: 9px; color: var(--accent); background: rgba(255,255,255,.78); font-size: 12px; font-weight: 650; }
+.detail-export-actions button:hover,
+.detail-share-actions button:hover,
+.detail-share-link button:hover { background: var(--accent-soft); }
+.detail-share-help { margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.detail-share-link { grid-template-columns: minmax(0, 1fr) auto; }
+.detail-share-link input { min-width: 0; min-height: 34px; padding: 0 9px; border: 1px solid var(--separator); border-radius: 9px; color: var(--text-secondary); background: rgba(118,118,128,.05); font-size: 11px; }
+.detail-share-status { margin: 8px 0 0; color: var(--success); font-size: 12px; line-height: 1.5; }
+.detail-share-status[data-tone="error"] { color: #c13c3c; }
+
+.shared-note-view { width: min(100% - 32px, 900px); min-height: 100vh; margin: 0 auto; padding: 28px 0 72px; }
+.shared-note-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; color: var(--text-secondary); font-size: 13px; }
+.shared-note-brand { color: var(--text-primary); font-size: 16px; font-weight: 720; text-decoration: none; }
+.shared-note-card { padding: clamp(22px, 5vw, 54px); border: 1px solid var(--separator); border-radius: 18px; background: var(--surface-solid); box-shadow: var(--shadow-card); }
+.shared-note-meta { margin: 0 0 12px; color: var(--text-secondary); font-size: 13px; }
+.shared-note-card h1 { margin: 0; color: var(--text-primary); font-size: clamp(28px, 5vw, 46px); line-height: 1.18; letter-spacing: -.035em; }
+.shared-note-summary { margin: 14px 0 0; color: var(--text-secondary); font-size: 16px; line-height: 1.7; }
+.shared-note-card .tag-row { margin: 16px 0 28px; }
+.shared-note-content { color: var(--text-primary); }
+.shared-note-error { margin: 20px 0 0; padding: 12px 14px; border-radius: 10px; color: #b3261e; background: rgba(179,38,30,.08); }
+body.is-shared-note { background: var(--app-bg); }
+body.is-shared-note .site-lock,
+body.is-shared-note .ai-assistant-fab,
+body.is-shared-note .ai-assistant-panel { display: none !important; }
+
+@media (max-width: 767px) {
+  .shared-note-view { width: min(100% - 24px, 900px); padding-top: 18px; }
+  .shared-note-card { border-radius: 14px; }
+}
