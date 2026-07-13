@@ -5804,12 +5804,12 @@ body::after { opacity: .12; }
 .mac-nav-group { margin: 10px 8px 4px; font-size: 11px; color: var(--text-tertiary); }
 .mac-nav a { min-height: 40px; border-radius: 10px; font-size: 14px; font-weight: 600; }
 .mac-nav a.is-active { background: var(--accent-soft); color: var(--accent); }
-.sidebar-write-button { min-height: 40px; margin: 6px 3px 0; border-radius: 12px; background: var(--accent); box-shadow: none; }
-.sidebar-diary-button { min-height: 40px; margin: -2px 3px 0; border: 0; border-radius: 12px; color: var(--accent); background: transparent; box-shadow: none; }
-.sidebar-diary-button:hover { background: var(--accent-soft); transform: none; }
-.sidebar-refresh-button { width: calc(100% - 6px); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: -2px 3px 0; padding: 0 12px; border: 0; border-radius: 12px; color: var(--text-secondary); background: transparent; font-size: 13px; font-weight: 600; }
-.sidebar-refresh-button span { font-size: 17px; line-height: 1; }
-.sidebar-refresh-button:hover { color: var(--accent); background: var(--accent-soft); transform: none; }
+.sidebar-action-group { display: grid; margin: 6px 3px 0; overflow: hidden; border: 1px solid rgba(60, 60, 67, 0.12); border-radius: 14px; background: rgba(255,255,255,.74); box-shadow: 0 1px 2px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,.86); }
+.sidebar-action-group > button { width: 100%; min-height: 41px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0; padding: 0 13px; border: 0; border-radius: 0; color: var(--accent); background: transparent; box-shadow: none; font-size: 13px; font-weight: 650; text-align: left; }
+.sidebar-action-group > button + button { border-top: 1px solid rgba(60, 60, 67, 0.10); }
+.sidebar-action-group > button span { width: 18px; color: var(--accent); font-size: 17px; line-height: 1; text-align: center; }
+.sidebar-action-group > button:hover { color: var(--accent-hover); background: rgba(0,122,255,.09); box-shadow: none; transform: none; }
+.sidebar-action-group > button:active { background: rgba(0,122,255,.15); }
 .mac-sidebar-card { min-height: 52px; display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 9px; margin: auto 3px 0; padding: 8px; border: 0; border-radius: 12px; background: rgba(255,255,255,.50); box-shadow: none; }
 .mac-sidebar-card > span:not(.account-avatar) { display: none; }
 .mac-sidebar-card .account-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #7589a2; font-size: 12px; font-weight: 750; }
