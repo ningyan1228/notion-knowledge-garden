@@ -274,6 +274,7 @@ const elements = {
   currentUserLabel: document.querySelector("#currentUserLabel"),
   logoutButton: document.querySelector("#logoutButton"),
   sharedNoteView: document.querySelector("#sharedNoteView"),
+  sharedNoteCover: document.querySelector("#sharedNoteCover"),
   sharedNoteMeta: document.querySelector("#sharedNoteMeta"),
   sharedNoteTitle: document.querySelector("#sharedNoteTitle"),
   sharedNoteSummary: document.querySelector("#sharedNoteSummary"),
@@ -3279,6 +3280,17 @@ async function loadSharedNote(shareId, secret) {
     if (!response.ok || !data.note) throw new Error(data.error || "分享链接无效或已过期。" );
     const note = data.note;
     document.title = `${note.title || "分享笔记"} · 朝夕拾光`;
+    if (elements.sharedNoteCover) {
+      if (note.cover) {
+        elements.sharedNoteCover.src = note.cover;
+        elements.sharedNoteCover.alt = `${note.title || "分享笔记"} 封面`;
+        elements.sharedNoteCover.hidden = false;
+      } else {
+        elements.sharedNoteCover.removeAttribute("src");
+        elements.sharedNoteCover.alt = "";
+        elements.sharedNoteCover.hidden = true;
+      }
+    }
     if (elements.sharedNoteTitle) elements.sharedNoteTitle.textContent = note.title || "未命名笔记";
     if (elements.sharedNoteSummary) elements.sharedNoteSummary.textContent = note.summary || "";
     if (elements.sharedNoteMeta) elements.sharedNoteMeta.textContent = [note.type, note.category, note.updated && formatDate(note.updated), note.author && `作者 · ${note.author}`].filter(Boolean).join(" · ");

@@ -6280,6 +6280,7 @@ body[data-app-view="growth"] .heat-cell.level-0 {
 .shared-note-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; color: var(--text-secondary); font-size: 13px; }
 .shared-note-brand { color: var(--text-primary); font-size: 16px; font-weight: 720; text-decoration: none; }
 .shared-note-card { padding: clamp(22px, 5vw, 54px); border: 1px solid var(--separator); border-radius: 18px; background: var(--surface-solid); box-shadow: var(--shadow-card); }
+.shared-note-cover { display: block; width: calc(100% + clamp(44px, 10vw, 108px)); height: clamp(180px, 35vw, 360px); margin: calc(clamp(22px, 5vw, 54px) * -1) calc(clamp(22px, 5vw, 54px) * -1) 28px; object-fit: cover; border-radius: 17px 17px 0 0; background: var(--surface-muted); }
 .shared-note-meta { margin: 0 0 12px; color: var(--text-secondary); font-size: 13px; }
 .shared-note-card h1 { margin: 0; color: var(--text-primary); font-size: clamp(28px, 5vw, 46px); line-height: 1.18; letter-spacing: -.035em; }
 .shared-note-summary { margin: 14px 0 0; color: var(--text-secondary); font-size: 16px; line-height: 1.7; }
