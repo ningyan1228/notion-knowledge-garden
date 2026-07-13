@@ -347,9 +347,7 @@ elements.folderList?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-folder]");
   if (!button) return;
   if (document.body.dataset.appView === "folders") {
-    folderBrowserPath = button.dataset.folder === "all" ? "" : (button.dataset.folder || "");
-    state.folder = button.dataset.folder || "all";
-    renderOrganization();
+    openNotesForFolder(button.dataset.folder || "all");
     return;
   }
   state.folder = button.dataset.folder || "all";
@@ -379,12 +377,7 @@ elements.folderRootButton?.addEventListener("click", () => {
 });
 
 elements.folderOpenNotesButton?.addEventListener("click", () => {
-  state.folder = folderBrowserPath || "all";
-  state.favoritesOnly = false;
-  if (elements.folderFilter) elements.folderFilter.value = state.folder;
-  resetNoteList();
-  render();
-  window.location.hash = "#notesLibrary";
+  openNotesForFolder(folderBrowserPath || "all");
 });
 
 document.querySelectorAll("[data-folder-favorites]").forEach((node) => {
@@ -409,16 +402,7 @@ elements.folderContent?.addEventListener("click", (event) => {
   }
   const tile = event.target.closest("[data-folder-tile]");
   if (!tile) return;
-  state.folder = tile.dataset.folderTile || "all";
-  elements.folderContent?.querySelectorAll("[data-folder-tile]").forEach((node) => {
-    node.classList.toggle("is-selected", node === tile);
-  });
-});
-
-elements.folderContent?.addEventListener("dblclick", (event) => {
-  const tile = event.target.closest("[data-folder-tile]");
-  if (!tile) return;
-  openFolderBrowser(tile.dataset.folderTile || "");
+  openNotesForFolder(tile.dataset.folderTile || "all");
 });
 
 elements.newFolderButton?.addEventListener("click", promptNewFolder);
@@ -2550,6 +2534,18 @@ function openFolderBrowser(folder) {
   renderOrganization();
 }
 
+function openNotesForFolder(folder) {
+  const nextFolder = folder || "all";
+  folderBrowserPath = nextFolder === "all" ? "" : nextFolder;
+  state.scope = currentUser?.id || currentUser?.username ? "mine" : "all";
+  state.folder = nextFolder;
+  state.favoritesOnly = false;
+  if (elements.folderFilter) elements.folderFilter.value = nextFolder;
+  resetNoteList();
+  render();
+  window.location.hash = "#notesLibrary";
+}
+
 function renderFinderFolderContent(folders, ownNotes) {
   if (!elements.folderContent) return;
   const currentFolder = folderBrowserPath;
@@ -2579,7 +2575,7 @@ function renderFinderFolderContent(folders, ownNotes) {
     const childCount = folders.filter((candidate) => parentFolderOf(candidate) === folder).length;
     const tile = document.createElement("article");
     tile.className = `finder-folder-tile${state.folder === folder ? " is-selected" : ""}`;
-    tile.title = `${folderLabel(folder)} \uff08\u53cc\u51fb\u8fdb\u5165\uff09`;
+    tile.title = `${folderLabel(folder)} \uff08\u70b9\u51fb\u67e5\u770b\u7b14\u8bb0\uff09`;
     tile.innerHTML = `
       <button class="finder-folder-open" type="button" data-folder-tile="${escapeHtml(folder)}">
         <span class="finder-folder-large" aria-hidden="true"></span>

@@ -6295,3 +6295,15 @@ body.is-shared-note .ai-assistant-panel { display: none !important; }
   .shared-note-view { width: min(100% - 24px, 900px); padding-top: 18px; }
   .shared-note-card { border-radius: 14px; }
 }
+
+/* iOS-style account card in the sidebar footer. */
+.mac-sidebar-card { position: relative; min-height: 64px; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; margin: auto 3px 0; padding: 10px; overflow: hidden; border: 1px solid rgba(60,60,67,.12); border-radius: 15px; background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(244,248,253,.76)); box-shadow: 0 7px 18px rgba(31,45,61,.08), inset 0 1px 0 rgba(255,255,255,.92); }
+.mac-sidebar-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 8% 0, rgba(10,132,255,.12), transparent 36%); }
+.mac-sidebar-card .account-avatar { position: relative; z-index: 1; width: 34px; height: 34px; background: linear-gradient(145deg, #6f89aa, #4f6d93); box-shadow: 0 4px 10px rgba(67,92,126,.22), inset 0 1px 0 rgba(255,255,255,.28); font-size: 13px; }
+.mac-sidebar-card .account-copy { position: relative; z-index: 1; min-width: 0; }
+.mac-sidebar-card .account-copy::before { content: "当前账户"; display: block; margin-bottom: 1px; color: var(--text-tertiary); font-size: 9px; font-weight: 700; letter-spacing: .05em; }
+.mac-sidebar-card .account-copy strong { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+.mac-sidebar-card .account-copy p { margin-top: 2px; font-size: 10px; }
+.mac-sidebar-card .account-copy i { box-shadow: 0 0 0 3px rgba(52,199,89,.12); }
+.mac-sidebar-card .mini-button { position: relative; z-index: 1; min-height: 28px; padding: 0 8px; border: 1px solid rgba(60,60,67,.10); border-radius: 8px; color: var(--text-secondary); background: rgba(255,255,255,.68); font-size: 11px; font-weight: 600; }
+.mac-sidebar-card .mini-button:hover { border-color: rgba(255,59,48,.20); color: #d84a43; background: rgba(255,59,48,.08); }
