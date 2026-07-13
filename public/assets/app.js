@@ -189,6 +189,7 @@ const elements = {
   writerButton: document.querySelector("#writerButton"),
   sidebarWriteButton: document.querySelector("#sidebarWriteButton"),
   sidebarDiaryButton: document.querySelector("#sidebarDiaryButton"),
+  sidebarRefreshButton: document.querySelector("#sidebarRefreshButton"),
   calendarPrev: document.querySelector("#calendarPrev"),
   calendarNext: document.querySelector("#calendarNext"),
   calendarLabel: document.querySelector("#calendarLabel"),
@@ -459,6 +460,7 @@ elements.refreshButton.addEventListener("click", () => loadNotes({ refresh: true
 elements.writerButton?.addEventListener("click", () => openWriter("笔记"));
 elements.sidebarWriteButton?.addEventListener("click", () => openWriter("笔记"));
 elements.sidebarDiaryButton?.addEventListener("click", () => openWriter("日记"));
+elements.sidebarRefreshButton?.addEventListener("click", () => window.location.reload());
 elements.calendarPrev?.addEventListener("click", () => changeCalendarMonth(-1));
 elements.calendarNext?.addEventListener("click", () => changeCalendarMonth(1));
 elements.calendarWriteDiary?.addEventListener("click", () => openWriter("日记"));
