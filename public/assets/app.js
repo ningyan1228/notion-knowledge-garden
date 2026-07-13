@@ -2792,6 +2792,10 @@ async function saveNoteOrganization(note, changes) {
 }
 
 function openNotesLibrary() {
+  // Show the signed-in user's notes by default; guests keep the full list.
+  state.scope = currentUser?.id || currentUser?.username ? "mine" : "all";
+  resetNoteList();
+  render();
   document.body.dataset.appView = "notes";
   document.body.classList.add("notes-library-mode");
 }
