@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>朝夕拾光</title>
+    <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
+    <link rel="icon" type="image/svg+xml" href="assets/note-favicon.svg" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <script src="assets/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+      <script defer src="assets/app.js?v=20260713-detail-panel-state-fix"></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <div class="mac-app-shell">
+        <aside class="mac-sidebar" aria-label="朝夕拾光导航">
+          <div class="mac-window-dots" aria-hidden="true">
+            <i class="mac-dot red"></i>
+            <i class="mac-dot yellow"></i>
+            <i class="mac-dot green"></i>
+          </div>
+          <a class="mac-sidebar-brand" href="#knowledgeGraph">
+            <span>朝</span>
+            <div>
+              <strong>朝夕拾光</strong>
+              <small>Personal Knowledge OS</small>
+            </div>
+          </a>
+          <nav class="mac-nav">
+            <span class="mac-nav-group">空间</span>
+            <a href="#today" data-nav-icon="today">今日</a>
+            <a href="#notesLibrary" data-open-notes-library data-nav-icon="notes">我的笔记</a>
+            <a href="#folders" data-nav-icon="folders">文件空间</a>
+            <a href="#calendar" data-nav-icon="calendar">日历</a>
+            <span class="mac-nav-group">知识</span>
+            <a href="#knowledgeGraph" data-nav-icon="graph">知识星图</a>
+            <a href="#diaries" data-nav-icon="diaries">拾光日记</a>
+            <a href="#growthMap" data-nav-icon="growth">成长轨迹</a>
+          </nav>
+          <button class="sidebar-write-button" id="sidebarWriteButton" type="button">
+            <span aria-hidden="true">✦</span>
+            写笔记
+          </button>
+          <button class="sidebar-diary-button" id="sidebarDiaryButton" type="button">
+            <span aria-hidden="true">☾</span>
+            写日记
+          </button>
+          <button class="sidebar-refresh-button" id="sidebarRefreshButton" type="button" title="刷新当前页面">
+            <span aria-hidden="true">↻</span>
+            刷新页面
+          </button>
+          <div class="mac-sidebar-card">
+            <span class="account-avatar" aria-hidden="true">朝</span>
+            <div class="account-copy">
+              <strong id="currentUserLabel">未登录</strong>
+              <p><i aria-hidden="true"></i>已同步到 Notion</p>
+            </div>
+            <button class="mini-button" id="logoutButton" type="button" aria-label="退出登录">退出</button>
+          </div>
+        </aside>
+        <div class="mac-main">
+      <header class="topbar">
+        <div class="topbar-page">
+          <a class="brand-mark" id="pageTitle" href="#knowledgeGraph">知识星图</a>
+          <span id="pageSubtitle">探索你的知识连接</span>
+        </div>
+        <label class="global-search" aria-label="搜索全部笔记">
+          <input id="globalSearch" type="search" placeholder="搜索笔记" autocomplete="off" />
+          <kbd>⌘ K</kbd>
+        </label>
+      </header>
+
+      <section class="hero" data-view="graph">
+        <div class="hero-copy">
+          <span class="eyebrow">记录思考，沉淀成长</span>
+          <h1>朝夕拾光</h1>
+          <p>收集每天的灵感与知识碎片。收集灵感，记录思考，沉淀属于自己的知识世界。</p>
+          <div class="hero-actions">
+            <button class="button secondary" type="button" id="writerButton">写笔记</button>
+            <button class="button primary" type="button" id="refreshButton">刷新笔记</button>
+            <a class="button ghost" href="#notesLibrary" data-open-notes-library>进入笔记库</a>
+          </div>
+        </div>
+        <div class="hero-visual graph-panel" aria-label="知识地图">
+          <div class="graph-header">
+            <div>
+              <span>Knowledge Map</span>
+              <strong>知识星图</strong>
+            </div>
+            <div class="graph-tools">
+              <p id="graphHint">点击节点进入对应知识</p>
+              <button type="button" id="graphRetryButton">重试</button>
+              <button type="button" id="graphResetButton">重置</button>
+              <button type="button" id="graphFullscreenButton">全屏</button>
+            </div>
+          </div>
+          <div class="graph-workspace">
+            <div class="graph-stage">
+              <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
+              <div class="graph-legend" aria-hidden="true">
+                <span><i class="legend-root"></i>中心</span>
+                <span><i class="legend-topic"></i>分类</span>
+                <span><i class="legend-tag"></i>标签</span>
+                <span><i class="legend-note"></i>笔记</span>
+              </div>
+            </div>
+            <aside class="graph-insight-card" aria-label="今日洞察">
+              <span>今日洞察</span>
+              <strong>你的知识正在生长</strong>
+              <div class="graph-insight-metrics">
+                <div><i class="insight-reading" aria-hidden="true"></i><small>阅读</small><b id="insightReading">-</b></div>
+                <div><i class="insight-notes" aria-hidden="true"></i><small>新增笔记</small><b id="insightNewNotes">-</b></div>
+                <div><i class="insight-ideas" aria-hidden="true"></i><small>新想法</small><b id="insightIdeas">-</b></div>
+              </div>
+              <p>每一次记录，都会让你的知识宇宙更清晰。</p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats" data-view="today" aria-label="知识库概览">
+        <article class="stat-card">
+          <span>总笔记数</span>
+          <strong id="totalNotes">-</strong>
+        </article>
+        <article class="stat-card">
+          <span>分类数</span>
+          <strong id="totalCategories">-</strong>
+        </article>
+        <article class="stat-card">
+          <span>标签数</span>
+          <strong id="totalTags">-</strong>
+        </article>
+        <article class="stat-card">
+          <span>最近更新</span>
+          <strong id="lastUpdated">-</strong>
+        </article>
+      </section>
+
+      <section class="garden-workbench" id="today" data-view="today" aria-label="知识工作台">
+        <article class="module-card module-feature">
+          <div>
+            <span class="module-kicker">Today</span>
+            <h2>今日拾光</h2>
+            <p id="dailyPrompt">从一个念头开始，把它放进你的知识世界。</p>
+            <div class="today-inline-metrics" aria-label="知识库概览">
+              <span><b id="todayMetricNotes">-</b> 篇笔记</span>
+              <span><b id="todayMetricCategories">-</b> 个分类</span>
+              <span><b id="todayMetricTags">-</b> 个标签</span>
+              <span>更新于 <b id="todayMetricUpdated">-</b></span>
+            </div>
+          </div>
+          <button class="button primary" type="button" id="quickWriteButton">记录灵感</button>
+        </article>
+        <article class="module-card module-daily">
+          <div class="module-heading">
+            <span>Daily</span>
+            <strong>今日记录</strong>
+          </div>
+          <div class="daily-record">
+            <div>
+              <span>今日心情</span>
+              <strong id="dailyMood">等待记录</strong>
+            </div>
+            <div>
+              <span>今日关键词</span>
+              <strong id="dailyKeywords">暂无关键词</strong>
+            </div>
+            <div>
+              <span>今天写了</span>
+              <strong id="dailyCount">0 条</strong>
+            </div>
+          </div>
+          <button class="button primary" type="button" id="dailyWriteButton">写今日拾光</button>
+        </article>
+        <article class="module-card module-focus">
+          <div class="module-heading">
+            <span>Focus</span>
+            <strong>今日待整理</strong>
+          </div>
+          <div class="focus-board">
+            <section class="focus-summary">
+              <span>本周学习摘要</span>
+              <p id="weeklySummary">正在整理最近的学习轨迹...</p>
+            </section>
+            <section class="focus-column">
+              <span>置顶笔记</span>
+              <div class="focus-list" id="pinnedList"></div>
+            </section>
+            <section class="focus-column">
+              <span>最近灵感</span>
+              <div class="focus-list" id="inspirationList"></div>
+            </section>
+          </div>
+        </article>
+        <article class="module-card module-timeline">
+          <div class="module-heading">
+            <span>Timeline</span>
+            <strong>更新脉络</strong>
+          </div>
+          <div class="timeline-list" id="timelineList" aria-live="polite"></div>
+        </article>
+      </section>
+
+      <section class="growth-map" id="growthMap" data-view="growth" aria-label="热力成长地图">
+        <div class="growth-intro">
+          <div class="growth-intro-copy">
+            <span>Knowledge Contribution</span>
+            <h2><strong id="growthYear">2026</strong> 学习热力图</h2>
+          </div>
+          <p>把每一次创建和更新笔记，都沉淀成今年的学习轨迹。</p>
+        </div>
+        <div class="growth-stats" aria-label="年度学习统计">
+          <article>
+            <span>写笔记次数</span>
+            <strong id="growthNotes">-</strong>
+          </article>
+          <article>
+            <span>阅读时间</span>
+            <strong id="growthHours">-</strong>
+          </article>
+          <article>
+            <span>学习主题</span>
+            <strong id="growthTopics">-</strong>
+          </article>
+        </div>
+        <div class="heatmap-shell">
+          <div class="heatmap-head">
+            <span>2026 Growth Map</span>
+            <div class="heatmap-scale" aria-hidden="true">
+              <i class="heat-cell level-0"></i>
+              <i class="heat-cell level-1"></i>
+              <i class="heat-cell level-2"></i>
+              <i class="heat-cell level-3"></i>
+              <i class="heat-cell level-4"></i>
+            </div>
+          </div>
+          <div class="heatmap-months" id="heatmapMonths"></div>
+          <div class="growth-insights" aria-label="成长趋势">
+            <article>
+              <span>本月成长趋势</span>
+              <strong id="monthlyTrend">-</strong>
+              <p id="monthlyTrendText">正在计算本月学习变化...</p>
+            </article>
+            <article>
+              <span>今年高频主题</span>
+              <div class="top-topic-list" id="topTopics"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="diary-section" id="diaries" data-view="diaries" aria-label="拾光日记">
+        <div class="section-head">
+          <div>
+            <span>Daily Journal</span>
+            <h2>拾光日记</h2>
+          </div>
+          <p class="status-line">只展示你勾选公开的日记，私密日记会留在 Notion。</p>
+        </div>
+        <div class="diary-grid" id="diaryList"></div>
+      </section>
+
+      <section class="calendar-section" id="calendar" data-view="calendar" aria-labelledby="calendarTitle">
+        <div class="calendar-head">
+          <div>
+            <span>Daily Calendar</span>
+            <h2 id="calendarTitle">记录日历</h2>
+            <p>查看每天留下的笔记与日记；点击日期可继续记录。</p>
+          </div>
+          <div class="calendar-controls" aria-label="切换月份">
+            <button id="calendarPrev" type="button" aria-label="上个月">‹</button>
+            <strong id="calendarLabel">-</strong>
+            <button id="calendarNext" type="button" aria-label="下个月">›</button>
+          </div>
+        </div>
+        <div class="calendar-workspace">
+          <div class="calendar-main">
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid" aria-live="polite"></div>
+          </div>
+          <aside class="calendar-detail-panel" id="calendarDetailPanel" aria-live="polite">
+            <span>当日记录</span>
+            <strong id="calendarDetailDate">-</strong>
+            <p id="calendarDetailSummary">选择一个日期查看记录。</p>
+            <div class="calendar-detail-list" id="calendarDetailList"></div>
+            <div class="calendar-detail-actions">
+              <button type="button" id="calendarWriteDiary">新建日记</button>
+              <button type="button" id="calendarWriteNote">新建笔记</button>
+            </div>
+          </aside>
+        </div>
+        <p class="calendar-tip">有颜色的日期代表已有记录；点击当天可打开已有日记或新建日记。</p>
+      </section>
+
+      <section class="folders-page" id="folders" data-view="folders" aria-labelledby="foldersPageTitle">
+        <div class="folders-page-head">
+          <div>
+            <span>File Space</span>
+            <h2 id="foldersPageTitle">文件空间</h2>
+            <p>在这里整理文件夹、子目录与收藏；选择一个文件夹后即可查看对应笔记。</p>
+          </div>
+          <div class="folders-page-note">按项目、主题或长期计划建立属于你的知识结构。</div>
+        </div>
+        <div class="folder-page-mount" id="folderPageMount"></div>
+      </section>
+
+      <div class="notes-page" data-view="notes">
+      <section class="notes-manager" id="notesLibrary" aria-labelledby="notesManagerTitle">
+        <div class="notes-manager-head">
+          <div>
+            <span class="manager-kicker">Notes library</span>
+            <h2 id="notesManagerTitle">我的笔记</h2>
+            <p>组合筛选你的内容，也可以快速切换到其他作者的公开笔记。</p>
+          </div>
+          <div class="scope-switch" id="scopeSwitch" aria-label="笔记范围">
+            <button type="button" class="scope-button is-active" data-scope="all">全部</button>
+            <button type="button" class="scope-button" data-scope="mine">只看我的</button>
+            <button type="button" class="scope-button" data-scope="others-public">别人公开</button>
+          </div>
+        </div>
+        <div class="library-shortcut-bar">
+          <span>笔记库模式 · 专注浏览、搜索与整理全部笔记</span>
+          <button class="text-button" id="closeNotesLibrary" type="button">← 返回首页</button>
+        </div>
+        <section class="folder-hub" id="folderHub" aria-label="文件空间">
+          <header class="finder-toolbar">
+            <div class="finder-toolbar-location">
+              <button class="finder-back-button" id="folderBackButton" type="button" aria-label="返回上一级">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 4-6 6 6 6"/></svg>
+              </button>
+              <span class="finder-toolbar-folder" aria-hidden="true"></span>
+              <strong id="folderLocationTitle">我的文件夹</strong>
+            </div>
+            <div class="finder-toolbar-actions">
+              <button class="folder-favorite" id="favoriteFilterButton" type="button" aria-pressed="false">
+                <span>★</span> 我的收藏 <b id="favoriteCount">0</b>
+              </button>
+              <button class="folder-create" id="newFolderButton" type="button">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>新建文件夹
+              </button>
+            </div>
+          </header>
+          <div class="finder-window">
+            <aside class="finder-sidebar" aria-label="文件夹导航">
+              <span class="finder-sidebar-label">个人收藏</span>
+              <button class="finder-sidebar-link" id="folderRootButton" type="button">
+                <i class="finder-sidebar-icon finder-sidebar-icon-folder" aria-hidden="true"></i>我的文件夹
+              </button>
+              <button class="finder-sidebar-link" type="button" data-folder-favorites>
+                <i class="finder-sidebar-icon finder-sidebar-icon-star" aria-hidden="true"></i>收藏
+                <b id="finderFavoriteCount">0</b>
+              </button>
+              <span class="finder-sidebar-label finder-sidebar-label-folders">文件夹</span>
+              <div class="folder-list" id="folderList"></div>
+            </aside>
+            <section class="finder-content" aria-label="当前文件夹内容">
+              <header class="finder-content-header">
+                <div>
+                  <div class="folder-breadcrumb" id="folderBreadcrumb"></div>
+                  <p id="folderContentMeta">双击文件夹进入，单击选中。</p>
+                </div>
+                <button class="finder-open-notes" id="folderOpenNotesButton" type="button">查看笔记</button>
+              </header>
+              <div class="finder-folder-grid" id="folderContent"></div>
+            </section>
+          </div>
+        </section>
+      <section class="toolbar" aria-label="筛选工具">
+        <label class="search-box">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="标题、摘要、标签" autocomplete="off" />
+        </label>
+        <label>
+          <span>类型</span>
+          <select id="typeFilter">
+            <option value="all">全部类型</option>
+          </select>
+        </label>
+        <details class="more-filters">
+          <summary>更多筛选</summary>
+          <div class="more-filter-grid">
+        <label>
+          <span>可见性</span>
+          <select id="visibilityFilter">
+            <option value="all">全部笔记</option>
+            <option value="public">公开</option>
+            <option value="private">私密</option>
+            <option value="others-public">他人公开</option>
+          </select>
+        </label>
+        <label>
+          <span>分类</span>
+          <select id="categoryFilter">
+            <option value="all">全部分类</option>
+          </select>
+        </label>
+        <label>
+          <span>标签</span>
+          <select id="tagFilter">
+            <option value="all">全部标签</option>
+          </select>
+        </label>
+        <label>
+          <span>文件夹</span>
+          <select id="folderFilter">
+            <option value="all">全部文件夹</option>
+          </select>
+        </label>
+        <label>
+          <span>作者</span>
+          <select id="authorFilter">
+            <option value="all">全部作者</option>
+          </select>
+        </label>
+        <label>
+          <span>月份</span>
+          <select id="monthFilter">
+            <option value="all">全部月份</option>
+          </select>
+        </label>
+          </div>
+        </details>
+        <label>
+          <span>排序</span>
+          <select id="sortSelect">
+            <option value="updated">最近更新</option>
+            <option value="created">创建时间</option>
+            <option value="title">标题</option>
+          </select>
+        </label>
+      </section>
+
+        <div class="filter-result-bar">
+          <div class="active-filters" id="activeFilters" aria-live="polite"></div>
+          <div class="filter-result-actions">
+            <span id="filterResultCount">0 篇笔记</span>
+            <button class="text-button" id="resetFilters" type="button">清除筛选</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <div>
+          <span>Notes</span>
+          <h2>笔记列表</h2>
+        </div>
+        <p class="status-line" id="statusLine">正在读取朝夕拾光...</p>
+      </div>
+
+      <section class="notes-grid" id="notes" aria-live="polite"></section>
+      <div class="notes-actions" aria-label="笔记列表操作">
+        <button class="button ghost" id="collapseNotes" type="button" hidden>收起列表</button>
+        <button class="button primary" id="loadMoreNotes" type="button" hidden>加载更多</button>
+      </div>
+      </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="site-lock" id="siteLock" aria-hidden="true">
+      <div class="site-lock-backdrop"></div>
+      <form class="site-lock-card" id="sitePasswordForm" autocomplete="off">
+        <div class="mac-window-dots" aria-hidden="true">
+          <i class="mac-dot red"></i>
+          <i class="mac-dot yellow"></i>
+          <i class="mac-dot green"></i>
+        </div>
+        <span class="site-lock-kicker">Private Knowledge Garden</span>
+        <h2>进入朝夕拾光</h2>
+        <p>请输入你的账号。登录后，只会读取和编辑属于你自己的笔记。</p>
+        <label>
+          <span>用户名</span>
+          <input id="siteUsernameInput" type="text" placeholder="例如 zhiwu" autocomplete="username" required />
+        </label>
+        <label>
+          <span>登录密码</span>
+          <input id="sitePasswordInput" type="password" placeholder="输入登录密码" autocomplete="current-password" required />
+        </label>
+        <label class="site-lock-remember">
+          <input id="sitePasswordRemember" type="checkbox" />
+          <span>在这台电脑上保持登录</span>
+        </label>
+        <button class="button primary" type="submit">进入网站</button>
+        <p class="site-lock-error" id="sitePasswordError" aria-live="polite"></p>
+      </form>
+    </aside>
+
+    <aside class="writer" id="writerPanel" aria-hidden="true">
+      <div class="writer-backdrop" data-close-writer></div>
+      <article class="writer-card" role="dialog" aria-modal="true" aria-labelledby="writerTitle">
+        <button class="icon-button close-button" type="button" aria-label="关闭" data-close-writer>×</button>
+        <div class="writer-body">
+          <div class="detail-meta">
+            <span>同步到 Notion</span>
+            <span id="writerModeLabel">新建笔记</span>
+          </div>
+          <h2 id="writerTitle">写一篇新笔记</h2>
+          <form id="writerForm" class="writer-form">
+            <input id="writerNoteId" name="id" type="hidden" />
+            <label class="full">
+              <span>管理密码（旧版，可留空）</span>
+              <input id="writerToken" name="token" type="password" autocomplete="current-password" placeholder="已登录时不用填写" />
+            </label>
+            <label>
+              <span>标题</span>
+              <input id="writerNoteTitle" name="title" type="text" required />
+            </label>
+            <label>
+              <span>短链接</span>
+              <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
+            </label>
+            <label>
+              <span>类型</span>
+              <select id="writerTypeSelect" name="type">
+                <option value="笔记">笔记</option>
+                <option value="日记">日记</option>
+                <option value="灵感">灵感</option>
+                <option value="复盘">复盘</option>
+              </select>
+            </label>
+            <label>
+              <span>状态</span>
+              <select id="writerStatusSelect" name="status">
+                <option value="进行中">进行中</option>
+                <option value="完成">完成</option>
+                <option value="灵感">灵感</option>
+              </select>
+            </label>
+            <label class="writer-cover-field full">
+              <span>封面链接</span>
+              <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
+              <div class="writer-upload-row">
+                <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
+                <small>会上传到 Notion，不占服务器空间。</small>
+              </div>
+              <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+            </label>
+            <label>
+              <span>学习时长（分钟）</span>
+              <input id="writerStudyMinutes" name="studyMinutes" type="number" min="0" step="1" placeholder="30" />
+            </label>
+            <label class="full">
+              <span>摘要</span>
+              <textarea id="writerSummary" name="summary" rows="3"></textarea>
+            </label>
+            <label>
+              <span>分类</span>
+              <select id="writerCategory" name="category">
+                <option value="常识">常识</option>
+                <option value="日记">日记</option>
+                <option value="书单">书单</option>
+                <option value="工作记录">工作记录</option>
+                <option value="收益详情">收益详情</option>
+                <option value="学习笔记">学习笔记</option>
+                <option value="编程">编程</option>
+                <option value="读书">读书</option>
+                <option value="GitHub 开源项目">GitHub 开源项目</option>
+                <option value="ChatGPT">ChatGPT</option>
+                <option value="项目">项目</option>
+                <option value="教程科普">教程科普</option>
+                <option value="Codex">Codex</option>
+                <option value="服务器与域名">服务器与域名</option>
+                <option value="Bybit">Bybit</option>
+              </select>
+            </label>
+            <label>
+              <span>标签</span>
+              <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
+            </label>
+            <label>
+              <span>文件夹</span>
+              <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
+              <datalist id="writerFolderOptions"></datalist>
+            </label>
+            <div class="writer-field full">
+              <span class="writer-field-label">正文</span>
+              <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
+                <button class="editor-mode-button is-active" id="visualEditorMode" type="button" data-editor-mode="visual">可视化编辑</button>
+                <button class="editor-mode-button" id="markdownEditorMode" type="button" data-editor-mode="markdown">Markdown</button>
+                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。</small>
+              </div>
+              <div class="writer-format-toolbar" aria-label="正文格式工具栏">
+                <div class="writer-format-group" aria-label="文字样式">
+                  <button class="format-button" type="button" data-format="bold">B</button>
+                  <button class="format-button" type="button" data-format="quote">引用</button>
+                  <button class="format-button" type="button" data-format="bullet">列表</button>
+                  <button class="format-button" type="button" data-format="todo">待办</button>
+                  <button class="format-button" type="button" data-format="code">代码</button>
+                </div>
+                <div class="writer-format-group" aria-label="标题级别">
+                  <button class="format-button" type="button" data-format="h1">H1</button>
+                  <button class="format-button" type="button" data-format="h2">H2</button>
+                  <button class="format-button" type="button" data-format="h3">H3</button>
+                </div>
+                <div class="writer-format-group" aria-label="快捷插入">
+                  <button class="format-button" type="button" data-format="date">日期</button>
+                  <button class="format-button" type="button" data-format="divider">分割线</button>
+                  <button class="format-button" type="button" data-format="diary-template">日记模板</button>
+                </div>
+                <div class="writer-format-group color-group" aria-label="文字颜色">
+                  <button class="format-button color-dot gray" type="button" data-format="color" data-color="gray" aria-label="灰色文字"></button>
+                  <button class="format-button color-dot brown" type="button" data-format="color" data-color="brown" aria-label="棕色文字"></button>
+                  <button class="format-button color-dot orange" type="button" data-format="color" data-color="orange" aria-label="橙色文字"></button>
+                  <button class="format-button color-dot pink" type="button" data-format="color" data-color="pink" aria-label="粉色文字"></button>
+                  <button class="format-button color-dot green" type="button" data-format="color" data-color="green" aria-label="绿色文字"></button>
+                  <button class="format-button color-dot blue" type="button" data-format="color" data-color="blue" aria-label="蓝色文字"></button>
+                  <button class="format-button color-dot red" type="button" data-format="color" data-color="red" aria-label="红色文字"></button>
+                  <button class="format-button color-dot yellow" type="button" data-format="color" data-color="yellow" aria-label="黄色文字"></button>
+                  <button class="format-button color-dot purple" type="button" data-format="color" data-color="purple" aria-label="紫色文字"></button>
+                </div>
+              </div>
+              <div class="visual-editor" id="writerVisualEditor" contenteditable="true" tabindex="0" spellcheck="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
+              <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
+              <div class="writer-preview-shell">
+                <div class="writer-preview-head">
+                  <span>实时预览</span>
+                  <small id="writerDraftStatus">草稿会自动保存在本机</small>
+                </div>
+                <div class="writer-preview article-content" id="writerPreview"></div>
+              </div>
+              <div class="writer-upload-row">
+                <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
+                <small>也可以直接写 Markdown：![图片说明](图片链接)</small>
+              </div>
+              <input class="visually-hidden" id="writerContentFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion。</small>
+            </div>
+            <div class="writer-options full">
+              <label>
+                <input id="writerPublished" name="published" type="checkbox" checked />
+                <span>公开到网站</span>
+              </label>
+              <label>
+                <input id="writerPinned" name="pinned" type="checkbox" />
+                <span>置顶</span>
+              </label>
+            </div>
+            <div class="writer-actions full">
+              <button class="button primary" id="writerSubmitButton" type="submit">发布到 Notion</button>
+              <button class="button ghost" type="button" data-close-writer>取消</button>
+            </div>
+            <p class="writer-status full" id="writerStatus"></p>
+          </form>
+        </div>
+      </article>
+    </aside>
+
+    <aside class="detail" id="detailPanel" aria-hidden="true">
+      <div class="detail-backdrop" data-close-detail></div>
+      <article class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+        <button class="icon-button close-button" type="button" aria-label="关闭" data-close-detail>×</button>
+        <header class="detail-hero" id="detailHero">
+          <img class="detail-cover" id="detailCover" alt="" hidden />
+          <div class="detail-hero-shade"></div>
+          <div class="detail-heading">
+            <div class="detail-meta">
+              <span id="detailCategory"></span>
+              <span id="detailUpdated"></span>
+            </div>
+            <h2 id="detailTitle"></h2>
+            <p id="detailSummary"></p>
+            <div class="detail-byline">
+              <span id="detailAuthor"></span>
+              <span id="detailReadingTime"></span>
+            </div>
+            <div class="tag-row" id="detailTags"></div>
+          </div>
+        </header>
+        <div class="detail-body">
+          <main class="detail-main">
+            <div class="article-content" id="detailContent"></div>
+          </main>
+          <aside class="detail-sidebar" aria-label="阅读辅助">
+            <section class="reader-widget">
+              <button class="button ghost detail-favorite-button" id="detailFavoriteButton" type="button">☆ 收藏笔记</button>
+            </section>
+            <section class="reader-widget detail-folder-widget" id="detailFolderWidget">
+              <span>移动到文件夹</span>
+              <div class="detail-folder-actions">
+                <input id="detailFolderInput" type="text" list="writerFolderOptions" maxlength="40" placeholder="输入已有或新建文件夹" />
+                <button id="detailFolderSaveButton" type="button">移动</button>
+              </div>
+              <small>留空后点击移动，可将笔记移出文件夹。</small>
+              <p class="detail-folder-feedback" id="detailFolderFeedback" role="status" hidden></p>
+            </section>
+            <section class="reader-widget">
+              <button class="button primary detail-edit-button" id="detailEditButton" type="button">编辑笔记</button>
+            </section>
+            <section class="reader-widget">
+              <span>目录</span>
+              <nav class="detail-toc" id="detailToc"></nav>
+            </section>
+            <section class="reader-widget">
+              <span>相关笔记</span>
+              <div class="related-notes" id="relatedNotes"></div>
+            </section>
+            <section class="reader-widget">
+              <span>阅读导航</span>
+              <div class="detail-nav">
+                <button type="button" id="previousNote">上一篇</button>
+                <button type="button" id="nextNote">下一篇</button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </article>
+    </aside>
+
+    <template id="noteCardTemplate">
+      <article class="note-card">
+        <button class="note-favorite" type="button" aria-label="收藏笔记" title="收藏笔记">☆</button>
+        <button class="note-open" type="button">
+          <img class="note-cover" alt="" hidden />
+          <div class="note-content">
+            <div class="note-topline">
+              <span class="note-category"></span>
+              <span class="note-date"></span>
+            </div>
+            <h3></h3>
+            <p></p>
+            <div class="tag-row"></div>
+          </div>
+        </button>
+      </article>
+    </template>
+
+    <button class="ai-assistant-fab" id="aiAssistantButton" type="button" aria-expanded="false" aria-controls="aiAssistantPanel">
+      <span aria-hidden="true">✦</span><b>AI 整理</b>
+    </button>
+    <aside class="ai-assistant-panel" id="aiAssistantPanel" aria-hidden="true" aria-label="AI 知识整理">
+      <div class="ai-assistant-head">
+        <div><span>Personal Intelligence</span><strong>AI 知识整理</strong></div>
+        <button type="button" id="aiAssistantClose" aria-label="关闭">×</button>
+      </div>
+      <p>粘贴一个想法、链接或笔记片段，获得本地整理建议。</p>
+      <textarea id="aiAssistantInput" maxlength="1000" placeholder="例如：今天学习了 Linux 文件权限和进程管理…"></textarea>
+      <button class="ai-assistant-submit" id="aiAssistantOrganize" type="button">生成整理建议</button>
+      <div class="ai-assistant-result" id="aiAssistantResult" aria-live="polite"></div>
+    </aside>
+  </body>
+</html>
