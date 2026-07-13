@@ -5,6 +5,7 @@ const authUserSessionKey = "kgCurrentUser";
 const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
 const folderRegistryPrefix = "kgFolders:v1";
+const isVisitorMode = new URLSearchParams(window.location.search).get("mode") === "visitor";
 const folderPathSeparator = " / ";
 let folderBrowserPath = "";
 const expandedFolderPaths = new Set();
@@ -273,6 +274,7 @@ const elements = {
   sitePasswordError: document.querySelector("#sitePasswordError"),
   currentUserLabel: document.querySelector("#currentUserLabel"),
   logoutButton: document.querySelector("#logoutButton"),
+  visitorModeIndicator: document.querySelector("#visitorModeIndicator"),
   sharedNoteView: document.querySelector("#sharedNoteView"),
   sharedNoteCover: document.querySelector("#sharedNoteCover"),
   sharedNoteMeta: document.querySelector("#sharedNoteMeta"),
@@ -569,6 +571,11 @@ window.addEventListener("resize", () => {
 function bootSite() {
   updateCurrentUserLabel();
   if (openSharedNoteFromLocation()) return;
+  if (isVisitorMode) {
+    activateVisitorMode();
+    loadNotes();
+    return;
+  }
   if (authToken) {
     hideSiteLock();
     loadNotes();
@@ -578,6 +585,18 @@ function bootSite() {
   showSiteLock();
   hydrateFilters();
   render();
+}
+
+function activateVisitorMode() {
+  document.body.classList.add("is-visitor-mode");
+  elements.visitorModeIndicator?.removeAttribute("hidden");
+  state.scope = "all";
+  state.visibility = "public";
+  state.favoritesOnly = false;
+  if (window.location.hash !== "#notesLibrary") {
+    history.replaceState(null, "", `${window.location.pathname}${window.location.search}#notesLibrary`);
+  }
+  syncPageViewFromHash();
 }
 
 async function unlockSite(event) {
@@ -1396,12 +1415,13 @@ function setWriterStatus(message, isError = false) {
 }
 
 async function loadNotes({ refresh = false } = {}) {
-  setStatus("正在读取朝夕拾光...");
+  const notesPath = isVisitorMode ? "/api/public/notes" : "/api/notes";
+  setStatus(isVisitorMode ? "正在读取公开笔记..." : "正在读取朝夕拾光...");
   elements.refreshButton.disabled = true;
 
   try {
-    const response = await fetch(`${apiBase}/api/notes${refresh ? "?refresh=1" : ""}`, {
-      headers: siteHeaders()
+    const response = await fetch(`${apiBase}${notesPath}${refresh ? "?refresh=1" : ""}`, {
+      headers: isVisitorMode ? {} : siteHeaders()
     });
     const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "读取笔记失败");
@@ -1411,10 +1431,12 @@ async function loadNotes({ refresh = false } = {}) {
       updateCurrentUserLabel();
     }
     state.notes = normalizeNotes(data.notes);
-    setStatus(`已载入 ${state.notes.length} 篇可查看笔记${data.cached ? "，来自缓存" : ""}`);
+    setStatus(`已载入 ${state.notes.length} 篇${isVisitorMode ? "公开" : "可查看"}笔记${data.cached ? "，来自缓存" : ""}`);
   } catch (error) {
-    state.notes = normalizeNotes(sampleNotes);
-    setStatus(`API 暂不可用，正在展示示例数据。${error instanceof Error ? error.message : ""}`);
+    state.notes = isVisitorMode ? [] : normalizeNotes(sampleNotes);
+    setStatus(isVisitorMode
+      ? `暂时无法读取公开笔记。${error instanceof Error ? error.message : ""}`
+      : `API 暂不可用，正在展示示例数据。${error instanceof Error ? error.message : ""}`);
   } finally {
     hydrateFilters();
     render();
@@ -2817,7 +2839,8 @@ async function saveNoteOrganization(note, changes) {
 
 function openNotesLibrary() {
   // Show the signed-in user's notes by default; guests keep the full list.
-  state.scope = currentUser?.id || currentUser?.username ? "mine" : "all";
+  state.scope = !isVisitorMode && (currentUser?.id || currentUser?.username) ? "mine" : "all";
+  if (isVisitorMode) state.visibility = "public";
   resetNoteList();
   render();
   document.body.dataset.appView = "notes";
@@ -2837,7 +2860,7 @@ function closeNotesLibrary() {
 }
 
 function syncPageViewFromHash() {
-  const hash = window.location.hash;
+  const hash = isVisitorMode ? "#notesLibrary" : window.location.hash;
   const view = hash === "#today"
     ? "today"
     : hash === "#notesLibrary" || hash === "#notes"
@@ -2891,7 +2914,9 @@ function renderTopbar(view) {
     growth: ["\u6210\u957f\u8f68\u8ff9", "\u8fd9\u4e00\u5e74\u7684\u5b66\u4e60\u8db3\u8ff9"],
     graph: ["\u77e5\u8bc6\u661f\u56fe", "\u63a2\u7d22\u4f60\u7684\u77e5\u8bc6\u8fde\u63a5"]
   };
-  const [title, subtitle] = labels[view] || labels.graph;
+  const [title, subtitle] = isVisitorMode && view === "notes"
+    ? ["公开笔记", "访客可直接阅读我选定公开的内容"]
+    : (labels[view] || labels.graph);
   if (elements.pageTitle) elements.pageTitle.textContent = title;
   if (elements.pageSubtitle) elements.pageSubtitle.textContent = subtitle;
 }
@@ -3026,9 +3051,10 @@ async function fetchDetail(key) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), detailRequestTimeoutMs);
   try {
-    const requestUrl = `${apiBase}/api/notes/${encodeURIComponent(key)}?v=${Date.now()}`;
+    const notesPath = isVisitorMode ? "/api/public/notes" : "/api/notes";
+    const requestUrl = `${apiBase}${notesPath}/${encodeURIComponent(key)}?v=${Date.now()}`;
     const response = await fetch(requestUrl, {
-      headers: siteHeaders(),
+      headers: isVisitorMode ? {} : siteHeaders(),
       signal: controller.signal,
       cache: "no-store"
     });
