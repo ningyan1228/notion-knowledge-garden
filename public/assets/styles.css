@@ -6331,3 +6331,13 @@ body.is-shared-note .ai-assistant-panel { display: none !important; }
 .mac-sidebar-card .account-copy i { box-shadow: 0 0 0 3px rgba(52,199,89,.12); }
 .mac-sidebar-card .mini-button { position: relative; z-index: 1; min-height: 28px; padding: 0 8px; border: 1px solid rgba(60,60,67,.10); border-radius: 8px; color: var(--text-secondary); background: rgba(255,255,255,.68); font-size: 11px; font-weight: 600; }
 .mac-sidebar-card .mini-button:hover { border-color: rgba(255,59,48,.20); color: #d84a43; background: rgba(255,59,48,.08); }
+
+/* Focused pages shorten the canvas; keep the account card pinned to the same sidebar footer position. */
+@media (min-width: 921px) {
+  body[data-app-view="folders"] .mac-sidebar,
+  body[data-app-view="calendar"] .mac-sidebar,
+  body[data-app-view="growth"] .mac-sidebar {
+    height: calc(100vh - 36px);
+    min-height: 720px;
+  }
+}

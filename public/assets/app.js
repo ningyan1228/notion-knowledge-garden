@@ -17,8 +17,9 @@ let authToken =
   localStorage.getItem(authTokenLocalKey) ||
   "";
 let currentUser = readStoredUser();
-// A signed-in owner always gets the full private workspace, even when opening an old visitor URL.
-const isVisitorMode = visitorModeRequested && !authToken;
+// Existing owner identity wins over a visitor URL. This also handles sessions saved by earlier app versions.
+const hasStoredOwnerSession = Boolean(authToken || currentUser?.id || currentUser?.username);
+const isVisitorMode = visitorModeRequested && !hasStoredOwnerSession;
 
 const state = {
   notes: [],
