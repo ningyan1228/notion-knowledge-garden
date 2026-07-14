@@ -5,7 +5,7 @@ const authUserSessionKey = "kgCurrentUser";
 const authUserLocalKey = "kgCurrentUserRemembered";
 const writerDraftPrefix = "kgWriterDraft:v2";
 const folderRegistryPrefix = "kgFolders:v1";
-const isVisitorMode = new URLSearchParams(window.location.search).get("mode") === "visitor";
+const visitorModeRequested = new URLSearchParams(window.location.search).get("mode") === "visitor";
 const folderPathSeparator = " / ";
 let folderBrowserPath = "";
 const expandedFolderPaths = new Set();
@@ -17,6 +17,8 @@ let authToken =
   localStorage.getItem(authTokenLocalKey) ||
   "";
 let currentUser = readStoredUser();
+// A signed-in owner always gets the full private workspace, even when opening an old visitor URL.
+const isVisitorMode = visitorModeRequested && !authToken;
 
 const state = {
   notes: [],
@@ -569,6 +571,10 @@ window.addEventListener("resize", () => {
 });
 
 function bootSite() {
+  if (!isVisitorMode) {
+    document.body.classList.remove("is-visitor-mode");
+    elements.visitorModeIndicator?.setAttribute("hidden", "");
+  }
   updateCurrentUserLabel();
   if (openSharedNoteFromLocation()) return;
   if (isVisitorMode) {
