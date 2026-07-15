@@ -128,7 +128,6 @@ const elements = {
   graphRetryButton: document.querySelector("#graphRetryButton"),
   graphResetButton: document.querySelector("#graphResetButton"),
   graphFullscreenButton: document.querySelector("#graphFullscreenButton"),
-  graphNoteCount: document.querySelector("#graphNoteCount"),
   insightReading: document.querySelector("#insightReading"),
   insightNewNotes: document.querySelector("#insightNewNotes"),
   insightIdeas: document.querySelector("#insightIdeas"),
@@ -2026,7 +2025,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
     }
 
     const compact = height < 300;
-    const graph = buildKnowledgeGraph(notes, compact ? 7 : 10);
+    const graph = buildKnowledgeGraph(notes, compact ? 6 : 10, width, height);
 
     knowledgeChart.setOption({
     backgroundColor: "transparent",
@@ -2038,26 +2037,23 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
     series: [
       {
         type: "graph",
-        layout: "force",
+        // A deterministic radial layout is much easier to read than a force
+        // simulation: centre → category → individual notes.
+        layout: "none",
         roam: true,
-        draggable: true,
+        draggable: false,
         top: 8,
         bottom: 8,
         left: 8,
         right: 8,
-        force: {
-          repulsion: compact ? 110 : 220,
-          edgeLength: compact ? [42, 82] : [74, 138],
-          gravity: 0.055
-        },
         lineStyle: {
-          color: "rgba(138, 156, 174, 0.44)",
+          color: "rgba(91, 117, 163, 0.36)",
           width: 1.2,
-          curveness: 0.08
+          curveness: 0.04
         },
         label: {
           show: true,
-          color: "#2f3742",
+          color: "#38465c",
           fontWeight: 700,
           fontSize: 13,
           textBorderColor: "rgba(255, 255, 255, 0.94)",
@@ -2074,7 +2070,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       }
     ]
     }, { notMerge: true });
-    if (elements.graphHint) elements.graphHint.textContent = "显示最近 10 篇笔记；每个节点都标注短标题，悬停可查看全文";
+    if (elements.graphHint) elements.graphHint.textContent = "中心连接分类，分类再连接笔记；悬停查看标题，点击笔记可直接阅读。";
     window.clearTimeout(graphRetryTimer);
     scheduleKnowledgeGraphResize();
   } catch (error) {
@@ -2167,7 +2163,7 @@ function scheduleKnowledgeGraphResize() {
   setTimeout(() => knowledgeChart?.resize(), 420);
 }
 
-function buildKnowledgeGraph(notes, noteLimit = 26) {
+function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
   const nodes = new Map();
   const links = [];
   const addNode = (id, node) => {
@@ -2177,31 +2173,54 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
     if (source !== target) links.push({ source, target });
   };
 
+  const visibleNotes = notes.slice(0, noteLimit);
+  const categoryCounts = countValues(visibleNotes.map((note) => note.category || "未分类"));
+  const groups = new Map();
+  for (const note of visibleNotes) {
+    const category = note.category || "未分类";
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category).push(note);
+  }
+
+  const categories = [...groups.keys()]
+    .sort((left, right) => (categoryCounts[right] || 0) - (categoryCounts[left] || 0) || left.localeCompare(right, "zh-Hans-CN"))
+    .slice(0, 6);
+  const centerX = Math.round(width / 2);
+  const centerY = Math.round(height / 2);
+  const minSize = Math.min(width, height);
+  const categoryRadius = Math.max(118, Math.min(minSize * 0.29, 184));
+  const noteRadius = Math.max(58, Math.min(minSize * 0.14, 86));
+
   addNode("root", {
-    name: "\u671d\u5915\u62fe\u5149",
+    name: "朝夕拾光",
     kind: "root",
     value: "root",
+    x: centerX,
+    y: centerY,
+    fixed: true,
     symbol: "roundRect",
     symbolSize: [142, 66],
-    tooltip: "\u671d\u5915\u62fe\u5149\uff1a\u4f60\u7684\u77e5\u8bc6\u4e2d\u5fc3",
-    itemStyle: { color: "rgba(255,255,255,.88)", borderColor: "rgba(10,132,255,.38)", borderWidth: 1, shadowBlur: 22, shadowColor: "rgba(18, 45, 76, .16)", shadowOffsetY: 8 },
+    tooltip: "朝夕拾光：你的知识中心",
+    itemStyle: { color: "rgba(255,255,255,.94)", borderColor: "rgba(10,132,255,.42)", borderWidth: 1, shadowBlur: 22, shadowColor: "rgba(18, 45, 76, .16)", shadowOffsetY: 8 },
     label: {
       show: true,
-      formatter: "{title|\u671d\u5915\u62fe\u5149}\n{caption|Personal Knowledge OS}",
+      formatter: "{title|朝夕拾光}\n{caption|Personal Knowledge OS}",
       rich: { title: { color: "#1d1d1f", fontSize: 16, fontWeight: 800, lineHeight: 23 }, caption: { color: "#86868b", fontSize: 9, fontWeight: 600, lineHeight: 13 } }
     }
   });
 
-  const categoryCounts = countValues(notes.map((note) => note.category).filter(Boolean));
-  const tagCounts = countValues(notes.flatMap((note) => note.tags));
-
-  for (const note of notes.slice(0, noteLimit)) {
-    const category = note.category || "未分类";
+  categories.forEach((category, categoryIndex) => {
     const categoryId = `category:${category}`;
+    const categoryAngle = -Math.PI / 2 + (Math.PI * 2 * categoryIndex) / Math.max(categories.length, 1);
+    const categoryX = Math.round(centerX + Math.cos(categoryAngle) * categoryRadius);
+    const categoryY = Math.round(centerY + Math.sin(categoryAngle) * categoryRadius);
     addNode(categoryId, {
       name: category,
       kind: "category",
       value: category,
+      x: categoryX,
+      y: categoryY,
+      fixed: true,
       symbol: "roundRect",
       symbolSize: [88 + Math.min((categoryCounts[category] || 1) * 6, 28), 42],
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
@@ -2210,45 +2229,32 @@ function buildKnowledgeGraph(notes, noteLimit = 26) {
     });
     addLink("root", categoryId);
 
-    const noteId = `note:${note.id}`;
-    addNode(noteId, {
-      name: compactLabel(note.title),
-      kind: "note",
-      noteId: note.id,
-      symbolSize: note.pinned ? 26 : 15,
-      tooltip: `笔记：${note.title}`,
-      itemStyle: { color: note.pinned ? "#ffcc66" : "#e5e5ea" },
-      label: {
-        show: true,
-        position: "bottom",
-        distance: 7,
-        color: "#30343b",
-        fontSize: 11,
-        fontWeight: 800,
-        backgroundColor: "rgba(255, 255, 255, 0.92)",
-        borderRadius: 6,
-        padding: [3, 5],
-        textBorderWidth: 0
-      },
-      emphasis: { label: { show: true, color: "#1f252d", fontSize: 12, backgroundColor: "rgba(255, 255, 255, 0.98)" } }
-    });
-    addLink(categoryId, noteId);
-
-    for (const tag of note.tags.slice(0, 3)) {
-      const tagId = `tag:${tag}`;
-      addNode(tagId, {
-        name: tag,
-        kind: "tag",
-        value: tag,
-        symbolSize: 24 + Math.min((tagCounts[tag] || 1) * 3, 14),
-        tooltip: `标签：${tag} / ${tagCounts[tag] || 1} 次`,
-        itemStyle: { color: "#f2f0ff", borderColor: "rgba(94,92,230,.42)", borderWidth: 1 },
-        label: { show: true, color: "#504ebf", fontSize: 11, fontWeight: 720, textBorderWidth: 3, textBorderColor: "rgba(255,255,255,.92)" }
+    const categoryNotes = groups.get(category) || [];
+    categoryNotes.forEach((note, noteIndex) => {
+      const fanSpread = Math.min(1.16, Math.max(.48, categoryNotes.length * .24));
+      const noteAngle = categoryAngle + (noteIndex - (categoryNotes.length - 1) / 2) * (fanSpread / Math.max(categoryNotes.length - 1, 1));
+      const noteX = Math.round(categoryX + Math.cos(noteAngle) * noteRadius);
+      const noteY = Math.round(categoryY + Math.sin(noteAngle) * noteRadius);
+      const noteId = `note:${note.id}`;
+      addNode(noteId, {
+        name: compactLabel(note.title),
+        kind: "note",
+        noteId: note.id,
+        x: noteX,
+        y: noteY,
+        fixed: true,
+        symbolSize: note.pinned ? 20 : 12,
+        tooltip: `笔记：${note.title}`,
+        itemStyle: { color: note.pinned ? "#ffcc66" : "#8ba6c7", borderColor: "rgba(255,255,255,.92)", borderWidth: 1 },
+        label: { show: false },
+        emphasis: {
+          label: { show: true, position: "bottom", distance: 7, color: "#1f2a3a", fontSize: 11, fontWeight: 750, backgroundColor: "rgba(255,255,255,.96)", borderRadius: 6, padding: [3, 5] },
+          itemStyle: { color: "#0a84ff", shadowBlur: 12, shadowColor: "rgba(10,132,255,.30)" }
+        }
       });
-      addLink(categoryId, tagId);
-      addLink(tagId, noteId);
-    }
-  }
+      addLink(categoryId, noteId);
+    });
+  });
 
   return {
     nodes: [...nodes.values()],
@@ -3003,7 +3009,6 @@ function renderStats(notes) {
   const latest = notes.map((note) => note.updated).filter(Boolean).sort(compareDate).at(-1);
 
   elements.totalNotes.textContent = String(notes.length);
-  if (elements.graphNoteCount) elements.graphNoteCount.textContent = String(notes.length);
   elements.totalCategories.textContent = String(categories.length);
   elements.totalTags.textContent = String(tags.length);
   elements.lastUpdated.textContent = formatDate(latest) || "-";
