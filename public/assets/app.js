@@ -277,6 +277,9 @@ const elements = {
   sitePasswordError: document.querySelector("#sitePasswordError"),
   currentUserLabel: document.querySelector("#currentUserLabel"),
   logoutButton: document.querySelector("#logoutButton"),
+  logoutConfirmDialog: document.querySelector("#logoutConfirmDialog"),
+  logoutConfirmCancel: document.querySelector("#logoutConfirmCancel"),
+  logoutConfirmAccept: document.querySelector("#logoutConfirmAccept"),
   visitorModeIndicator: document.querySelector("#visitorModeIndicator"),
   sharedNoteView: document.querySelector("#sharedNoteView"),
   sharedNoteCover: document.querySelector("#sharedNoteCover"),
@@ -522,7 +525,12 @@ elements.writerCoverUploadButton?.addEventListener("click", () => elements.write
 elements.writerContentUploadButton?.addEventListener("click", () => elements.writerContentFile?.click());
 elements.writerCoverFile?.addEventListener("change", handleCoverFileSelect);
 elements.writerContentFile?.addEventListener("change", handleContentFileSelect);
-elements.logoutButton?.addEventListener("click", () => clearAuth("已退出登录，请重新输入用户名和密码。"));
+elements.logoutButton?.addEventListener("click", openLogoutConfirm);
+elements.logoutConfirmCancel?.addEventListener("click", closeLogoutConfirm);
+elements.logoutConfirmAccept?.addEventListener("click", confirmLogout);
+document.querySelectorAll("[data-close-logout-confirm]").forEach((node) => {
+  node.addEventListener("click", closeLogoutConfirm);
+});
 elements.detailEditButton?.addEventListener("click", () => {
   if (!state.currentDetailNote) return;
   const note = state.currentDetailNote;
@@ -554,6 +562,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (event.key === "Escape") {
+    closeLogoutConfirm();
     closeKnowledgeGraphFullscreen();
     closeDetail();
     closeWriter();
@@ -596,6 +605,23 @@ function bootSite() {
   showSiteLock();
   hydrateFilters();
   render();
+}
+
+function openLogoutConfirm() {
+  if (!authToken && !currentUser) return;
+  elements.logoutConfirmDialog?.removeAttribute("hidden");
+  window.setTimeout(() => elements.logoutConfirmCancel?.focus(), 0);
+}
+
+function closeLogoutConfirm() {
+  if (!elements.logoutConfirmDialog || elements.logoutConfirmDialog.hidden) return;
+  elements.logoutConfirmDialog?.setAttribute("hidden", "");
+  elements.logoutButton?.focus();
+}
+
+function confirmLogout() {
+  elements.logoutConfirmDialog?.setAttribute("hidden", "");
+  clearAuth("已退出登录，请重新输入用户名和密码。");
 }
 
 function activateVisitorMode() {

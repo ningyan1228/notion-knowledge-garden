@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-    <link rel="stylesheet" href="assets/styles.css?v=20260715-fix-hidden-visitor-badge" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260715-logout-confirm" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-      <script defer src="assets/app.js?v=20260715-owner-exits-visitor-mode"></script>
+      <script defer src="assets/app.js?v=20260715-logout-confirm"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -753,6 +753,22 @@
         </div>
       </article>
     </aside>
+
+    <div class="logout-confirm" id="logoutConfirmDialog" hidden>
+      <button class="logout-confirm-backdrop" type="button" data-close-logout-confirm aria-label="取消退出"></button>
+      <section class="logout-confirm-card" role="dialog" aria-modal="true" aria-labelledby="logoutConfirmTitle" aria-describedby="logoutConfirmDescription">
+        <span class="logout-confirm-icon" aria-hidden="true">↗</span>
+        <div>
+          <p class="logout-confirm-kicker">ACCOUNT</p>
+          <h2 id="logoutConfirmTitle">确认退出登录？</h2>
+          <p id="logoutConfirmDescription">退出后需要重新输入账号和密码才能查看和管理你的私人笔记。</p>
+        </div>
+        <div class="logout-confirm-actions">
+          <button class="logout-confirm-cancel" id="logoutConfirmCancel" type="button">取消</button>
+          <button class="logout-confirm-accept" id="logoutConfirmAccept" type="button">退出登录</button>
+        </div>
+      </section>
+    </div>
 
     <template id="noteCardTemplate">
       <article class="note-card">
