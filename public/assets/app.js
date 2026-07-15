@@ -572,6 +572,10 @@ window.addEventListener("resize", () => {
 });
 
 function bootSite() {
+  // A remembered login must always take precedence over a visitor link. This
+  // also repairs a page restored from the browser back/forward cache where the
+  // old visitor badge is still present in the DOM.
+  exitVisitorModeForOwner();
   if (!isVisitorMode) {
     document.body.classList.remove("is-visitor-mode");
     elements.visitorModeIndicator?.setAttribute("hidden", "");
@@ -607,10 +611,23 @@ function activateVisitorMode() {
 }
 
 function exitVisitorModeForOwner() {
-  if (!isVisitorMode) return;
+  const hasOwnerSession = Boolean(
+    authToken || currentUser?.id || currentUser?.username || currentUser?.name
+  );
+  if (!hasOwnerSession) return false;
+
+  const visitorBadgeShown = Boolean(
+    elements.visitorModeIndicator && !elements.visitorModeIndicator.hasAttribute("hidden")
+  );
+  const needsVisitorCleanup = isVisitorMode
+    || visitorBadgeShown
+    || document.body.classList.contains("is-visitor-mode");
+
   isVisitorMode = false;
   document.body.classList.remove("is-visitor-mode");
   elements.visitorModeIndicator?.setAttribute("hidden", "");
+  if (!needsVisitorCleanup) return false;
+
   state.scope = currentUser?.id || currentUser?.username ? "mine" : "all";
   state.visibility = "all";
   state.favoritesOnly = false;
@@ -619,6 +636,7 @@ function exitVisitorModeForOwner() {
   url.searchParams.delete("mode");
   history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   syncPageViewFromHash();
+  return true;
 }
 
 async function unlockSite(event) {
@@ -704,6 +722,9 @@ function readStoredUser() {
 }
 
 function updateCurrentUserLabel() {
+  // User data can also be refreshed by /api/notes outside the login form.
+  // Keep the visitor presentation in sync for that path as well.
+  exitVisitorModeForOwner();
   if (!elements.currentUserLabel) return;
   elements.currentUserLabel.textContent = currentUser?.name || currentUser?.username || "未登录";
 }
@@ -1451,7 +1472,12 @@ async function loadNotes({ refresh = false } = {}) {
     if (data.user) {
       currentUser = data.user;
       persistAuth(authToken, currentUser, Boolean(localStorage.getItem(authTokenLocalKey)));
+      const leftVisitorMode = exitVisitorModeForOwner();
       updateCurrentUserLabel();
+      // The first request may have been sent to the guest endpoint. Once the
+      // owner is identified, reload through the authenticated endpoint so the
+      // full private library is available immediately.
+      if (leftVisitorMode) return await loadNotes({ refresh });
     }
     state.notes = normalizeNotes(data.notes);
     setStatus(`已载入 ${state.notes.length} 篇${isVisitorMode ? "公开" : "可查看"}笔记${data.cached ? "，来自缓存" : ""}`);
