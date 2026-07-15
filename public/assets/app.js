@@ -19,7 +19,7 @@ let authToken =
 let currentUser = readStoredUser();
 // Existing owner identity wins over a visitor URL. This also handles sessions saved by earlier app versions.
 const hasStoredOwnerSession = Boolean(authToken || currentUser?.id || currentUser?.username || currentUser?.name);
-const isVisitorMode = visitorModeRequested && !hasStoredOwnerSession;
+let isVisitorMode = visitorModeRequested && !hasStoredOwnerSession;
 
 const state = {
   notes: [],
@@ -606,6 +606,21 @@ function activateVisitorMode() {
   syncPageViewFromHash();
 }
 
+function exitVisitorModeForOwner() {
+  if (!isVisitorMode) return;
+  isVisitorMode = false;
+  document.body.classList.remove("is-visitor-mode");
+  elements.visitorModeIndicator?.setAttribute("hidden", "");
+  state.scope = currentUser?.id || currentUser?.username ? "mine" : "all";
+  state.visibility = "all";
+  state.favoritesOnly = false;
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("mode");
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  syncPageViewFromHash();
+}
+
 async function unlockSite(event) {
   event.preventDefault();
   const username = elements.siteUsernameInput?.value.trim() || "";
@@ -627,6 +642,7 @@ async function unlockSite(event) {
     authToken = data.token;
     currentUser = data.user || null;
     persistAuth(authToken, currentUser, Boolean(elements.sitePasswordRemember?.checked));
+    exitVisitorModeForOwner();
     updateCurrentUserLabel();
     hideSiteLock();
     await loadNotes();
