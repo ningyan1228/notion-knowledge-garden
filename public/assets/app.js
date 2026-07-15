@@ -18,7 +18,7 @@ let authToken =
   "";
 let currentUser = readStoredUser();
 // Existing owner identity wins over a visitor URL. This also handles sessions saved by earlier app versions.
-const hasStoredOwnerSession = Boolean(authToken || currentUser?.id || currentUser?.username);
+const hasStoredOwnerSession = Boolean(authToken || currentUser?.id || currentUser?.username || currentUser?.name);
 const isVisitorMode = visitorModeRequested && !hasStoredOwnerSession;
 
 const state = {
