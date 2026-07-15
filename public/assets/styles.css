@@ -6380,3 +6380,86 @@ body.is-shared-note .ai-assistant-panel { display: none !important; }
     min-height: 720px;
   }
 }
+
+/* Home / knowledge map: make the graph feel like a calm, living knowledge universe. */
+body[data-app-view="graph"] .hero-visual.graph-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid rgba(117, 139, 180, .18);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 9% 7%, rgba(84, 100, 255, .22), transparent 26%),
+    radial-gradient(circle at 88% 1%, rgba(35, 210, 170, .14), transparent 24%),
+    linear-gradient(145deg, rgba(8, 16, 36, .98), rgba(11, 20, 35, .95) 48%, rgba(9, 28, 39, .97));
+  box-shadow: 0 26px 70px rgba(2, 8, 24, .22), inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel::before {
+  content: "";
+  display: block;
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 18% 26%, rgba(135, 116, 255, .5) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 78% 32%, rgba(125, 239, 225, .45) 0 1px, transparent 1.6px),
+    radial-gradient(ellipse at 50% 43%, rgba(102, 87, 255, .15), transparent 46%);
+  background-size: 38px 38px, 52px 52px, auto;
+  opacity: .72;
+  pointer-events: none;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-header {
+  position: relative;
+  z-index: 3;
+  min-height: 112px;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(90deg, rgba(6, 16, 34, .62), rgba(9, 17, 33, .25));
+}
+
+.graph-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.graph-brand-orb { width: 52px; height: 52px; flex: 0 0 52px; display: block; padding: 2px; border-radius: 18px; background: linear-gradient(135deg, rgba(142,120,255,.72), rgba(48,229,196,.62)); box-shadow: 0 10px 28px rgba(68,95,255,.28); }
+.graph-brand-orb img { width: 100%; height: 100%; display: block; border-radius: 16px; object-fit: cover; }
+.graph-identity > div { min-width: 0; }
+body[data-app-view="graph"] .graph-identity span:not(.graph-brand-orb) { display: block; color: #8ebfff; font-size: 10px; font-weight: 800; letter-spacing: .13em; }
+body[data-app-view="graph"] .graph-identity strong { display: block; overflow: hidden; margin-top: 4px; color: #f6f8ff; font-size: clamp(20px, 2vw, 27px); font-weight: 760; letter-spacing: -.045em; text-overflow: ellipsis; white-space: nowrap; }
+body[data-app-view="graph"] .graph-identity p { margin: 5px 0 0; color: rgba(224,232,255,.62); font-size: 12px; }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools { position: static; z-index: auto; justify-self: end; }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools button { border-color: rgba(174,193,255,.14); color: rgba(240,245,255,.86); background: rgba(255,255,255,.075); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools button:hover { color: #fff; background: rgba(103,130,255,.24); box-shadow: 0 8px 20px rgba(0,0,0,.18); }
+
+body[data-app-view="graph"] .graph-workspace { position: relative; z-index: 1; grid-template-columns: minmax(0, 1fr) 292px !important; gap: 20px !important; padding: 18px 20px 20px; }
+body[data-app-view="graph"] .graph-stage { position: relative; overflow: hidden; padding: 14px; border: 1px solid rgba(177,195,255,.12); border-radius: 20px; background: linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.graph-stage-caption { position: absolute; z-index: 2; top: 20px; left: 24px; display: grid; gap: 3px; pointer-events: none; }
+.graph-stage-caption span { color: rgba(154,193,255,.78); font-size: 10px; font-weight: 800; letter-spacing: .11em; }
+.graph-stage-caption strong { color: rgba(242,247,255,.88); font-size: 13px; font-weight: 650; }
+.graph-stage-caption b { color: #81efd1; font-size: 18px; }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-graph { margin-top: 34px; border-radius: 15px; background: radial-gradient(circle at 50% 48%, rgba(87,114,255,.18), transparent 39%), radial-gradient(circle, rgba(191,211,255,.28) .7px, transparent .95px); background-size: auto, 22px 22px; }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .graph-legend { color: rgba(221,230,255,.65); }
+body[data-app-view="graph"] .graph-insight-card { border-color: rgba(153,182,255,.16); color: #edf4ff; background: linear-gradient(165deg, rgba(23,45,72,.92), rgba(11,29,45,.88)); box-shadow: 0 18px 42px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.09); }
+body[data-app-view="graph"] .graph-insight-card > span { color: #7dccff; }
+body[data-app-view="graph"] .graph-insight-card > strong { color: #f4f8ff; }
+body[data-app-view="graph"] .graph-insight-card p { color: rgba(221,233,255,.66); }
+body[data-app-view="graph"] .graph-insight-metrics div { border-color: rgba(198,215,255,.12); background: rgba(255,255,255,.06); }
+body[data-app-view="graph"] .graph-insight-metrics small { color: rgba(226,236,255,.68); }
+
+@media (max-width: 1040px) {
+  body[data-app-view="graph"] .graph-workspace { grid-template-columns: 1fr !important; }
+  body[data-app-view="graph"] .hero-visual.graph-panel .graph-header { grid-template-columns: 1fr; gap: 15px; }
+  body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools { justify-self: start; }
+}
+
+@media (max-width: 620px) {
+  body[data-app-view="graph"] .hero-visual.graph-panel { border-radius: 16px; }
+  body[data-app-view="graph"] .hero-visual.graph-panel .graph-header { min-height: 0; padding: 18px; }
+  .graph-brand-orb { width: 43px; height: 43px; flex-basis: 43px; border-radius: 15px; }
+  .graph-brand-orb img { border-radius: 13px; }
+  body[data-app-view="graph"] .graph-identity strong { font-size: 20px; }
+  body[data-app-view="graph"] .graph-identity p { display: none; }
+  body[data-app-view="graph"] .graph-workspace { padding: 12px; }
+  .graph-stage-caption { top: 18px; left: 20px; }
+  body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-graph { margin-top: 30px; }
+}

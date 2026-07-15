@@ -128,6 +128,7 @@ const elements = {
   graphRetryButton: document.querySelector("#graphRetryButton"),
   graphResetButton: document.querySelector("#graphResetButton"),
   graphFullscreenButton: document.querySelector("#graphFullscreenButton"),
+  graphNoteCount: document.querySelector("#graphNoteCount"),
   insightReading: document.querySelector("#insightReading"),
   insightNewNotes: document.querySelector("#insightNewNotes"),
   insightIdeas: document.querySelector("#insightIdeas"),
@@ -3002,6 +3003,7 @@ function renderStats(notes) {
   const latest = notes.map((note) => note.updated).filter(Boolean).sort(compareDate).at(-1);
 
   elements.totalNotes.textContent = String(notes.length);
+  if (elements.graphNoteCount) elements.graphNoteCount.textContent = String(notes.length);
   elements.totalCategories.textContent = String(categories.length);
   elements.totalTags.textContent = String(tags.length);
   elements.lastUpdated.textContent = formatDate(latest) || "-";

@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-    <link rel="stylesheet" href="assets/styles.css?v=20260715-logout-confirm" />
+    <link rel="stylesheet" href="assets/styles.css?v=20260715-knowledge-universe-home" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-      <script defer src="assets/app.js?v=20260715-logout-confirm"></script>
+      <script defer src="assets/app.js?v=20260715-knowledge-universe-home"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -91,9 +91,13 @@
         </div>
         <div class="hero-visual graph-panel" aria-label="知识地图">
           <div class="graph-header">
-            <div>
-              <span>Knowledge Map</span>
-              <strong>知识星图</strong>
+            <div class="graph-identity">
+              <span class="graph-brand-orb" aria-hidden="true"><img src="assets/morning-dusk-logo-v2.png" alt="" /></span>
+              <div>
+                <span>PERSONAL KNOWLEDGE SPACE</span>
+                <strong>朝夕拾光 · 知识星图</strong>
+                <p>让每一次思考，都在这里找到新的连接。</p>
+              </div>
             </div>
             <div class="graph-tools">
               <p id="graphHint">点击节点进入对应知识</p>
@@ -104,6 +108,10 @@
           </div>
           <div class="graph-workspace">
             <div class="graph-stage">
+              <div class="graph-stage-caption" aria-hidden="true">
+                <span>KNOWLEDGE UNIVERSE</span>
+                <strong><b id="graphNoteCount">-</b> 条思考正在彼此靠近</strong>
+              </div>
               <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
               <div class="graph-legend" aria-hidden="true">
                 <span><i class="legend-root"></i>中心</span>
