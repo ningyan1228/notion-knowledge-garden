@@ -134,6 +134,7 @@ const elements = {
   insightStreak: document.querySelector("#insightStreak"),
   insightActiveTopics: document.querySelector("#insightActiveTopics"),
   insightTip: document.querySelector("#insightTip"),
+  insightRecentUpdates: document.querySelector("#insightRecentUpdates"),
   aiAssistantButton: document.querySelector("#aiAssistantButton"),
   aiAssistantPanel: document.querySelector("#aiAssistantPanel"),
   aiAssistantClose: document.querySelector("#aiAssistantClose"),
@@ -1650,6 +1651,16 @@ function renderGraphInsights(notes) {
         ? `“${first[0]}”正在成为你的知识重心。`
         : "从第一篇笔记开始，建立属于你的知识连接。";
   }
+  if (elements.insightRecentUpdates) {
+    const recent = [...notes]
+      .sort((left, right) => new Date(right.updated || right.created || 0) - new Date(left.updated || left.created || 0))
+      .slice(0, 3);
+    elements.insightRecentUpdates.replaceChildren(...recent.map((note) => {
+      const item = document.createElement("div");
+      item.innerHTML = `<span>${escapeHtml(note.category || "未分类")}</span><small>${escapeHtml(formatDate(note.updated || note.created) || "刚刚")}</small>`;
+      return item;
+    }));
+  }
 }
 
 function toggleAiAssistant() {
@@ -2075,13 +2086,13 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
         left: 8,
         right: 8,
         lineStyle: {
-          color: "rgba(132, 154, 229, 0.30)",
+          color: "rgba(120, 145, 220, 0.22)",
           width: 1.35,
           curveness: 0.12
         },
         label: {
           show: true,
-          color: "#EAF0FF",
+          color: "#334155",
           fontWeight: 700,
           fontSize: 13,
           textBorderWidth: 0,
@@ -2217,10 +2228,12 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
   const categoryRadiusY = Math.max(145, Math.min(height * 0.34, 240));
   const categoryTheme = (category, index) => {
     const name = String(category).toLowerCase();
-    if (/项目|产品|网站/.test(name)) return ["#24C6B1", "#0A857A"];
-    if (/灵感|想法|日记|工作|生活/.test(name)) return ["#D882D8", "#8B4BC8"];
-    if (/工具|服务器|技术|codex|计算机/.test(name)) return ["#FFB85F", "#C96D2E"];
-    if (/学习|读书|常识|知识/.test(name)) return ["#6E9FFF", "#3C5FC5"];
+    if (/项目|产品|网站/.test(name)) return ["#22C3A6", "#118A78"];
+    if (/灵感|想法|日记|工作|生活/.test(name)) return ["#EC6BAA", "#C74782"];
+    if (/codex/.test(name)) return ["#EAB308", "#B9850E"];
+    if (/工具|服务器|技术|计算机/.test(name)) return ["#F4A640", "#C87925"];
+    if (/学习|读书/.test(name)) return ["#8B7CFF", "#6555CC"];
+    if (/常识|知识/.test(name)) return ["#5B7CFA", "#3F5ECC"];
     return [["#78A7D9", "#426B9F"], ["#8F86E8", "#5C4BB8"], ["#52BFAF", "#187C77"]][index % 3];
   };
 
@@ -2240,7 +2253,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       position: "bottom",
       distance: 11,
       formatter: `{title|朝夕拾光}\n{caption|${notes.length} 篇知识笔记}`,
-      rich: { title: { color: "#F5F8FF", fontSize: 17, fontWeight: 800, lineHeight: 23 }, caption: { color: "#AAB9D8", fontSize: 10, fontWeight: 650, lineHeight: 16 } }
+      rich: { title: { color: "#1E293B", fontSize: 17, fontWeight: 800, lineHeight: 23 }, caption: { color: "#64748B", fontSize: 10, fontWeight: 650, lineHeight: 16 } }
     }
   });
 
@@ -2264,14 +2277,14 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       tooltip: `分类：${category} / ${noteCount} 篇`,
       itemStyle: {
         color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
-          { offset: 0, color: "rgba(28, 40, 72, .98)" },
-          { offset: 1, color: "rgba(18, 27, 53, .98)" }
+          { offset: 0, color: "rgba(255, 255, 255, .92)" },
+          { offset: 1, color: "rgba(247, 250, 255, .84)" }
         ]),
-        borderColor: `${startColor}A8`,
-        borderWidth: 1.25,
-        shadowBlur: 23,
-        shadowColor: `${endColor}4D`,
-        shadowOffsetY: 8
+        borderColor: `${startColor}70`,
+        borderWidth: 1,
+        shadowBlur: 16,
+        shadowColor: `${endColor}2E`,
+        shadowOffsetY: 6
       },
       label: {
         show: true,
@@ -2279,13 +2292,13 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
         formatter: `{dot|●}  {name|${compactLabel(category)}}\n{count|${noteCount} 篇笔记}`,
         rich: {
           dot: { color: startColor, fontSize: 17, fontWeight: 800, lineHeight: 23 },
-          name: { color: "#F3F6FF", fontSize: 14, fontWeight: 760, lineHeight: 23 },
-          count: { color: "#96A8C8", fontSize: 10, fontWeight: 650, lineHeight: 15, padding: [0, 0, 0, 28] }
+          name: { color: "#26354A", fontSize: 14, fontWeight: 760, lineHeight: 23 },
+          count: { color: "#8290A5", fontSize: 10, fontWeight: 650, lineHeight: 15, padding: [0, 0, 0, 28] }
         }
       },
       emphasis: {
-        itemStyle: { borderColor: "#EAF2FF", borderWidth: 1.5, shadowBlur: 34, shadowColor: `${endColor}A8` },
-        label: { rich: { name: { color: "#FFFFFF" }, count: { color: "#BED1FF" } } }
+        itemStyle: { borderColor: startColor, borderWidth: 1.5, shadowBlur: 24, shadowColor: `${endColor}66` },
+        label: { rich: { name: { color: "#153B7A" }, count: { color: "#5275A4" } } }
       }
     });
     addLink("root", categoryId);
@@ -2298,7 +2311,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       links.push({
         source: `category:${category}`,
         target: `category:${neighbour}`,
-        lineStyle: { color: "rgba(126, 150, 231, .18)", width: 1, curveness: .12 }
+        lineStyle: { color: "rgba(126, 150, 231, .16)", width: 1, curveness: .12 }
       });
     });
   }

@@ -6642,3 +6642,82 @@ body[data-app-view="graph"] .graph-knowledge-tip p { margin: 6px 0 0; color: #6d
   body[data-app-view="graph"] .graph-stage { height: 530px !important; min-height: 0 !important; padding: 8px !important; border-radius: 16px !important; }
   body[data-app-view="graph"] .graph-insight-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Final knowledge-map language: light mist, quiet connections, no dark-screen effect. */
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage {
+  border: 1px solid rgba(120,145,210,.14) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(103,132,255,.16), transparent 24%),
+    radial-gradient(circle at 75% 20%, rgba(140,120,255,.08), transparent 20%),
+    radial-gradient(circle at 20% 80%, rgba(90,180,255,.06), transparent 18%),
+    linear-gradient(180deg, #F8FAFF 0%, #EEF3FF 45%, #EAF0FA 100%) !important;
+  box-shadow: 0 18px 40px rgba(89,109,165,.10), inset 0 1px 0 rgba(255,255,255,.86) !important;
+}
+
+body[data-app-view="graph"] .graph-stage::before {
+  width: min(70vw, 700px) !important;
+  background:
+    radial-gradient(circle, transparent 0 27%, rgba(103,132,255,.07) 27.15% 27.35%, transparent 27.55% 42%, rgba(103,132,255,.035) 42.15% 42.3%, transparent 42.5%) !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-graph {
+  background:
+    radial-gradient(circle at 16% 28%, rgba(112,142,255,.16) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 82% 72%, rgba(84,174,235,.12) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 60% 15%, rgba(139,124,255,.09) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 50% 47%, rgba(103,132,255,.09), transparent 37%) !important;
+  background-size: 116px 116px, 154px 154px, 188px 188px, auto !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .graph-legend { color: #718096 !important; }
+body[data-app-view="graph"] .hero-visual.graph-panel .legend-root { background: #5B7CFA !important; }
+body[data-app-view="graph"] .hero-visual.graph-panel .legend-topic { background: #22C3A6 !important; }
+
+body[data-app-view="graph"] .graph-insight-card {
+  border-color: rgba(120,145,210,.14) !important;
+  border-radius: 20px !important;
+  background: rgba(255,255,255,.92) !important;
+  box-shadow: 0 12px 30px rgba(89,109,165,.10) !important;
+}
+body[data-app-view="graph"] .graph-insight-heading > span,
+body[data-app-view="graph"] .graph-knowledge-tip > span { color: #5B7CFA !important; }
+body[data-app-view="graph"] .graph-insight-heading > strong { color: #111827 !important; }
+body[data-app-view="graph"] .graph-insight-metrics div { background: #F8FAFC !important; }
+
+body[data-app-view="graph"] .graph-recent-updates {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15,23,42,.08);
+}
+body[data-app-view="graph"] .graph-recent-updates h3 {
+  margin: 0 0 9px;
+  color: #4C5A70;
+  font-size: 12px;
+  font-weight: 800;
+}
+body[data-app-view="graph"] #insightRecentUpdates { display: grid; gap: 8px; }
+body[data-app-view="graph"] #insightRecentUpdates div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+}
+body[data-app-view="graph"] #insightRecentUpdates span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-app-view="graph"] #insightRecentUpdates small { flex: 0 0 auto; color: #94A3B8; font-size: 10px; }
+
+body[data-app-view="graph"] .mac-nav a.is-active {
+  border-left: 3px solid #1677FF !important;
+  border-radius: 10px !important;
+  background: #EEF4FF !important;
+  color: #1677FF !important;
+}
+body[data-app-view="graph"] .sidebar-action-group { border: 0 !important; box-shadow: none !important; }
+body[data-app-view="graph"] .mac-sidebar-card { min-height: 56px; padding: 8px 10px; }
