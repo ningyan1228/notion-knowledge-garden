@@ -2038,55 +2038,108 @@ function renderTimeline(notes) {
 
 function renderKnowledgeGraph(notes, attempt = 0, force = false) {
   if (!elements.knowledgeGraph) return;
-  if (!window.echarts) {
-    setKnowledgeGraphMessage("知识地图正在加载，稍后会自动重试。");
-    scheduleKnowledgeGraphRetry(notes, attempt);
-    return;
-  }
+  knowledgeChart?.dispose();
+  knowledgeChart = null;
+  window.clearTimeout(graphRetryTimer);
 
-  const width = elements.knowledgeGraph.clientWidth;
-  const height = elements.knowledgeGraph.clientHeight;
-  if (width < 160 || height < 140) {
-    setKnowledgeGraphMessage("知识地图将在区域显示后自动绘制。");
-    scheduleKnowledgeGraphRetry(notes, attempt);
-    return;
-  }
+  const categoryCounts = countValues(notes.map((note) => note.category || "未分类"));
+  const categories = unique(notes.map((note) => note.category || "未分类"))
+    .sort((left, right) => (categoryCounts[right] || 0) - (categoryCounts[left] || 0) || left.localeCompare(right, "zh-Hans-CN"));
+  const latest = notes.map((note) => note.updated || note.created).filter(Boolean).sort(compareDate).at(-1);
+  const kindFor = (category) => {
+    const name = String(category).toLowerCase();
+    if (/项目|产品|网站/.test(name)) return "project";
+    if (/codex/.test(name)) return "codex";
+    if (/工具|服务器|技术|计算机/.test(name)) return "infrastructure";
+    if (/学习|读书/.test(name)) return "learning";
+    if (/常识|知识/.test(name)) return "general";
+    return "practice";
+  };
+  const toneFor = (kind) => ({ general: "blue", learning: "purple", project: "green", codex: "amber", infrastructure: "orange", practice: "pink" }[kind] || "blue");
+  const groups = [
+    { id: "learning", title: "学习与认知", kinds: ["general", "learning"], tone: "learning" },
+    { id: "technology", title: "项目与技术", kinds: ["project", "codex", "infrastructure"], tone: "technology" },
+    { id: "practice", title: "工作与实践", kinds: ["practice"], tone: "practice" }
+  ];
 
-  try {
-    if (force && knowledgeChart) {
-      knowledgeChart.dispose();
-      knowledgeChart = null;
+  const map = document.createElement("div");
+  map.className = "knowledge-map-fixed";
+  const relations = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  relations.classList.add("knowledge-map-relations");
+  relations.setAttribute("aria-hidden", "true");
+  map.append(relations);
+
+  const core = document.createElement("section");
+  core.className = "knowledge-map-core";
+  core.innerHTML = `<img src="assets/morning-dusk-logo-v2.png" alt="" /><div><strong>朝夕拾光</strong><span>个人知识系统</span><small>${notes.length} 篇笔记 · ${categories.length} 个主题 · 更新于 ${escapeHtml(formatDate(latest) || "今日")}</small></div>`;
+  map.append(core);
+
+  for (const group of groups) {
+    const groupCategories = categories.filter((category) => group.kinds.includes(kindFor(category)));
+    const groupNotes = groupCategories.reduce((total, category) => total + (categoryCounts[category] || 0), 0);
+    const groupLatest = notes
+      .filter((note) => group.kinds.includes(kindFor(note.category || "未分类")))
+      .map((note) => note.updated || note.created)
+      .filter(Boolean)
+      .sort(compareDate)
+      .at(-1);
+    const panel = document.createElement("section");
+    panel.className = `knowledge-map-cluster cluster-${group.tone}`;
+    panel.dataset.cluster = group.id;
+    panel.innerHTML = `<header><strong>${group.title}</strong><span>${groupNotes} 篇笔记 · 最近更新 ${escapeHtml(formatDate(groupLatest || latest) || "暂无更新")}</span></header>`;
+    const list = document.createElement("div");
+    list.className = "knowledge-map-topic-list";
+    for (const category of groupCategories) {
+      const kind = kindFor(category);
+      const topic = document.createElement("button");
+      topic.type = "button";
+      topic.className = `knowledge-map-topic topic-${toneFor(kind)}${kind === "project" || kind === "general" ? " is-primary" : ""}`;
+      topic.dataset.mapKind = kind;
+      topic.dataset.mapCategory = category;
+      topic.innerHTML = `<i aria-hidden="true"></i><span>${escapeHtml(category)}</span><b>${categoryCounts[category] || 0}</b><small>篇笔记</small>`;
+      topic.addEventListener("click", () => handleKnowledgeGraphClick({ data: { kind: "category", value: category } }));
+      list.append(topic);
     }
-    knowledgeChart ||= window.echarts.getInstanceByDom(elements.knowledgeGraph);
-    if (!knowledgeChart) {
-      elements.knowledgeGraph.replaceChildren();
-      knowledgeChart = window.echarts.init(elements.knowledgeGraph, null, { renderer: "canvas" });
-      knowledgeChart.on("click", handleKnowledgeGraphClick);
-    }
-
-    const graph = buildKnowledgeGraph(notes, width, height);
-
-    knowledgeChart.setOption({
-    backgroundColor: "transparent",
-    graphic: graph.graphics,
-    tooltip: {
-      trigger: "item",
-      formatter: (params) => params.data?.tooltip || params.name
-    },
-    animationDuration: 520,
-    animationDurationUpdate: 420,
-    animationEasing: "cubicOut",
-    series: []
-    }, { notMerge: true });
-    if (elements.graphHint) elements.graphHint.textContent = "点击任意知识星体，即可查看该分类下的全部笔记。";
-    window.clearTimeout(graphRetryTimer);
-    scheduleKnowledgeGraphResize();
-  } catch (error) {
-    knowledgeChart?.dispose();
-    knowledgeChart = null;
-    setKnowledgeGraphMessage("知识地图暂时未准备好，正在重试…");
-    scheduleKnowledgeGraphRetry(notes, attempt);
+    panel.append(list);
+    map.append(panel);
   }
+
+  elements.knowledgeGraph.replaceChildren(map);
+  elements.knowledgeGraph.classList.add("has-fixed-knowledge-map");
+  if (elements.graphHint) elements.graphHint.textContent = "按知识群落浏览内容，点击主题可查看全部笔记。";
+  requestAnimationFrame(drawKnowledgeMapConnections);
+}
+
+function drawKnowledgeMapConnections() {
+  const root = elements.knowledgeGraph;
+  const map = root?.querySelector(".knowledge-map-fixed");
+  const svg = map?.querySelector(".knowledge-map-relations");
+  if (!map || !svg) return;
+  const box = map.getBoundingClientRect();
+  if (!box.width || !box.height) return;
+  svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+  svg.setAttribute("width", String(box.width));
+  svg.setAttribute("height", String(box.height));
+  svg.replaceChildren();
+  const nodeFor = (kind) => map.querySelector(`[data-map-kind="${kind}"]`);
+  const connect = (fromKind, toKind) => {
+    const from = nodeFor(fromKind)?.getBoundingClientRect();
+    const to = nodeFor(toKind)?.getBoundingClientRect();
+    if (!from || !to) return;
+    const x1 = from.left - box.left + from.width / 2;
+    const y1 = from.top - box.top + from.height / 2;
+    const x2 = to.left - box.left + to.width / 2;
+    const y2 = to.top - box.top + to.height / 2;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1 + (x2 - x1) * .38} ${y1 - 24}, ${x1 + (x2 - x1) * .70} ${y2 + 24}, ${x2} ${y2}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "rgba(100,116,139,.22)");
+    path.setAttribute("stroke-width", "1.2");
+    svg.append(path);
+  };
+  connect("learning", "codex");
+  connect("project", "infrastructure");
+  connect("general", "practice");
 }
 
 function handleKnowledgeGraphClick(params) {
@@ -2126,7 +2179,7 @@ function setupKnowledgeGraphObserver() {
     const { width, height } = entries[0]?.contentRect || {};
     if (width < 160 || height < 140) return;
     if (knowledgeChart) scheduleKnowledgeGraphResize();
-    else renderKnowledgeGraph(state.notes);
+    else drawKnowledgeMapConnections();
   });
   graphResizeObserver.observe(elements.knowledgeGraph);
 }
@@ -2164,7 +2217,10 @@ function closeKnowledgeGraphFullscreen() {
 }
 
 function scheduleKnowledgeGraphResize() {
-  if (!knowledgeChart) return;
+  if (!knowledgeChart) {
+    requestAnimationFrame(drawKnowledgeMapConnections);
+    return;
+  }
   requestAnimationFrame(() => knowledgeChart?.resize());
   setTimeout(() => knowledgeChart?.resize(), 80);
   setTimeout(() => knowledgeChart?.resize(), 220);
