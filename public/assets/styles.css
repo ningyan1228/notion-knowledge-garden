@@ -6721,3 +6721,26 @@ body[data-app-view="graph"] .mac-nav a.is-active {
 }
 body[data-app-view="graph"] .sidebar-action-group { border: 0 !important; box-shadow: none !important; }
 body[data-app-view="graph"] .mac-sidebar-card { min-height: 56px; padding: 8px 10px; }
+
+/* Floating-island knowledge map: deliberately irregular clusters instead of orbital geometry. */
+body[data-app-view="graph"] .graph-stage::before {
+  width: 100% !important;
+  height: 100% !important;
+  inset: 0 !important;
+  transform: none !important;
+  border-radius: inherit !important;
+  background:
+    radial-gradient(ellipse at 48% 52%, rgba(103,132,255,.075), transparent 34%),
+    radial-gradient(ellipse at 72% 28%, rgba(34,195,166,.055), transparent 20%),
+    radial-gradient(ellipse at 26% 72%, rgba(139,124,255,.045), transparent 19%) !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-graph {
+  background:
+    radial-gradient(circle at 11% 18%, rgba(112,142,255,.12) 0 1px, transparent 1.45px),
+    radial-gradient(circle at 81% 32%, rgba(34,195,166,.11) 0 1px, transparent 1.45px),
+    radial-gradient(circle at 71% 82%, rgba(244,166,64,.10) 0 1px, transparent 1.45px),
+    radial-gradient(circle at 30% 68%, rgba(139,124,255,.09) 0 1px, transparent 1.45px),
+    radial-gradient(ellipse at 49% 54%, rgba(103,132,255,.075), transparent 34%) !important;
+  background-size: 150px 150px, 185px 185px, 212px 212px, 176px 176px, auto !important;
+}

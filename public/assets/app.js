@@ -487,7 +487,7 @@ elements.focusRandomButton?.addEventListener("click", openRandomNote);
 elements.focusMapButton?.addEventListener("click", scrollToKnowledgeMap);
 elements.graphResetButton?.addEventListener("click", resetGraphFilters);
 elements.graphRetryButton?.addEventListener("click", () => {
-  if (elements.graphHint) elements.graphHint.textContent = "正在重新绘制知识星图...";
+  if (elements.graphHint) elements.graphHint.textContent = "正在重新整理知识地图...";
   renderKnowledgeGraph(state.notes, 0, true);
 });
 elements.graphFullscreenButton?.addEventListener("click", toggleKnowledgeGraphFullscreen);
@@ -2039,7 +2039,7 @@ function renderTimeline(notes) {
 function renderKnowledgeGraph(notes, attempt = 0, force = false) {
   if (!elements.knowledgeGraph) return;
   if (!window.echarts) {
-    setKnowledgeGraphMessage("知识星图正在加载，稍后会自动重试。");
+    setKnowledgeGraphMessage("知识地图正在加载，稍后会自动重试。");
     scheduleKnowledgeGraphRetry(notes, attempt);
     return;
   }
@@ -2047,7 +2047,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
   const width = elements.knowledgeGraph.clientWidth;
   const height = elements.knowledgeGraph.clientHeight;
   if (width < 160 || height < 140) {
-    setKnowledgeGraphMessage("知识星图将在区域显示后自动绘制。");
+    setKnowledgeGraphMessage("知识地图将在区域显示后自动绘制。");
     scheduleKnowledgeGraphRetry(notes, attempt);
     return;
   }
@@ -2072,7 +2072,9 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       trigger: "item",
       formatter: (params) => params.data?.tooltip || params.name
     },
-    animationDurationUpdate: 500,
+    animationDuration: 520,
+    animationDurationUpdate: 420,
+    animationEasing: "cubicOut",
     series: [
       {
         type: "graph",
@@ -2101,6 +2103,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
         labelLayout: { hideOverlap: true },
         emphasis: {
           focus: "adjacency",
+          scale: true,
           lineStyle: { width: 2.5, color: "#0a84ff" }
         },
         data: graph.nodes,
@@ -2114,7 +2117,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
   } catch (error) {
     knowledgeChart?.dispose();
     knowledgeChart = null;
-    setKnowledgeGraphMessage("知识星图暂时未准备好，正在重试…");
+    setKnowledgeGraphMessage("知识地图暂时未准备好，正在重试…");
     scheduleKnowledgeGraphRetry(notes, attempt);
   }
 }
@@ -2222,10 +2225,21 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
   const categories = [...groups.keys()]
     .sort((left, right) => (categoryCounts[right] || 0) - (categoryCounts[left] || 0) || left.localeCompare(right, "zh-Hans-CN"))
     .slice(0, 6);
-  const centerX = Math.round(width / 2);
-  const centerY = Math.round(height / 2);
-  const categoryRadiusX = Math.max(185, Math.min(width * 0.37, 330));
-  const categoryRadiusY = Math.max(145, Math.min(height * 0.34, 240));
+  const coreX = Math.round(width * 0.49);
+  const coreY = Math.round(height * 0.52);
+  const fallbackPositions = [
+    [.19, .28], [.75, .23], [.80, .50], [.66, .73], [.29, .72], [.15, .51]
+  ];
+  const islandPosition = (category, index) => {
+    const name = String(category).toLowerCase();
+    if (/项目|产品|网站/.test(name)) return [.67, .28];
+    if (/codex/.test(name)) return [.81, .43];
+    if (/工具|服务器|技术|计算机/.test(name)) return [.68, .64];
+    if (/学习|读书/.test(name)) return [.30, .29];
+    if (/常识|知识/.test(name)) return [.18, .51];
+    if (/灵感|想法|日记|工作|生活/.test(name)) return [.35, .74];
+    return fallbackPositions[index % fallbackPositions.length];
+  };
   const categoryTheme = (category, index) => {
     const name = String(category).toLowerCase();
     if (/项目|产品|网站/.test(name)) return ["#22C3A6", "#118A78"];
@@ -2241,27 +2255,44 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     name: "朝夕拾光",
     kind: "root",
     value: "root",
-    x: centerX,
-    y: centerY,
+    x: coreX,
+    y: coreY,
     fixed: true,
-    symbol: "image://assets/knowledge-core.svg",
-    symbolSize: 112,
+    symbol: "roundRect",
+    symbolSize: [204, 82],
     tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: { shadowBlur: 34, shadowColor: "rgba(74, 112, 255, .56)", shadowOffsetY: 10 },
+    itemStyle: {
+      color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
+        { offset: 0, color: "rgba(255,255,255,.97)" },
+        { offset: 1, color: "rgba(242,247,255,.95)" }
+      ]),
+      borderColor: "rgba(91,124,250,.42)",
+      borderWidth: 1.25,
+      shadowBlur: 24,
+      shadowColor: "rgba(89,109,165,.20)",
+      shadowOffsetY: 10
+    },
     label: {
       show: true,
-      position: "bottom",
-      distance: 11,
-      formatter: `{title|朝夕拾光}\n{caption|${notes.length} 篇知识笔记}`,
-      rich: { title: { color: "#1E293B", fontSize: 17, fontWeight: 800, lineHeight: 23 }, caption: { color: "#64748B", fontSize: 10, fontWeight: 650, lineHeight: 16 } }
+      position: "inside",
+      align: "left",
+      padding: [0, 0, 0, 10],
+      formatter: `{avatar|朝}  {title|朝夕拾光}\n{space| }{caption|个人知识系统核心 · ${notes.length} 篇知识笔记}`,
+      rich: {
+        avatar: { color: "#fff", fontSize: 14, fontWeight: 800, lineHeight: 38, padding: [9, 11], borderRadius: 20, backgroundColor: "#5B7CFA" },
+        title: { color: "#17233A", fontSize: 17, fontWeight: 800, lineHeight: 28 },
+        space: { width: 42 },
+        caption: { color: "#718096", fontSize: 10, fontWeight: 650, lineHeight: 17 }
+      }
     }
   });
 
+  const categoryIds = new Map();
   categories.forEach((category, categoryIndex) => {
     const categoryId = `category:${category}`;
-    const categoryAngle = -Math.PI / 2 + (Math.PI * 2 * categoryIndex) / Math.max(categories.length, 1);
-    const categoryX = Math.round(centerX + Math.cos(categoryAngle) * categoryRadiusX);
-    const categoryY = Math.round(centerY + Math.sin(categoryAngle) * categoryRadiusY);
+    const [xRatio, yRatio] = islandPosition(category, categoryIndex);
+    const categoryX = Math.round(width * xRatio);
+    const categoryY = Math.round(height * yRatio);
     const [startColor, endColor] = categoryTheme(category, categoryIndex);
     const noteCount = categoryCounts[category] || 1;
     const cardWidth = Math.min(156, 126 + Math.max(0, noteCount - 3) * 5);
@@ -2301,20 +2332,32 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
         label: { rich: { name: { color: "#153B7A" }, count: { color: "#5275A4" } } }
       }
     });
-    addLink("root", categoryId);
+    categoryIds.set(category, categoryId);
   });
 
-  if (categories.length > 3) {
-    categories.forEach((category, index) => {
-      if (index % 2 !== 0) return;
-      const neighbour = categories[(index + 1) % categories.length];
-      links.push({
-        source: `category:${category}`,
-        target: `category:${neighbour}`,
-        lineStyle: { color: "rgba(126, 150, 231, .16)", width: 1, curveness: .12 }
-      });
-    });
-  }
+  const idFor = (pattern) => {
+    const category = categories.find((item) => pattern.test(String(item).toLowerCase()));
+    return category ? categoryIds.get(category) : null;
+  };
+  const connect = (source, target, strength = .22) => {
+    if (!source || !target || source === target) return;
+    links.push({ source, target, lineStyle: { color: `rgba(120, 145, 220, ${strength})`, width: 1.2, curveness: .16 } });
+  };
+  const project = idFor(/项目|产品|网站/);
+  const codex = idFor(/codex/);
+  const server = idFor(/工具|服务器|技术|计算机/);
+  const learning = idFor(/学习|读书/);
+  const general = idFor(/常识|知识/);
+  const work = idFor(/灵感|想法|日记|工作|生活/);
+  connect("root", project, .28);
+  connect("root", general, .24);
+  connect("root", work, .20);
+  connect(project, codex, .30);
+  connect(project, server, .30);
+  connect(learning, general, .28);
+  connect(work, general, .18);
+  const connected = new Set(links.flatMap((link) => [link.source, link.target]));
+  for (const id of categoryIds.values()) if (!connected.has(id)) connect("root", id, .16);
 
   return {
     nodes: [...nodes.values()],
@@ -3054,7 +3097,7 @@ function renderTopbar(view) {
     diaries: ["\u62fe\u5149\u65e5\u8bb0", "\u53ea\u6536\u85cf\u613f\u610f\u516c\u5f00\u7684\u65f6\u5149"],
     calendar: ["\u8bb0\u5f55\u65e5\u5386", "\u56de\u770b\u6bcf\u4e00\u5929\u7684\u6c89\u6dc0"],
     growth: ["\u6210\u957f\u8f68\u8ff9", "\u8fd9\u4e00\u5e74\u7684\u5b66\u4e60\u8db3\u8ff9"],
-    graph: ["\u77e5\u8bc6\u661f\u56fe", "\u63a2\u7d22\u4f60\u7684\u77e5\u8bc6\u8fde\u63a5"]
+    graph: ["\u77e5\u8bc6\u5730\u56fe", "\u63a2\u7d22\u4f60\u7684\u77e5\u8bc6\u8fde\u63a5"]
   };
   const [title, subtitle] = isVisitorMode && view === "notes"
     ? ["公开笔记", "访客可直接阅读我选定公开的内容"]
