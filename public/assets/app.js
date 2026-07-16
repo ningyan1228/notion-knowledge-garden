@@ -2262,7 +2262,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     z: 4,
     silent: true,
     children: [
-      { type: "roundRect", shape: { x: 0, y: 0, width: coreWidth, height: 108, r: 20 }, style: { fill: "rgba(255,255,255,.94)", stroke: "rgba(91,124,250,.28)", lineWidth: 1, shadowBlur: 20, shadowColor: "rgba(89,109,165,.12)", shadowOffsetY: 8 } },
+      { type: "rect", shape: { x: 0, y: 0, width: coreWidth, height: 108, r: 20 }, style: { fill: "rgba(255,255,255,.94)", stroke: "rgba(91,124,250,.28)", lineWidth: 1, shadowBlur: 20, shadowColor: "rgba(89,109,165,.12)", shadowOffsetY: 8 } },
       { type: "image", style: { image: "assets/morning-dusk-logo-v2.png", x: 18, y: 24, width: 55, height: 55 } },
       { type: "text", style: { x: 88, y: 25, text: "朝夕拾光", fill: "#172033", font: "700 19px sans-serif" } },
       { type: "text", style: { x: 88, y: 51, text: "个人知识系统", fill: "#64748B", font: "12px sans-serif" } },
@@ -2283,7 +2283,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       z: 0,
       silent: true,
       children: [
-        { type: "roundRect", shape: { x: 0, y: 0, width: clusterWidth, height: clusterHeight, r: 26 }, style: { fill: cluster.tone, stroke: cluster.stroke, lineWidth: 1 } },
+        { type: "rect", shape: { x: 0, y: 0, width: clusterWidth, height: clusterHeight, r: 26 }, style: { fill: cluster.tone, stroke: cluster.stroke, lineWidth: 1 } },
         { type: "text", style: { x: 20, y: 18, text: cluster.title, fill: cluster.text, font: "700 14px sans-serif" } },
         { type: "text", style: { x: 20, y: 40, text: `${count} 篇笔记 · 最近更新 ${update}`, fill: "#7C8AA0", font: "11px sans-serif" } }
       ]
