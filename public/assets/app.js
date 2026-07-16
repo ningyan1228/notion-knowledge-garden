@@ -2024,8 +2024,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       knowledgeChart.on("click", handleKnowledgeGraphClick);
     }
 
-    const compact = height < 300;
-    const graph = buildKnowledgeGraph(notes, compact ? 6 : 10, width, height);
+    const graph = buildKnowledgeGraph(notes, width, height);
 
     knowledgeChart.setOption({
     backgroundColor: "transparent",
@@ -2163,7 +2162,7 @@ function scheduleKnowledgeGraphResize() {
   setTimeout(() => knowledgeChart?.resize(), 420);
 }
 
-function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
+function buildKnowledgeGraph(notes, width = 720, height = 460) {
   const nodes = new Map();
   const links = [];
   const addNode = (id, node) => {
@@ -2173,10 +2172,9 @@ function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
     if (source !== target) links.push({ source, target });
   };
 
-  const visibleNotes = notes.slice(0, noteLimit);
-  const categoryCounts = countValues(visibleNotes.map((note) => note.category || "未分类"));
+  const categoryCounts = countValues(notes.map((note) => note.category || "未分类"));
   const groups = new Map();
-  for (const note of visibleNotes) {
+  for (const note of notes) {
     const category = note.category || "未分类";
     if (!groups.has(category)) groups.set(category, []);
     groups.get(category).push(note);
@@ -2189,7 +2187,6 @@ function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
   const centerY = Math.round(height / 2);
   const minSize = Math.min(width, height);
   const categoryRadius = Math.max(118, Math.min(minSize * 0.29, 184));
-  const noteRadius = Math.max(58, Math.min(minSize * 0.14, 86));
 
   addNode("root", {
     name: "朝夕拾光",
@@ -2204,7 +2201,7 @@ function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
     itemStyle: { color: "rgba(255,255,255,.94)", borderColor: "rgba(10,132,255,.42)", borderWidth: 1, shadowBlur: 22, shadowColor: "rgba(18, 45, 76, .16)", shadowOffsetY: 8 },
     label: {
       show: true,
-      formatter: "{title|朝夕拾光}\n{caption|Personal Knowledge OS}",
+    formatter: `{title|朝夕拾光}\n{caption|Knowledge Core · ${notes.length} Notes}`,
       rich: { title: { color: "#1d1d1f", fontSize: 16, fontWeight: 800, lineHeight: 23 }, caption: { color: "#86868b", fontSize: 9, fontWeight: 600, lineHeight: 13 } }
     }
   });
@@ -2222,38 +2219,23 @@ function buildKnowledgeGraph(notes, noteLimit = 26, width = 720, height = 460) {
       y: categoryY,
       fixed: true,
       symbol: "roundRect",
-      symbolSize: [88 + Math.min((categoryCounts[category] || 1) * 6, 28), 42],
+      symbolSize: [142, 58],
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
-      itemStyle: { color: "#fff8ed", borderColor: "rgba(255,149,0,.42)", borderWidth: 1, shadowBlur: 10, shadowColor: "rgba(255,149,0,.13)" },
-      label: { show: true, color: "#ae6500", fontSize: 13, fontWeight: 750, textBorderWidth: 0 }
+      itemStyle: { color: "rgba(255,255,255,.88)", borderColor: "rgba(10,132,255,.22)", borderWidth: 1, shadowBlur: 16, shadowColor: "rgba(45, 78, 132, .12)", shadowOffsetY: 6 },
+      label: {
+        show: true,
+        formatter: `{name|${category}}\n{count|${categoryCounts[category] || 1} 篇笔记}`,
+        rich: {
+          name: { color: "#24415f", fontSize: 14, fontWeight: 780, lineHeight: 21 },
+          count: { color: "#73849a", fontSize: 10, fontWeight: 650, lineHeight: 15 }
+        }
+      },
+      emphasis: {
+        itemStyle: { color: "#fff", borderColor: "rgba(10,132,255,.60)", shadowBlur: 24, shadowColor: "rgba(10,132,255,.20)" },
+        label: { rich: { name: { color: "#0a70da" }, count: { color: "#4c85c6" } } }
+      }
     });
     addLink("root", categoryId);
-
-    const categoryNotes = groups.get(category) || [];
-    categoryNotes.forEach((note, noteIndex) => {
-      const fanSpread = Math.min(1.16, Math.max(.48, categoryNotes.length * .24));
-      const noteAngle = categoryAngle + (noteIndex - (categoryNotes.length - 1) / 2) * (fanSpread / Math.max(categoryNotes.length - 1, 1));
-      const noteX = Math.round(categoryX + Math.cos(noteAngle) * noteRadius);
-      const noteY = Math.round(categoryY + Math.sin(noteAngle) * noteRadius);
-      const noteId = `note:${note.id}`;
-      addNode(noteId, {
-        name: compactLabel(note.title),
-        kind: "note",
-        noteId: note.id,
-        x: noteX,
-        y: noteY,
-        fixed: true,
-        symbolSize: note.pinned ? 20 : 12,
-        tooltip: `笔记：${note.title}`,
-        itemStyle: { color: note.pinned ? "#ffcc66" : "#8ba6c7", borderColor: "rgba(255,255,255,.92)", borderWidth: 1 },
-        label: { show: false },
-        emphasis: {
-          label: { show: true, position: "bottom", distance: 7, color: "#1f2a3a", fontSize: 11, fontWeight: 750, backgroundColor: "rgba(255,255,255,.96)", borderRadius: 6, padding: [3, 5] },
-          itemStyle: { color: "#0a84ff", shadowBlur: 12, shadowColor: "rgba(10,132,255,.30)" }
-        }
-      });
-      addLink(categoryId, noteId);
-    });
   });
 
   return {
