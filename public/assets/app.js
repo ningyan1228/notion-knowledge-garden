@@ -2046,9 +2046,9 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
         left: 8,
         right: 8,
         lineStyle: {
-          color: "rgba(91, 117, 163, 0.36)",
-          width: 1.2,
-          curveness: 0.04
+          color: "rgba(95, 132, 185, 0.42)",
+          width: 1.4,
+          curveness: 0.14
         },
         label: {
           show: true,
@@ -2069,7 +2069,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
       }
     ]
     }, { notMerge: true });
-    if (elements.graphHint) elements.graphHint.textContent = "中心连接分类，分类再连接笔记；悬停查看标题，点击笔记可直接阅读。";
+    if (elements.graphHint) elements.graphHint.textContent = "点击任意知识星体，即可查看该分类下的全部笔记。";
     window.clearTimeout(graphRetryTimer);
     scheduleKnowledgeGraphResize();
   } catch (error) {
@@ -2186,7 +2186,15 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
   const centerX = Math.round(width / 2);
   const centerY = Math.round(height / 2);
   const minSize = Math.min(width, height);
-  const categoryRadius = Math.max(118, Math.min(minSize * 0.29, 184));
+  const categoryRadius = Math.max(124, Math.min(minSize * 0.30, 194));
+  const palette = [
+    ["#5f7cff", "#394cc7"],
+    ["#3fc7b1", "#168d80"],
+    ["#ffbc61", "#e48733"],
+    ["#9b7cf4", "#7051d0"],
+    ["#f07aa8", "#c65383"],
+    ["#65a9ef", "#3b6fc8"]
+  ];
 
   addNode("root", {
     name: "朝夕拾光",
@@ -2195,14 +2203,16 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     x: centerX,
     y: centerY,
     fixed: true,
-    symbol: "roundRect",
-    symbolSize: [142, 66],
+    symbol: "image://assets/morning-dusk-logo-v2.png",
+    symbolSize: 92,
     tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: { color: "rgba(255,255,255,.94)", borderColor: "rgba(10,132,255,.42)", borderWidth: 1, shadowBlur: 22, shadowColor: "rgba(18, 45, 76, .16)", shadowOffsetY: 8 },
+    itemStyle: { shadowBlur: 28, shadowColor: "rgba(42, 71, 180, .30)", shadowOffsetY: 9 },
     label: {
       show: true,
-    formatter: `{title|朝夕拾光}\n{caption|Knowledge Core · ${notes.length} Notes}`,
-      rich: { title: { color: "#1d1d1f", fontSize: 16, fontWeight: 800, lineHeight: 23 }, caption: { color: "#86868b", fontSize: 9, fontWeight: 600, lineHeight: 13 } }
+      position: "bottom",
+      distance: 11,
+      formatter: `{title|朝夕拾光}\n{caption|${notes.length} 篇知识沉淀}`,
+      rich: { title: { color: "#1c2a3b", fontSize: 16, fontWeight: 800, lineHeight: 22 }, caption: { color: "#8390a1", fontSize: 10, fontWeight: 650, lineHeight: 15 } }
     }
   });
 
@@ -2211,6 +2221,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     const categoryAngle = -Math.PI / 2 + (Math.PI * 2 * categoryIndex) / Math.max(categories.length, 1);
     const categoryX = Math.round(centerX + Math.cos(categoryAngle) * categoryRadius);
     const categoryY = Math.round(centerY + Math.sin(categoryAngle) * categoryRadius);
+    const [startColor, endColor] = palette[categoryIndex % palette.length];
     addNode(categoryId, {
       name: category,
       kind: "category",
@@ -2218,20 +2229,32 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       x: categoryX,
       y: categoryY,
       fixed: true,
-      symbol: "roundRect",
-      symbolSize: [142, 58],
+      symbol: "circle",
+      symbolSize: 64,
       tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
-      itemStyle: { color: "rgba(255,255,255,.88)", borderColor: "rgba(10,132,255,.22)", borderWidth: 1, shadowBlur: 16, shadowColor: "rgba(45, 78, 132, .12)", shadowOffsetY: 6 },
+      itemStyle: {
+        color: new window.echarts.graphic.RadialGradient(.34, .28, .8, [
+          { offset: 0, color: startColor },
+          { offset: 1, color: endColor }
+        ]),
+        borderColor: "rgba(255,255,255,.82)",
+        borderWidth: 2,
+        shadowBlur: 20,
+        shadowColor: `${endColor}55`,
+        shadowOffsetY: 7
+      },
       label: {
         show: true,
-        formatter: `{name|${category}}\n{count|${categoryCounts[category] || 1} 篇笔记}`,
+        position: "bottom",
+        distance: 9,
+        formatter: `{name|${compactLabel(category)}}\n{count|${categoryCounts[category] || 1} 篇笔记}`,
         rich: {
-          name: { color: "#24415f", fontSize: 14, fontWeight: 780, lineHeight: 21 },
-          count: { color: "#73849a", fontSize: 10, fontWeight: 650, lineHeight: 15 }
+          name: { color: "#263a50", fontSize: 14, fontWeight: 780, lineHeight: 19 },
+          count: { color: "#8090a3", fontSize: 10, fontWeight: 650, lineHeight: 15 }
         }
       },
       emphasis: {
-        itemStyle: { color: "#fff", borderColor: "rgba(10,132,255,.60)", shadowBlur: 24, shadowColor: "rgba(10,132,255,.20)" },
+        itemStyle: { borderColor: "#fff", shadowBlur: 30, shadowColor: `${endColor}88` },
         label: { rich: { name: { color: "#0a70da" }, count: { color: "#4c85c6" } } }
       }
     });
