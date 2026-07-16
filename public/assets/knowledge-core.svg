@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="朝夕拾光知识核心">
+  <defs>
+    <radialGradient id="core" cx="35%" cy="28%" r="76%">
+      <stop offset="0" stop-color="#AEEBFF"/>
+      <stop offset=".31" stop-color="#5B8CFF"/>
+      <stop offset=".68" stop-color="#3645B9"/>
+      <stop offset="1" stop-color="#121C5E"/>
+    </radialGradient>
+    <linearGradient id="aurora" x1="36" y1="34" x2="123" y2="125" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65F5D1"/>
+      <stop offset=".52" stop-color="#69B6FF"/>
+      <stop offset="1" stop-color="#B487FF"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+  </defs>
+  <circle cx="80" cy="80" r="73" fill="#7AA8FF" opacity=".22" filter="url(#glow)"/>
+  <circle cx="80" cy="80" r="66" fill="#09122F" stroke="#BDE5FF" stroke-opacity=".7" stroke-width="1.5"/>
+  <circle cx="80" cy="80" r="58" fill="url(#core)"/>
+  <path d="M33 93c13-13 25-19 36-19 12 0 23 6 33 17 7 8 16 13 27 15" fill="none" stroke="url(#aurora)" stroke-width="9" stroke-linecap="round" opacity=".86"/>
+  <path d="M38 105c16-6 30-6 43 0 14 6 28 6 42 0" fill="none" stroke="#E7FFFF" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+  <circle cx="54" cy="57" r="2.2" fill="#FFF"/><circle cx="106" cy="48" r="1.7" fill="#FFF" opacity=".85"/><circle cx="116" cy="73" r="1.4" fill="#FFF" opacity=".68"/>
+  <circle cx="80" cy="80" r="70" fill="none" stroke="#8AB9FF" stroke-opacity=".55" stroke-width="1.2"/>
+</svg>

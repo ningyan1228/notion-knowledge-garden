@@ -6459,3 +6459,186 @@ body[data-app-view="graph"] .graph-insight-metrics small { color: var(--text-sec
   body[data-app-view="graph"] .graph-identity p { display: none; }
   body[data-app-view="graph"] .graph-workspace { padding: 12px; }
 }
+
+/* Knowledge map redesign: a quiet light shell around a focused dark universe. */
+body[data-app-view="graph"] .page-shell,
+body[data-app-view="graph"] .mac-app-shell,
+body[data-app-view="graph"] .mac-main { background: #f5f6f8 !important; }
+
+body[data-app-view="graph"] .hero-visual.graph-panel {
+  height: calc(100vh - 132px) !important;
+  min-height: 610px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel::before { display: none !important; }
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-header {
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding: 0 0 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools {
+  position: static !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools p { display: none !important; }
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools button {
+  width: auto !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  overflow: visible !important;
+  border: 1px solid rgba(15, 23, 42, .10) !important;
+  border-radius: 10px !important;
+  color: #536174 !important;
+  background: rgba(255,255,255,.86) !important;
+  box-shadow: 0 6px 16px rgba(15,23,42,.06) !important;
+  font-size: 12px !important;
+}
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-tools button::before { display: none !important; }
+
+body[data-app-view="graph"] .graph-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 284px !important;
+  align-items: start !important;
+  gap: 18px !important;
+  min-height: 0 !important;
+  height: calc(100% - 48px) !important;
+  padding: 0 !important;
+}
+
+body[data-app-view="graph"] .graph-stage {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(123, 143, 213, .24) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(92, 113, 255, .30), transparent 28%),
+    radial-gradient(circle at 76% 16%, rgba(145, 89, 255, .15), transparent 27%),
+    linear-gradient(145deg, #0e1324, #151b33 55%, #101528) !important;
+  box-shadow: 0 18px 42px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+
+body[data-app-view="graph"] .graph-stage::before {
+  z-index: 0 !important;
+  width: min(72vw, 720px) !important;
+  top: 50% !important;
+  background:
+    radial-gradient(circle, transparent 0 25%, rgba(151,168,255,.07) 25.2% 25.5%, transparent 25.8% 39%, rgba(151,168,255,.045) 39.2% 39.5%, transparent 39.8%) !important;
+  opacity: 1 !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-graph {
+  z-index: 1 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 12% 24%, rgba(149, 173, 255, .15) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 78% 62%, rgba(125, 229, 215, .11) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 50% 48%, rgba(106, 127, 255, .10), transparent 42%) !important;
+  background-size: 92px 92px, 128px 128px, auto !important;
+}
+
+body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .graph-legend {
+  position: relative;
+  z-index: 2;
+  min-height: 30px !important;
+  margin: 6px 4px 0 !important;
+  padding: 0 !important;
+  color: rgba(202, 215, 244, .72) !important;
+}
+
+body[data-app-view="graph"] .graph-insight-card {
+  align-self: start !important;
+  min-height: 0 !important;
+  padding: 18px !important;
+  border: 1px solid rgba(15,23,42,.10) !important;
+  border-radius: 16px !important;
+  color: #172033 !important;
+  background: #fff !important;
+  box-shadow: 0 12px 32px rgba(15,23,42,.08) !important;
+}
+body[data-app-view="graph"] .graph-insight-card::before { display: none !important; }
+body[data-app-view="graph"] .graph-insight-heading > span,
+body[data-app-view="graph"] .graph-knowledge-tip > span {
+  display: block;
+  color: #1677ff !important;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+body[data-app-view="graph"] .graph-insight-heading > strong {
+  display: block;
+  margin-top: 6px;
+  color: #172033 !important;
+  font-size: 21px !important;
+  line-height: 1.25;
+  letter-spacing: -.04em;
+}
+body[data-app-view="graph"] .graph-insight-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+body[data-app-view="graph"] .graph-insight-metrics div {
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 5px;
+  min-height: 62px;
+  padding: 9px;
+  border: 1px solid rgba(15,23,42,.08) !important;
+  border-radius: 12px;
+  background: #f8faff !important;
+}
+body[data-app-view="graph"] .graph-insight-metrics i { grid-row: span 2; width: 16px; height: 16px; }
+body[data-app-view="graph"] .graph-insight-metrics small { color: #718096 !important; font-size: 10px; }
+body[data-app-view="graph"] .graph-insight-metrics b { color: #1c2940 !important; font-size: 13px; }
+body[data-app-view="graph"] .insight-streak { border-color: #8b74ff; background: #8b74ff; }
+
+body[data-app-view="graph"] .graph-active-topics,
+body[data-app-view="graph"] .graph-knowledge-tip {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15,23,42,.08);
+}
+body[data-app-view="graph"] .graph-active-topics h3 {
+  margin: 0 0 9px;
+  color: #4c5a70;
+  font-size: 12px;
+  font-weight: 800;
+}
+body[data-app-view="graph"] #insightActiveTopics { display: grid; gap: 7px; }
+body[data-app-view="graph"] #insightActiveTopics div { display: flex; align-items: center; justify-content: space-between; color: #3a475b; font-size: 12px; }
+body[data-app-view="graph"] #insightActiveTopics b { min-width: 23px; padding: 2px 7px; border-radius: 999px; color: #2766ba; background: #eef5ff; font-size: 11px; text-align: center; }
+body[data-app-view="graph"] .graph-knowledge-tip { margin-top: 16px; }
+body[data-app-view="graph"] .graph-knowledge-tip p { margin: 6px 0 0; color: #6d7b90 !important; font-size: 12px; line-height: 1.65; }
+
+@media (max-width: 1040px) {
+  body[data-app-view="graph"] .hero-visual.graph-panel { height: auto !important; min-height: 0 !important; }
+  body[data-app-view="graph"] .graph-workspace { grid-template-columns: 1fr !important; height: auto !important; }
+  body[data-app-view="graph"] .graph-stage { height: min(66vh, 620px) !important; min-height: 440px !important; }
+  body[data-app-view="graph"] .graph-insight-card { width: 100%; }
+}
+
+@media (max-width: 620px) {
+  body[data-app-view="graph"] .hero-visual.graph-panel .graph-header { min-height: 42px !important; padding-bottom: 8px !important; }
+  body[data-app-view="graph"] .graph-stage { height: 530px !important; min-height: 0 !important; padding: 8px !important; border-radius: 16px !important; }
+  body[data-app-view="graph"] .graph-insight-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

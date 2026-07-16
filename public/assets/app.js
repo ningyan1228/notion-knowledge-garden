@@ -131,6 +131,9 @@ const elements = {
   insightReading: document.querySelector("#insightReading"),
   insightNewNotes: document.querySelector("#insightNewNotes"),
   insightIdeas: document.querySelector("#insightIdeas"),
+  insightStreak: document.querySelector("#insightStreak"),
+  insightActiveTopics: document.querySelector("#insightActiveTopics"),
+  insightTip: document.querySelector("#insightTip"),
   aiAssistantButton: document.querySelector("#aiAssistantButton"),
   aiAssistantPanel: document.querySelector("#aiAssistantPanel"),
   aiAssistantClose: document.querySelector("#aiAssistantClose"),
@@ -1618,9 +1621,35 @@ function renderGraphInsights(notes) {
   const monthNotes = notes.filter((note) => dateKey(note.created || note.updated).startsWith(monthPrefix));
   const minutes = monthNotes.reduce((total, note) => total + (Number(note.studyMinutes) || 0), 0);
   const ideas = monthNotes.filter((note) => String(note.type || "").includes("灵感") || String(note.category || "").includes("灵感")).length;
+  const activeTopics = Object.entries(countValues(notes.map((note) => note.category || "未分类")))
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hans-CN"))
+    .slice(0, 3);
+  const recordDays = new Set(notes.map((note) => dateKey(note.created || note.updated)).filter(Boolean));
+  let streak = 0;
+  const cursor = new Date();
+  while (recordDays.has(dateKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
   if (elements.insightReading) elements.insightReading.textContent = `${minutes || Math.max(0, monthNotes.length * 8)} 分钟`;
   if (elements.insightNewNotes) elements.insightNewNotes.textContent = `${todayNotes.length} 条`;
   if (elements.insightIdeas) elements.insightIdeas.textContent = `${ideas} 个`;
+  if (elements.insightStreak) elements.insightStreak.textContent = `${streak} 天`;
+  if (elements.insightActiveTopics) {
+    elements.insightActiveTopics.replaceChildren(...activeTopics.map(([topic, count]) => {
+      const item = document.createElement("div");
+      item.innerHTML = `<span>${escapeHtml(topic)}</span><b>${count}</b>`;
+      return item;
+    }));
+  }
+  if (elements.insightTip) {
+    const [first, second] = activeTopics;
+    elements.insightTip.textContent = first && second
+      ? `“${first[0]}”与“${second[0]}”是当前最活跃的两条知识线索。`
+      : first
+        ? `“${first[0]}”正在成为你的知识重心。`
+        : "从第一篇笔记开始，建立属于你的知识连接。";
+  }
 }
 
 function toggleAiAssistant() {
@@ -2046,17 +2075,16 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
         left: 8,
         right: 8,
         lineStyle: {
-          color: "rgba(95, 132, 185, 0.42)",
-          width: 1.4,
-          curveness: 0.14
+          color: "rgba(132, 154, 229, 0.30)",
+          width: 1.35,
+          curveness: 0.12
         },
         label: {
           show: true,
-          color: "#38465c",
+          color: "#EAF0FF",
           fontWeight: 700,
           fontSize: 13,
-          textBorderColor: "rgba(255, 255, 255, 0.94)",
-          textBorderWidth: 4,
+          textBorderWidth: 0,
           formatter: "{b}"
         },
         labelLayout: { hideOverlap: true },
@@ -2185,16 +2213,16 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     .slice(0, 6);
   const centerX = Math.round(width / 2);
   const centerY = Math.round(height / 2);
-  const minSize = Math.min(width, height);
-  const categoryRadius = Math.max(124, Math.min(minSize * 0.30, 194));
-  const palette = [
-    ["#5f7cff", "#394cc7"],
-    ["#3fc7b1", "#168d80"],
-    ["#ffbc61", "#e48733"],
-    ["#9b7cf4", "#7051d0"],
-    ["#f07aa8", "#c65383"],
-    ["#65a9ef", "#3b6fc8"]
-  ];
+  const categoryRadiusX = Math.max(185, Math.min(width * 0.37, 330));
+  const categoryRadiusY = Math.max(145, Math.min(height * 0.34, 240));
+  const categoryTheme = (category, index) => {
+    const name = String(category).toLowerCase();
+    if (/项目|产品|网站/.test(name)) return ["#24C6B1", "#0A857A"];
+    if (/灵感|想法|日记|工作|生活/.test(name)) return ["#D882D8", "#8B4BC8"];
+    if (/工具|服务器|技术|codex|计算机/.test(name)) return ["#FFB85F", "#C96D2E"];
+    if (/学习|读书|常识|知识/.test(name)) return ["#6E9FFF", "#3C5FC5"];
+    return [["#78A7D9", "#426B9F"], ["#8F86E8", "#5C4BB8"], ["#52BFAF", "#187C77"]][index % 3];
+  };
 
   addNode("root", {
     name: "朝夕拾光",
@@ -2203,25 +2231,27 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     x: centerX,
     y: centerY,
     fixed: true,
-    symbol: "image://assets/morning-dusk-logo-v2.png",
-    symbolSize: 92,
+    symbol: "image://assets/knowledge-core.svg",
+    symbolSize: 112,
     tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: { shadowBlur: 28, shadowColor: "rgba(42, 71, 180, .30)", shadowOffsetY: 9 },
+    itemStyle: { shadowBlur: 34, shadowColor: "rgba(74, 112, 255, .56)", shadowOffsetY: 10 },
     label: {
       show: true,
       position: "bottom",
       distance: 11,
-      formatter: `{title|朝夕拾光}\n{caption|${notes.length} 篇知识沉淀}`,
-      rich: { title: { color: "#1c2a3b", fontSize: 16, fontWeight: 800, lineHeight: 22 }, caption: { color: "#8390a1", fontSize: 10, fontWeight: 650, lineHeight: 15 } }
+      formatter: `{title|朝夕拾光}\n{caption|${notes.length} 篇知识笔记}`,
+      rich: { title: { color: "#F5F8FF", fontSize: 17, fontWeight: 800, lineHeight: 23 }, caption: { color: "#AAB9D8", fontSize: 10, fontWeight: 650, lineHeight: 16 } }
     }
   });
 
   categories.forEach((category, categoryIndex) => {
     const categoryId = `category:${category}`;
     const categoryAngle = -Math.PI / 2 + (Math.PI * 2 * categoryIndex) / Math.max(categories.length, 1);
-    const categoryX = Math.round(centerX + Math.cos(categoryAngle) * categoryRadius);
-    const categoryY = Math.round(centerY + Math.sin(categoryAngle) * categoryRadius);
-    const [startColor, endColor] = palette[categoryIndex % palette.length];
+    const categoryX = Math.round(centerX + Math.cos(categoryAngle) * categoryRadiusX);
+    const categoryY = Math.round(centerY + Math.sin(categoryAngle) * categoryRadiusY);
+    const [startColor, endColor] = categoryTheme(category, categoryIndex);
+    const noteCount = categoryCounts[category] || 1;
+    const cardWidth = Math.min(156, 126 + Math.max(0, noteCount - 3) * 5);
     addNode(categoryId, {
       name: category,
       kind: "category",
@@ -2229,37 +2259,49 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       x: categoryX,
       y: categoryY,
       fixed: true,
-      symbol: "circle",
-      symbolSize: 64,
-      tooltip: `分类：${category} / ${categoryCounts[category] || 1} 篇`,
+      symbol: "roundRect",
+      symbolSize: [cardWidth, 62],
+      tooltip: `分类：${category} / ${noteCount} 篇`,
       itemStyle: {
-        color: new window.echarts.graphic.RadialGradient(.34, .28, .8, [
-          { offset: 0, color: startColor },
-          { offset: 1, color: endColor }
+        color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
+          { offset: 0, color: "rgba(28, 40, 72, .98)" },
+          { offset: 1, color: "rgba(18, 27, 53, .98)" }
         ]),
-        borderColor: "rgba(255,255,255,.82)",
-        borderWidth: 2,
-        shadowBlur: 20,
-        shadowColor: `${endColor}55`,
-        shadowOffsetY: 7
+        borderColor: `${startColor}A8`,
+        borderWidth: 1.25,
+        shadowBlur: 23,
+        shadowColor: `${endColor}4D`,
+        shadowOffsetY: 8
       },
       label: {
         show: true,
-        position: "bottom",
-        distance: 9,
-        formatter: `{name|${compactLabel(category)}}\n{count|${categoryCounts[category] || 1} 篇笔记}`,
+        position: "inside",
+        formatter: `{dot|●}  {name|${compactLabel(category)}}\n{count|${noteCount} 篇笔记}`,
         rich: {
-          name: { color: "#263a50", fontSize: 14, fontWeight: 780, lineHeight: 19 },
-          count: { color: "#8090a3", fontSize: 10, fontWeight: 650, lineHeight: 15 }
+          dot: { color: startColor, fontSize: 17, fontWeight: 800, lineHeight: 23 },
+          name: { color: "#F3F6FF", fontSize: 14, fontWeight: 760, lineHeight: 23 },
+          count: { color: "#96A8C8", fontSize: 10, fontWeight: 650, lineHeight: 15, padding: [0, 0, 0, 28] }
         }
       },
       emphasis: {
-        itemStyle: { borderColor: "#fff", shadowBlur: 30, shadowColor: `${endColor}88` },
-        label: { rich: { name: { color: "#0a70da" }, count: { color: "#4c85c6" } } }
+        itemStyle: { borderColor: "#EAF2FF", borderWidth: 1.5, shadowBlur: 34, shadowColor: `${endColor}A8` },
+        label: { rich: { name: { color: "#FFFFFF" }, count: { color: "#BED1FF" } } }
       }
     });
     addLink("root", categoryId);
   });
+
+  if (categories.length > 3) {
+    categories.forEach((category, index) => {
+      if (index % 2 !== 0) return;
+      const neighbour = categories[(index + 1) % categories.length];
+      links.push({
+        source: `category:${category}`,
+        target: `category:${neighbour}`,
+        lineStyle: { color: "rgba(126, 150, 231, .18)", width: 1, curveness: .12 }
+      });
+    });
+  }
 
   return {
     nodes: [...nodes.values()],

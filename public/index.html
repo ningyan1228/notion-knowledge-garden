@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260716-constellation-atlas" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260716-knowledge-universe" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-  <script defer src="assets/app.js?v=20260716-constellation-atlas"></script>
+  <script defer src="assets/app.js?v=20260716-knowledge-universe"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -91,14 +91,6 @@
         </div>
         <div class="hero-visual graph-panel" aria-label="知识地图">
           <div class="graph-header">
-            <div class="graph-identity">
-              <span class="graph-brand-orb" aria-hidden="true"><img src="assets/morning-dusk-logo-v2.png" alt="" /></span>
-              <div>
-                <span>PERSONAL KNOWLEDGE SPACE</span>
-                <strong>朝夕拾光 · 知识星图</strong>
-                <p>让每一次思考，都在这里找到新的连接。</p>
-              </div>
-            </div>
             <div class="graph-tools">
               <p id="graphHint">点击节点进入对应知识</p>
               <button type="button" id="graphRetryButton">重试</button>
@@ -115,14 +107,24 @@
               </div>
             </div>
             <aside class="graph-insight-card" aria-label="今日洞察">
-              <span>今日洞察</span>
-              <strong>你的知识正在生长</strong>
+              <div class="graph-insight-heading">
+                <span>今日概览</span>
+                <strong>知识正在生长</strong>
+              </div>
               <div class="graph-insight-metrics">
                 <div><i class="insight-reading" aria-hidden="true"></i><small>阅读</small><b id="insightReading">-</b></div>
                 <div><i class="insight-notes" aria-hidden="true"></i><small>新增笔记</small><b id="insightNewNotes">-</b></div>
                 <div><i class="insight-ideas" aria-hidden="true"></i><small>新想法</small><b id="insightIdeas">-</b></div>
+                <div><i class="insight-streak" aria-hidden="true"></i><small>连续记录</small><b id="insightStreak">-</b></div>
               </div>
-              <p>每一次记录，都会让你的知识宇宙更清晰。</p>
+              <section class="graph-active-topics" aria-label="活跃主题">
+                <h3>活跃主题</h3>
+                <div id="insightActiveTopics"></div>
+              </section>
+              <section class="graph-knowledge-tip" aria-label="知识提示">
+                <span>知识提示</span>
+                <p id="insightTip">正在整理你的知识连接。</p>
+              </section>
             </aside>
           </div>
         </div>
