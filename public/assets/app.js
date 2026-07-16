@@ -2068,6 +2068,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
 
     knowledgeChart.setOption({
     backgroundColor: "transparent",
+    graphic: graph.graphics,
     tooltip: {
       trigger: "item",
       formatter: (params) => params.data?.tooltip || params.name
@@ -2207,95 +2208,108 @@ function scheduleKnowledgeGraphResize() {
 function buildKnowledgeGraph(notes, width = 720, height = 460) {
   const nodes = new Map();
   const links = [];
+  const graphics = [];
   const addNode = (id, node) => {
     if (!nodes.has(id)) nodes.set(id, { id, ...node });
   };
-  const addLink = (source, target) => {
-    if (source !== target) links.push({ source, target });
-  };
 
   const categoryCounts = countValues(notes.map((note) => note.category || "未分类"));
-  const groups = new Map();
-  for (const note of notes) {
-    const category = note.category || "未分类";
-    if (!groups.has(category)) groups.set(category, []);
-    groups.get(category).push(note);
-  }
-
-  const categories = [...groups.keys()]
+  const categories = unique(notes.map((note) => note.category || "未分类"))
     .sort((left, right) => (categoryCounts[right] || 0) - (categoryCounts[left] || 0) || left.localeCompare(right, "zh-Hans-CN"))
     .slice(0, 6);
-  const coreX = Math.round(width * 0.49);
-  const coreY = Math.round(height * 0.52);
-  const fallbackPositions = [
-    [.19, .28], [.75, .23], [.80, .50], [.66, .73], [.29, .72], [.15, .51]
-  ];
-  const islandPosition = (category, index) => {
+  const latest = notes.map((note) => note.updated || note.created).filter(Boolean).sort(compareDate).at(-1);
+  const categoryKind = (category) => {
     const name = String(category).toLowerCase();
-    if (/项目|产品|网站/.test(name)) return [.67, .28];
-    if (/codex/.test(name)) return [.81, .43];
-    if (/工具|服务器|技术|计算机/.test(name)) return [.68, .64];
-    if (/学习|读书/.test(name)) return [.30, .29];
-    if (/常识|知识/.test(name)) return [.18, .51];
-    if (/灵感|想法|日记|工作|生活/.test(name)) return [.35, .74];
-    return fallbackPositions[index % fallbackPositions.length];
+    if (/项目|产品|网站/.test(name)) return "project";
+    if (/codex/.test(name)) return "codex";
+    if (/工具|服务器|技术|计算机/.test(name)) return "infrastructure";
+    if (/学习|读书/.test(name)) return "learning";
+    if (/常识|知识/.test(name)) return "general";
+    return "practice";
   };
   const categoryTheme = (category, index) => {
-    const name = String(category).toLowerCase();
-    if (/项目|产品|网站/.test(name)) return ["#22C3A6", "#118A78"];
-    if (/灵感|想法|日记|工作|生活/.test(name)) return ["#EC6BAA", "#C74782"];
-    if (/codex/.test(name)) return ["#EAB308", "#B9850E"];
-    if (/工具|服务器|技术|计算机/.test(name)) return ["#F4A640", "#C87925"];
-    if (/学习|读书/.test(name)) return ["#8B7CFF", "#6555CC"];
-    if (/常识|知识/.test(name)) return ["#5B7CFA", "#3F5ECC"];
-    return [["#78A7D9", "#426B9F"], ["#8F86E8", "#5C4BB8"], ["#52BFAF", "#187C77"]][index % 3];
+    const kind = categoryKind(category);
+    const themes = {
+      general: ["#5B7CFA", "#3F5ECC"],
+      learning: ["#8B7CFF", "#6555CC"],
+      project: ["#22C3A6", "#118A78"],
+      codex: ["#D2A20A", "#A87908"],
+      infrastructure: ["#F4A640", "#C87925"],
+      practice: ["#EC6BAA", "#C74782"]
+    };
+    return themes[kind] || [["#78A7D9", "#426B9F"], ["#8F86E8", "#5C4BB8"], ["#52BFAF", "#187C77"]][index % 3];
   };
+  const clusterDefinitions = [
+    { id: "learning", title: "学习与认知", tone: "rgba(99, 102, 241, .06)", stroke: "rgba(99, 102, 241, .18)", text: "#4F46B5", x: .06, y: .31, width: .39, height: .43 },
+    { id: "technology", title: "项目与技术", tone: "rgba(20, 184, 166, .06)", stroke: "rgba(20, 184, 166, .18)", text: "#0F766E", x: .53, y: .26, width: .41, height: .48 },
+    { id: "practice", title: "工作与实践", tone: "rgba(236, 72, 153, .05)", stroke: "rgba(236, 72, 153, .17)", text: "#A83D72", x: .31, y: .78, width: .39, height: .15 }
+  ];
+  const clusterFor = (kind) => kind === "general" || kind === "learning" ? "learning" : kind === "practice" ? "practice" : "technology";
+  const clusterNotes = (clusterId) => categories.reduce((total, category) => total + (clusterFor(categoryKind(category)) === clusterId ? categoryCounts[category] || 0 : 0), 0);
+  const clusterLatest = (clusterId) => notes
+    .filter((note) => clusterFor(categoryKind(note.category || "未分类")) === clusterId)
+    .map((note) => note.updated || note.created)
+    .filter(Boolean)
+    .sort(compareDate)
+    .at(-1);
 
-  addNode("root", {
-    name: "朝夕拾光",
-    kind: "root",
-    value: "root",
-    x: coreX,
-    y: coreY,
-    fixed: true,
-    symbol: "roundRect",
-    symbolSize: [204, 82],
-    tooltip: "朝夕拾光：你的知识中心",
-    itemStyle: {
-      color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
-        { offset: 0, color: "rgba(255,255,255,.97)" },
-        { offset: 1, color: "rgba(242,247,255,.95)" }
-      ]),
-      borderColor: "rgba(91,124,250,.42)",
-      borderWidth: 1.25,
-      shadowBlur: 24,
-      shadowColor: "rgba(89,109,165,.20)",
-      shadowOffsetY: 10
-    },
-    label: {
-      show: true,
-      position: "inside",
-      align: "left",
-      padding: [0, 0, 0, 10],
-      formatter: `{avatar|朝}  {title|朝夕拾光}\n{space| }{caption|个人知识系统核心 · ${notes.length} 篇知识笔记}`,
-      rich: {
-        avatar: { color: "#fff", fontSize: 14, fontWeight: 800, lineHeight: 38, padding: [9, 11], borderRadius: 20, backgroundColor: "#5B7CFA" },
-        title: { color: "#17233A", fontSize: 17, fontWeight: 800, lineHeight: 28 },
-        space: { width: 42 },
-        caption: { color: "#718096", fontSize: 10, fontWeight: 650, lineHeight: 17 }
-      }
-    }
+  const coreWidth = Math.min(286, Math.max(240, width * .34));
+  graphics.push({
+    id: "knowledge-core-card",
+    type: "group",
+    left: Math.round(width * .06),
+    top: 24,
+    z: 4,
+    silent: true,
+    children: [
+      { type: "roundRect", shape: { x: 0, y: 0, width: coreWidth, height: 108, r: 20 }, style: { fill: "rgba(255,255,255,.94)", stroke: "rgba(91,124,250,.28)", lineWidth: 1, shadowBlur: 20, shadowColor: "rgba(89,109,165,.12)", shadowOffsetY: 8 } },
+      { type: "image", style: { image: "assets/morning-dusk-logo-v2.png", x: 18, y: 24, width: 55, height: 55 } },
+      { type: "text", style: { x: 88, y: 25, text: "朝夕拾光", fill: "#172033", font: "700 19px sans-serif" } },
+      { type: "text", style: { x: 88, y: 51, text: "个人知识系统", fill: "#64748B", font: "12px sans-serif" } },
+      { type: "text", style: { x: 88, y: 76, text: `${notes.length} 篇笔记  ·  ${categories.length} 个主题  ·  更新于 ${formatDate(latest) || "今日"}`, fill: "#64748B", font: "11px sans-serif" } }
+    ]
   });
 
+  clusterDefinitions.forEach((cluster) => {
+    const clusterWidth = Math.round(width * cluster.width);
+    const clusterHeight = Math.round(height * cluster.height);
+    const count = clusterNotes(cluster.id);
+    const update = formatDate(clusterLatest(cluster.id) || latest) || "暂无更新";
+    graphics.push({
+      id: `cluster-${cluster.id}`,
+      type: "group",
+      left: Math.round(width * cluster.x),
+      top: Math.round(height * cluster.y),
+      z: 0,
+      silent: true,
+      children: [
+        { type: "roundRect", shape: { x: 0, y: 0, width: clusterWidth, height: clusterHeight, r: 26 }, style: { fill: cluster.tone, stroke: cluster.stroke, lineWidth: 1 } },
+        { type: "text", style: { x: 20, y: 18, text: cluster.title, fill: cluster.text, font: "700 14px sans-serif" } },
+        { type: "text", style: { x: 20, y: 40, text: `${count} 篇笔记 · 最近更新 ${update}`, fill: "#7C8AA0", font: "11px sans-serif" } }
+      ]
+    });
+  });
+
+  const positionForKind = {
+    general: [.20, .49],
+    learning: [.30, .63],
+    project: [.70, .43],
+    codex: [.82, .56],
+    infrastructure: [.62, .64],
+    practice: [.50, .85]
+  };
+  const fallbackPositions = [[.38, .56], [.76, .66], [.24, .62]];
   const categoryIds = new Map();
   categories.forEach((category, categoryIndex) => {
     const categoryId = `category:${category}`;
-    const [xRatio, yRatio] = islandPosition(category, categoryIndex);
+    const kind = categoryKind(category);
+    const [xRatio, yRatio] = positionForKind[kind] || fallbackPositions[categoryIndex % fallbackPositions.length];
     const categoryX = Math.round(width * xRatio);
     const categoryY = Math.round(height * yRatio);
     const [startColor, endColor] = categoryTheme(category, categoryIndex);
     const noteCount = categoryCounts[category] || 1;
-    const cardWidth = Math.min(156, 126 + Math.max(0, noteCount - 3) * 5);
+    const isPrimary = kind === "general" || kind === "project";
+    const cardWidth = isPrimary ? 158 : 138;
     addNode(categoryId, {
       name: category,
       kind: "category",
@@ -2304,7 +2318,7 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
       y: categoryY,
       fixed: true,
       symbol: "roundRect",
-      symbolSize: [cardWidth, 62],
+      symbolSize: [cardWidth, isPrimary ? 54 : 46],
       tooltip: `分类：${category} / ${noteCount} 篇`,
       itemStyle: {
         color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
@@ -2313,55 +2327,45 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
         ]),
         borderColor: `${startColor}70`,
         borderWidth: 1,
-        shadowBlur: 16,
-        shadowColor: `${endColor}2E`,
-        shadowOffsetY: 6
+        shadowBlur: 12,
+        shadowColor: `${endColor}26`,
+        shadowOffsetY: 5
       },
       label: {
         show: true,
         position: "inside",
         formatter: `{dot|●}  {name|${compactLabel(category)}}\n{count|${noteCount} 篇笔记}`,
         rich: {
-          dot: { color: startColor, fontSize: 17, fontWeight: 800, lineHeight: 23 },
+          dot: { color: startColor, fontSize: 15, fontWeight: 800, lineHeight: 21 },
           name: { color: "#26354A", fontSize: 14, fontWeight: 760, lineHeight: 23 },
           count: { color: "#8290A5", fontSize: 10, fontWeight: 650, lineHeight: 15, padding: [0, 0, 0, 28] }
         }
       },
       emphasis: {
-        itemStyle: { borderColor: startColor, borderWidth: 1.5, shadowBlur: 24, shadowColor: `${endColor}66` },
+        itemStyle: { borderColor: startColor, borderWidth: 1.5, shadowBlur: 20, shadowColor: `${endColor}54` },
         label: { rich: { name: { color: "#153B7A" }, count: { color: "#5275A4" } } }
       }
     });
     categoryIds.set(category, categoryId);
   });
 
-  const idFor = (pattern) => {
-    const category = categories.find((item) => pattern.test(String(item).toLowerCase()));
-    return category ? categoryIds.get(category) : null;
-  };
+  const idForKind = (kind) => categories.find((category) => categoryKind(category) === kind) ? categoryIds.get(categories.find((category) => categoryKind(category) === kind)) : null;
   const connect = (source, target, strength = .22) => {
     if (!source || !target || source === target) return;
     links.push({ source, target, lineStyle: { color: `rgba(120, 145, 220, ${strength})`, width: 1.2, curveness: .16 } });
   };
-  const project = idFor(/项目|产品|网站/);
-  const codex = idFor(/codex/);
-  const server = idFor(/工具|服务器|技术|计算机/);
-  const learning = idFor(/学习|读书/);
-  const general = idFor(/常识|知识/);
-  const work = idFor(/灵感|想法|日记|工作|生活/);
-  connect("root", project, .28);
-  connect("root", general, .24);
-  connect("root", work, .20);
-  connect(project, codex, .30);
-  connect(project, server, .30);
-  connect(learning, general, .28);
-  connect(work, general, .18);
-  const connected = new Set(links.flatMap((link) => [link.source, link.target]));
-  for (const id of categoryIds.values()) if (!connected.has(id)) connect("root", id, .16);
+  const project = idForKind("project");
+  const codex = idForKind("codex");
+  const learning = idForKind("learning");
+  const general = idForKind("general");
+  const work = idForKind("practice");
+  connect(learning, codex, .20);
+  connect(general, work, .18);
 
   return {
     nodes: [...nodes.values()],
-    links
+    links,
+    graphics
   };
 }
 

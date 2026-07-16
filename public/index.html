@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260716-floating-knowledge-map" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260716-knowledge-clusters" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-  <script defer src="assets/app.js?v=20260716-floating-knowledge-map"></script>
+  <script defer src="assets/app.js?v=20260716-knowledge-clusters"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -93,18 +93,14 @@
           <div class="graph-header">
             <div class="graph-tools">
               <p id="graphHint">点击节点进入对应知识</p>
-              <button type="button" id="graphRetryButton">重试</button>
-              <button type="button" id="graphResetButton">重置</button>
+              <button type="button" id="graphRetryButton">自动布局</button>
+              <button type="button" id="graphResetButton">重置视图</button>
               <button type="button" id="graphFullscreenButton">全屏</button>
             </div>
           </div>
           <div class="graph-workspace">
             <div class="graph-stage">
               <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
-              <div class="graph-legend" aria-hidden="true">
-                <span><i class="legend-root"></i>中心</span>
-                <span><i class="legend-topic"></i>分类</span>
-              </div>
             </div>
             <aside class="graph-insight-card" aria-label="今日洞察">
               <div class="graph-insight-heading">
