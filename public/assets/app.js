@@ -2076,41 +2076,7 @@ function renderKnowledgeGraph(notes, attempt = 0, force = false) {
     animationDuration: 520,
     animationDurationUpdate: 420,
     animationEasing: "cubicOut",
-    series: [
-      {
-        type: "graph",
-        // A deterministic radial layout is much easier to read than a force
-        // simulation: centre → category → individual notes.
-        layout: "none",
-        roam: true,
-        draggable: false,
-        top: 8,
-        bottom: 8,
-        left: 8,
-        right: 8,
-        lineStyle: {
-          color: "rgba(120, 145, 220, 0.22)",
-          width: 1.35,
-          curveness: 0.12
-        },
-        label: {
-          show: true,
-          color: "#334155",
-          fontWeight: 700,
-          fontSize: 13,
-          textBorderWidth: 0,
-          formatter: "{b}"
-        },
-        labelLayout: { hideOverlap: true },
-        emphasis: {
-          focus: "adjacency",
-          scale: true,
-          lineStyle: { width: 2.5, color: "#0a84ff" }
-        },
-        data: graph.nodes,
-        links: graph.links
-      }
-    ]
+    series: []
     }, { notMerge: true });
     if (elements.graphHint) elements.graphHint.textContent = "点击任意知识星体，即可查看该分类下的全部笔记。";
     window.clearTimeout(graphRetryTimer);
@@ -2206,13 +2172,7 @@ function scheduleKnowledgeGraphResize() {
 }
 
 function buildKnowledgeGraph(notes, width = 720, height = 460) {
-  const nodes = new Map();
-  const links = [];
   const graphics = [];
-  const addNode = (id, node) => {
-    if (!nodes.has(id)) nodes.set(id, { id, ...node });
-  };
-
   const categoryCounts = countValues(notes.map((note) => note.category || "未分类"));
   const categories = unique(notes.map((note) => note.category || "未分类"))
     .sort((left, right) => (categoryCounts[right] || 0) - (categoryCounts[left] || 0) || left.localeCompare(right, "zh-Hans-CN"))
@@ -2239,11 +2199,6 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     };
     return themes[kind] || [["#78A7D9", "#426B9F"], ["#8F86E8", "#5C4BB8"], ["#52BFAF", "#187C77"]][index % 3];
   };
-  const clusterDefinitions = [
-    { id: "learning", title: "学习与认知", tone: "rgba(99, 102, 241, .06)", stroke: "rgba(99, 102, 241, .18)", text: "#4F46B5", x: .06, y: .31, width: .39, height: .43 },
-    { id: "technology", title: "项目与技术", tone: "rgba(20, 184, 166, .06)", stroke: "rgba(20, 184, 166, .18)", text: "#0F766E", x: .53, y: .26, width: .41, height: .48 },
-    { id: "practice", title: "工作与实践", tone: "rgba(236, 72, 153, .05)", stroke: "rgba(236, 72, 153, .17)", text: "#A83D72", x: .31, y: .78, width: .39, height: .15 }
-  ];
   const clusterFor = (kind) => kind === "general" || kind === "learning" ? "learning" : kind === "practice" ? "practice" : "technology";
   const clusterNotes = (clusterId) => categories.reduce((total, category) => total + (clusterFor(categoryKind(category)) === clusterId ? categoryCounts[category] || 0 : 0), 0);
   const clusterLatest = (clusterId) => notes
@@ -2252,8 +2207,42 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     .filter(Boolean)
     .sort(compareDate)
     .at(-1);
+  const coreWidth = Math.min(286, Math.max(242, width * .32));
+  const boxes = {
+    learning: { x: Math.round(width * .06), y: Math.round(height * .28), width: Math.round(width * .38), height: Math.round(height * .43), title: "学习与认知", tone: "rgba(99, 102, 241, .06)", stroke: "rgba(99, 102, 241, .18)", text: "#4F46B5" },
+    technology: { x: Math.round(width * .53), y: Math.round(height * .25), width: Math.round(width * .41), height: Math.round(height * .49), title: "项目与技术", tone: "rgba(20, 184, 166, .06)", stroke: "rgba(20, 184, 166, .18)", text: "#0F766E" },
+    practice: { x: Math.round(width * .31), y: Math.round(height * .78), width: Math.round(width * .39), height: Math.round(height * .15), title: "工作与实践", tone: "rgba(236, 72, 153, .05)", stroke: "rgba(236, 72, 153, .17)", text: "#A83D72" }
+  };
+  const cardPositions = {
+    general: (box) => [box.x + 24, box.y + 86],
+    learning: (box) => [box.x + Math.max(60, box.width - 182), box.y + Math.min(168, box.height - 66)],
+    project: (box) => [box.x + 28, box.y + 88],
+    codex: (box) => [box.x + Math.max(132, box.width - 160), box.y + Math.min(166, box.height - 62)],
+    infrastructure: (box) => [box.x + 46, box.y + Math.min(244, box.height - 70)],
+    practice: (box) => [box.x + Math.max(56, (box.width - 148) / 2), box.y + Math.min(66, box.height - 56)]
+  };
+  const cardCenters = new Map();
+  const addText = (x, y, text, fill, font) => ({ type: "text", style: { x, y, text, fill, font } });
+  const addCluster = (id) => {
+    const box = boxes[id];
+    const count = clusterNotes(id);
+    const update = formatDate(clusterLatest(id) || latest) || "暂无更新";
+    graphics.push({
+      id: `cluster-${id}`,
+      type: "group",
+      left: box.x,
+      top: box.y,
+      z: 0,
+      silent: true,
+      children: [
+        { type: "rect", shape: { x: 0, y: 0, width: box.width, height: box.height, r: 26 }, style: { fill: box.tone, stroke: box.stroke, lineWidth: 1 } },
+        addText(20, 18, box.title, box.text, "700 14px sans-serif"),
+        addText(20, 40, `${count} 篇笔记 · 最近更新 ${update}`, "#7C8AA0", "11px sans-serif")
+      ]
+    });
+  };
 
-  const coreWidth = Math.min(286, Math.max(240, width * .34));
+  ["learning", "technology", "practice"].forEach(addCluster);
   graphics.push({
     id: "knowledge-core-card",
     type: "group",
@@ -2262,111 +2251,58 @@ function buildKnowledgeGraph(notes, width = 720, height = 460) {
     z: 4,
     silent: true,
     children: [
-      { type: "rect", shape: { x: 0, y: 0, width: coreWidth, height: 108, r: 20 }, style: { fill: "rgba(255,255,255,.94)", stroke: "rgba(91,124,250,.28)", lineWidth: 1, shadowBlur: 20, shadowColor: "rgba(89,109,165,.12)", shadowOffsetY: 8 } },
-      { type: "image", style: { image: "assets/morning-dusk-logo-v2.png", x: 18, y: 24, width: 55, height: 55 } },
-      { type: "text", style: { x: 88, y: 25, text: "朝夕拾光", fill: "#172033", font: "700 19px sans-serif" } },
-      { type: "text", style: { x: 88, y: 51, text: "个人知识系统", fill: "#64748B", font: "12px sans-serif" } },
-      { type: "text", style: { x: 88, y: 76, text: `${notes.length} 篇笔记  ·  ${categories.length} 个主题  ·  更新于 ${formatDate(latest) || "今日"}`, fill: "#64748B", font: "11px sans-serif" } }
+      { type: "rect", shape: { x: 0, y: 0, width: coreWidth, height: 108, r: 20 }, style: { fill: "rgba(255,255,255,.96)", stroke: "rgba(91,124,250,.28)", lineWidth: 1, shadowBlur: 20, shadowColor: "rgba(89,109,165,.12)", shadowOffsetY: 8 } },
+      { type: "image", style: { image: "assets/morning-dusk-logo-v2.png", x: 18, y: 25, width: 54, height: 54 } },
+      addText(88, 25, "朝夕拾光", "#172033", "700 19px sans-serif"),
+      addText(88, 51, "个人知识系统", "#64748B", "12px sans-serif"),
+      addText(88, 76, `${notes.length} 篇笔记  ·  ${categories.length} 个主题  ·  更新于 ${formatDate(latest) || "今日"}`, "#64748B", "11px sans-serif")
     ]
   });
 
-  clusterDefinitions.forEach((cluster) => {
-    const clusterWidth = Math.round(width * cluster.width);
-    const clusterHeight = Math.round(height * cluster.height);
-    const count = clusterNotes(cluster.id);
-    const update = formatDate(clusterLatest(cluster.id) || latest) || "暂无更新";
+  categories.forEach((category, index) => {
+    const kind = categoryKind(category);
+    const clusterId = clusterFor(kind);
+    const box = boxes[clusterId];
+    const [x, y] = (cardPositions[kind] || cardPositions.practice)(box);
+    const [startColor, endColor] = categoryTheme(category, index);
+    const count = categoryCounts[category] || 1;
+    const primary = kind === "general" || kind === "project";
+    const cardWidth = primary ? 156 : 140;
+    const cardHeight = primary ? 54 : 46;
+    cardCenters.set(kind, [x + cardWidth / 2, y + cardHeight / 2]);
     graphics.push({
-      id: `cluster-${cluster.id}`,
+      id: `topic-${category}`,
       type: "group",
-      left: Math.round(width * cluster.x),
-      top: Math.round(height * cluster.y),
-      z: 0,
-      silent: true,
+      left: x,
+      top: y,
+      z: 3,
+      cursor: "pointer",
+      onclick: () => handleKnowledgeGraphClick({ data: { kind: "category", value: category } }),
       children: [
-        { type: "rect", shape: { x: 0, y: 0, width: clusterWidth, height: clusterHeight, r: 26 }, style: { fill: cluster.tone, stroke: cluster.stroke, lineWidth: 1 } },
-        { type: "text", style: { x: 20, y: 18, text: cluster.title, fill: cluster.text, font: "700 14px sans-serif" } },
-        { type: "text", style: { x: 20, y: 40, text: `${count} 篇笔记 · 最近更新 ${update}`, fill: "#7C8AA0", font: "11px sans-serif" } }
+        { type: "rect", shape: { x: 0, y: 0, width: cardWidth, height: cardHeight, r: 14 }, style: { fill: "rgba(255,255,255,.94)", stroke: `${startColor}70`, lineWidth: 1, shadowBlur: 12, shadowColor: `${endColor}26`, shadowOffsetY: 5 } },
+        { type: "circle", shape: { cx: 19, cy: 17, r: 4.5 }, style: { fill: startColor } },
+        addText(31, 10, compactLabel(category), "#26354A", "700 14px sans-serif"),
+        addText(31, 29, `${count} 篇笔记`, "#8290A5", "11px sans-serif")
       ]
     });
   });
 
-  const positionForKind = {
-    general: [.20, .49],
-    learning: [.30, .63],
-    project: [.70, .43],
-    codex: [.82, .56],
-    infrastructure: [.62, .64],
-    practice: [.50, .85]
-  };
-  const fallbackPositions = [[.38, .56], [.76, .66], [.24, .62]];
-  const categoryIds = new Map();
-  categories.forEach((category, categoryIndex) => {
-    const categoryId = `category:${category}`;
-    const kind = categoryKind(category);
-    const [xRatio, yRatio] = positionForKind[kind] || fallbackPositions[categoryIndex % fallbackPositions.length];
-    const categoryX = Math.round(width * xRatio);
-    const categoryY = Math.round(height * yRatio);
-    const [startColor, endColor] = categoryTheme(category, categoryIndex);
-    const noteCount = categoryCounts[category] || 1;
-    const isPrimary = kind === "general" || kind === "project";
-    const cardWidth = isPrimary ? 158 : 138;
-    addNode(categoryId, {
-      name: category,
-      kind: "category",
-      value: category,
-      x: categoryX,
-      y: categoryY,
-      fixed: true,
-      symbol: "roundRect",
-      symbolSize: [cardWidth, isPrimary ? 54 : 46],
-      tooltip: `分类：${category} / ${noteCount} 篇`,
-      itemStyle: {
-        color: new window.echarts.graphic.LinearGradient(0, 0, 1, 1, [
-          { offset: 0, color: "rgba(255, 255, 255, .92)" },
-          { offset: 1, color: "rgba(247, 250, 255, .84)" }
-        ]),
-        borderColor: `${startColor}70`,
-        borderWidth: 1,
-        shadowBlur: 12,
-        shadowColor: `${endColor}26`,
-        shadowOffsetY: 5
-      },
-      label: {
-        show: true,
-        position: "inside",
-        formatter: `{dot|●}  {name|${compactLabel(category)}}\n{count|${noteCount} 篇笔记}`,
-        rich: {
-          dot: { color: startColor, fontSize: 15, fontWeight: 800, lineHeight: 21 },
-          name: { color: "#26354A", fontSize: 14, fontWeight: 760, lineHeight: 23 },
-          count: { color: "#8290A5", fontSize: 10, fontWeight: 650, lineHeight: 15, padding: [0, 0, 0, 28] }
-        }
-      },
-      emphasis: {
-        itemStyle: { borderColor: startColor, borderWidth: 1.5, shadowBlur: 20, shadowColor: `${endColor}54` },
-        label: { rich: { name: { color: "#153B7A" }, count: { color: "#5275A4" } } }
-      }
+  const addCurve = (fromKind, toKind) => {
+    const from = cardCenters.get(fromKind);
+    const to = cardCenters.get(toKind);
+    if (!from || !to) return;
+    graphics.push({
+      type: "bezierCurve",
+      z: 1,
+      silent: true,
+      shape: { x1: from[0], y1: from[1], x2: to[0], y2: to[1], cpx1: from[0] + (to[0] - from[0]) * .35, cpy1: from[1] - 20, cpx2: from[0] + (to[0] - from[0]) * .7, cpy2: to[1] + 20 },
+      style: { stroke: "rgba(100,116,139,.22)", lineWidth: 1.2, fill: null }
     });
-    categoryIds.set(category, categoryId);
-  });
-
-  const idForKind = (kind) => categories.find((category) => categoryKind(category) === kind) ? categoryIds.get(categories.find((category) => categoryKind(category) === kind)) : null;
-  const connect = (source, target, strength = .22) => {
-    if (!source || !target || source === target) return;
-    links.push({ source, target, lineStyle: { color: `rgba(120, 145, 220, ${strength})`, width: 1.2, curveness: .16 } });
   };
-  const project = idForKind("project");
-  const codex = idForKind("codex");
-  const learning = idForKind("learning");
-  const general = idForKind("general");
-  const work = idForKind("practice");
-  connect(learning, codex, .20);
-  connect(general, work, .18);
+  addCurve("learning", "codex");
+  addCurve("general", "practice");
 
-  return {
-    nodes: [...nodes.values()],
-    links,
-    graphics
-  };
+  return { graphics };
 }
 
 function renderTopicMap(notes) {
