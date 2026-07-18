@@ -301,6 +301,10 @@ let graphResizeObserver = null;
 let writerDraftTimer = null;
 let detailHeadingObserver = null;
 let writerEditorMode = "visual";
+// Images are uploaded to Notion before a note is saved. Keep a local preview for
+// the current editor session so their temporary `notion-upload:` reference never
+// degrades into a broken image while the user is still writing.
+const writerPendingImagePreviews = new Map();
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -895,7 +899,12 @@ function blockToEditorHtml(block) {
   const content = richTextToEditorHtml(block.richText, block.text || "");
   if (block.type === "image") {
     const caption = escapeHtml(block.caption || "图片");
-    if (String(block.url || "").startsWith("notion-upload:")) {
+    const source = String(block.url || "");
+    const previewUrl = getWriterPendingImagePreview(source);
+    if (source.startsWith("notion-upload:") && previewUrl) {
+      return `<figure class="writer-pending-image" data-image-source="${escapeHtml(source)}"><img src="${escapeHtml(previewUrl)}" alt="${caption}"><figcaption>待保存到 Notion · ${caption}</figcaption></figure>`;
+    }
+    if (source.startsWith("notion-upload:")) {
       return `<p data-image-source="${escapeHtml(block.url)}" data-image-caption="${caption}">图片已插入，保存后即可显示：${caption}</p>`;
     }
     return `<figure><img src="${escapeHtml(block.url || "")}" alt="${caption}"><figcaption>${caption}</figcaption></figure>`;
@@ -952,6 +961,8 @@ function visualHtmlToMarkdown(editor) {
     if (tag === "figure") {
       const image = node.querySelector("img");
       const caption = node.querySelector("figcaption")?.textContent?.trim() || image?.alt || "图片";
+      const source = node.dataset.imageSource;
+      if (source) return [`![${image?.alt || "图片"}](${source})`];
       return image?.src ? [`![${caption}](${image.src})`] : [];
     }
     if (node.dataset.imageSource) return [`![${node.dataset.imageCaption || "图片"}](${node.dataset.imageSource})`];
@@ -1312,6 +1323,7 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     if (!response.ok) throw new Error(data.error || "图片上传失败");
 
     if (adminToken && !authToken) localStorage.setItem("kgAdminToken", adminToken);
+    rememberWriterImagePreview(data?.markdown, dataUrl);
     return data;
   } catch (error) {
     const message = error instanceof TypeError
@@ -1320,6 +1332,15 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     setWriterStatus(message, true);
     return null;
   }
+}
+
+function rememberWriterImagePreview(markdown, previewUrl) {
+  const match = String(markdown || "").match(/^!\[[^\]]*\]\((notion-upload:[^)]+)\)$/m);
+  if (match?.[1] && previewUrl) writerPendingImagePreviews.set(match[1], previewUrl);
+}
+
+function getWriterPendingImagePreview(source) {
+  return writerPendingImagePreviews.get(String(source || "")) || "";
 }
 
 async function prepareImageForUpload(file) {
@@ -3814,13 +3835,15 @@ function renderBlock(block, headings = [], index = 0) {
     const figure = document.createElement("figure");
     figure.className = "article-image";
     const image = document.createElement("img");
-    image.src = block.url || "";
+    const source = String(block.url || "");
+    const previewUrl = getWriterPendingImagePreview(source);
+    image.src = previewUrl || source;
     image.alt = block.caption || "笔记图片";
     image.loading = "lazy";
     figure.append(image);
-    if (block.caption) {
+    if (block.caption || previewUrl) {
       const caption = document.createElement("figcaption");
-      caption.textContent = block.caption;
+      caption.textContent = previewUrl ? `待保存到 Notion · ${block.caption || "图片"}` : block.caption;
       figure.append(caption);
     }
     return figure;
