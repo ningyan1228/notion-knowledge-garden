@@ -301,10 +301,13 @@ let graphResizeObserver = null;
 let writerDraftTimer = null;
 let detailHeadingObserver = null;
 let writerEditorMode = "visual";
+let writerHistoryTimer = null;
 // Images are uploaded to Notion before a note is saved. Keep a local preview for
 // the current editor session so their temporary `notion-upload:` reference never
 // degrades into a broken image while the user is still writing.
 const writerPendingImagePreviews = new Map();
+const writerHistory = [];
+let writerHistoryIndex = -1;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -792,6 +795,7 @@ function openWriter(preferredType = "笔记", diaryDate = "") {
   }
   syncVisualFromMarkdown();
   renderWriterPreview();
+  resetWriterHistory();
   if (elements.writerToken) {
     elements.writerToken.value = localStorage.getItem("kgAdminToken") || "";
   }
@@ -822,6 +826,7 @@ function openEditor(note) {
   if (elements.writerPinned) elements.writerPinned.checked = Boolean(note.pinned);
   if (elements.writerStatus) elements.writerStatus.textContent = "";
   renderWriterPreview();
+  resetWriterHistory();
   updateWriterDraftStatus("正在编辑已有笔记，草稿会保存在本机");
   document.body.style.overflow = "hidden";
 }
@@ -875,6 +880,7 @@ async function handleVisualEditorPaste(event) {
   const data = await uploadPastedImage(event, "粘贴图片");
   if (!data) return;
   setWriterMarkdown(`${elements.writerContent?.value || ""}\n${data.markdown}\n`);
+  recordWriterHistory();
   emitWriterChanged();
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
@@ -1008,7 +1014,21 @@ function handleWriterContentKeydown(event) {
   const isShortcut = event.ctrlKey || event.metaKey;
   if (!isShortcut) return;
 
-  if (event.key.toLowerCase() === "b") {
+  const key = event.key.toLowerCase();
+  if (key === "z") {
+    event.preventDefault();
+    if (event.shiftKey) redoWriterHistory();
+    else undoWriterHistory();
+    return;
+  }
+
+  if (key === "y") {
+    event.preventDefault();
+    redoWriterHistory();
+    return;
+  }
+
+  if (key === "b") {
     event.preventDefault();
     applyWriterFormat("bold");
     return;
@@ -1115,14 +1135,61 @@ function prefixSelectedLines(textarea, prefix, replacePattern = null) {
   textarea.setSelectionRange(lineStart, lineStart + next.length);
 }
 
-function handleWriterFormInput() {
+function handleWriterFormInput(event) {
   renderWriterPreview();
   scheduleWriterDraftSave();
+  const activeEditor = writerEditorMode === "visual" ? elements.writerVisualEditor : elements.writerContent;
+  if (event?.target === activeEditor) scheduleWriterHistory();
 }
 
 function emitWriterChanged() {
   renderWriterPreview();
   scheduleWriterDraftSave();
+  scheduleWriterHistory();
+}
+
+function resetWriterHistory() {
+  window.clearTimeout(writerHistoryTimer);
+  writerHistory.length = 0;
+  writerHistoryIndex = -1;
+  recordWriterHistory();
+}
+
+function scheduleWriterHistory() {
+  window.clearTimeout(writerHistoryTimer);
+  writerHistoryTimer = window.setTimeout(recordWriterHistory, 320);
+}
+
+function recordWriterHistory() {
+  window.clearTimeout(writerHistoryTimer);
+  const content = String(elements.writerContent?.value || "");
+  if (writerHistory[writerHistoryIndex] === content) return;
+  writerHistory.splice(writerHistoryIndex + 1);
+  writerHistory.push(content);
+  if (writerHistory.length > 80) writerHistory.shift();
+  writerHistoryIndex = writerHistory.length - 1;
+}
+
+function undoWriterHistory() {
+  recordWriterHistory();
+  if (writerHistoryIndex <= 0) return;
+  writerHistoryIndex -= 1;
+  restoreWriterHistory(writerHistory[writerHistoryIndex]);
+}
+
+function redoWriterHistory() {
+  recordWriterHistory();
+  if (writerHistoryIndex >= writerHistory.length - 1) return;
+  writerHistoryIndex += 1;
+  restoreWriterHistory(writerHistory[writerHistoryIndex]);
+}
+
+function restoreWriterHistory(content) {
+  setWriterMarkdown(content);
+  renderWriterPreview();
+  scheduleWriterDraftSave();
+  const editor = writerEditorMode === "visual" ? elements.writerVisualEditor : elements.writerContent;
+  editor?.focus();
 }
 
 function writerDraftKey() {
