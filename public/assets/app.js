@@ -528,6 +528,7 @@ elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
 elements.writerVisualEditor?.addEventListener("input", handleVisualEditorInput);
 elements.writerVisualEditor?.addEventListener("paste", handleVisualEditorPaste);
 elements.writerVisualEditor?.addEventListener("keydown", handleWriterContentKeydown);
+document.addEventListener("keydown", handleGlobalWriterUndo, true);
 elements.editorModeSwitch?.addEventListener("click", handleEditorModeSwitch);
 elements.writerFormatToolbar?.addEventListener("pointerdown", (event) => event.preventDefault());
 elements.writerFormatToolbar?.addEventListener("click", handleFormatToolbarClick);
@@ -879,9 +880,7 @@ function handleVisualEditorInput() {
 async function handleVisualEditorPaste(event) {
   const data = await uploadPastedImage(event, "粘贴图片");
   if (!data) return;
-  setWriterMarkdown(`${elements.writerContent?.value || ""}\n${data.markdown}\n`);
-  recordWriterHistory();
-  emitWriterChanged();
+  insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
 
@@ -996,11 +995,29 @@ function insertVisualHtml(html) {
 async function handleWriterPaste(event) {
   const data = await uploadPastedImage(event, "粘贴图片");
   if (!data) return;
-
-  if (writerEditorMode === "visual") syncVisualFromMarkdown();
-  insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
-  if (writerEditorMode === "visual") syncVisualFromMarkdown();
+  insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+function insertWriterImageMarkdown(markdown) {
+  const content = elements.writerContent;
+  if (!content || !markdown) return;
+
+  // Always create a distinct before/after checkpoint for an image. Uploading is
+  // asynchronous and changes the editor DOM, so relying on browser undo alone
+  // is unreliable here.
+  recordWriterHistory();
+  if (writerEditorMode === "visual") {
+    setWriterMarkdown(`${content.value || ""}\n${markdown}\n`);
+  } else {
+    const start = content.selectionStart ?? content.value.length;
+    const end = content.selectionEnd ?? content.value.length;
+    const next = `\n${markdown}\n`;
+    content.value = `${content.value.slice(0, start)}${next}${content.value.slice(end)}`;
+    content.setSelectionRange(start + next.length, start + next.length);
+  }
+  recordWriterHistory();
+  emitWriterChanged();
 }
 
 function handleFormatToolbarClick(event) {
@@ -1011,6 +1028,7 @@ function handleFormatToolbarClick(event) {
 }
 
 function handleWriterContentKeydown(event) {
+  if (event.defaultPrevented) return;
   const isShortcut = event.ctrlKey || event.metaKey;
   if (!isShortcut) return;
 
@@ -1038,6 +1056,23 @@ function handleWriterContentKeydown(event) {
     event.preventDefault();
     applyWriterFormat(`h${event.key}`);
   }
+}
+
+function handleGlobalWriterUndo(event) {
+  if (elements.writerPanel?.getAttribute("aria-hidden") !== "false") return;
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if (key !== "z" && key !== "y") return;
+
+  const target = event.target;
+  const isAnotherFormField = (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)
+    && target !== elements.writerContent;
+  if (isAnotherFormField) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  if (key === "z" && !event.shiftKey) undoWriterHistory();
+  else redoWriterHistory();
 }
 
 function applyWriterFormat(format, color = "") {
@@ -1335,12 +1370,7 @@ async function handleContentFileSelect(event) {
   const data = await uploadImageFile(file, "正文图片", "插入正文图片");
   if (!data) return;
 
-  if (writerEditorMode === "visual") {
-    setWriterMarkdown(`${elements.writerContent?.value || ""}\n${data.markdown}\n`);
-    emitWriterChanged();
-  } else {
-    insertAtCursor(elements.writerContent, `\n${data.markdown}\n`);
-  }
+  insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
 
