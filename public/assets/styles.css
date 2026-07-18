@@ -1260,7 +1260,15 @@ textarea:focus {
 }
 
 .writer-card {
-  width: min(760px, calc(100% - 48px));
+  /* Writing is a primary task: use a wide, document-like workspace instead
+     of the narrow side drawer used for reading a note. */
+  width: min(1600px, calc(100vw - 48px), 78vw);
+}
+
+@media (max-width: 1040px) {
+  .writer-card {
+    width: min(960px, calc(100vw - 36px), 88vw);
+  }
 }
 
 .close-button {
