@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">朝夕日记默认封面</title>
+  <desc id="desc">柔和晨昏色彩与月亮的日记封面</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1578a6"/><stop offset=".48" stop-color="#1b9d9b"/><stop offset="1" stop-color="#f1ae68"/></linearGradient>
+    <linearGradient id="haze" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#e2fbff" stop-opacity=".3"/><stop offset="1" stop-color="#fff6df" stop-opacity=".6"/></linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1260" cy="180" r="95" fill="#fff7d6" fill-opacity=".9"/><circle cx="1294" cy="151" r="96" fill="#1d9697" fill-opacity=".72"/>
+  <path d="M0 570C210 452 414 500 606 592s401 92 602-28 280-111 392-82v418H0Z" fill="#0b5c70" fill-opacity=".4"/>
+  <path d="M0 666c259-74 451-22 642 39s399 38 564-36 301-85 394-51v282H0Z" fill="#073f56" fill-opacity=".55"/>
+  <rect y="560" width="1600" height="340" fill="url(#haze)" opacity=".26"/>
+  <g fill="#fff" fill-opacity=".55"><circle cx="160" cy="134" r="5"/><circle cx="295" cy="208" r="3"/><circle cx="455" cy="112" r="4"/><circle cx="620" cy="250" r="3"/><circle cx="786" cy="145" r="5"/><circle cx="970" cy="295" r="3"/></g>
+  <text x="110" y="190" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif" font-size="44" font-weight="700" letter-spacing="8">DAILY NOTE</text>
+  <text x="110" y="300" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif" font-size="100" font-weight="700">朝夕日记</text>
+  <text x="114" y="362" fill="#ebfffc" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif" font-size="34">把每天的片刻，留给未来的自己。</text>
+</svg>

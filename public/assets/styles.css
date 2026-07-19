@@ -1359,12 +1359,17 @@ textarea:focus {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   padding: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 8;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.66);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
+
+.writer-card .close-button { z-index: 10; }
 
 .editor-mode-switch {
   display: flex;
@@ -6017,16 +6022,16 @@ body[data-app-view="notes"] .scope-switch { min-height: 36px; padding: 3px; bord
 body[data-app-view="notes"] .scope-button { min-height: 30px; border-radius: 8px; font-size: 13px; }
 body[data-app-view="notes"] .scope-button.is-active { color: var(--text-primary); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 body[data-app-view="notes"] .library-shortcut-bar { min-height: 36px; padding: 0; border: 0; color: var(--text-secondary); background: transparent; }
-body[data-app-view="notes"] .toolbar { position: relative; min-height: 64px; display: grid; grid-template-columns: minmax(230px,1.7fr) minmax(130px,.8fr) minmax(130px,.8fr) auto; align-items: end; gap: 10px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+body[data-app-view="notes"] .toolbar { position: relative; z-index: 20; min-height: 64px; display: grid; grid-template-columns: minmax(230px,1.7fr) minmax(130px,.8fr) minmax(130px,.8fr) auto; align-items: end; gap: 10px; padding: 0; border: 0; overflow: visible; background: transparent; box-shadow: none; }
 body[data-app-view="notes"] .toolbar > label { min-width: 0; }
 body[data-app-view="notes"] .toolbar > label span { display: none; }
 body[data-app-view="notes"] .toolbar .search-box input { padding-left: 14px; }
-.more-filters { position: relative; align-self: end; }
+.more-filters { position: relative; z-index: 21; align-self: end; }
 .more-filters summary { height: 40px; display: flex; align-items: center; justify-content: center; padding: 0 13px; border: 1px solid var(--separator); border-radius: 12px; color: var(--text-primary); background: rgba(255,255,255,.78); font-size: 13px; font-weight: 600; list-style: none; cursor: pointer; }
 .more-filters summary::-webkit-details-marker { display: none; }
 .more-filters summary::after { content: "⌄"; margin-left: 7px; color: var(--text-secondary); }
 .more-filters[open] summary { border-color: rgba(10,132,255,.35); color: var(--accent); }
-.more-filter-grid { position: absolute; z-index: 8; top: calc(100% + 8px); right: 0; width: min(600px, calc(100vw - 96px)); display: grid; grid-template-columns: repeat(3,minmax(150px,1fr)); gap: 10px; padding: 14px; border: 1px solid var(--separator); border-radius: 16px; background: rgba(255,255,255,.92); box-shadow: var(--shadow-float); backdrop-filter: blur(22px); }
+.more-filter-grid { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; width: min(600px, calc(100vw - 96px)); display: grid; grid-template-columns: repeat(3,minmax(150px,1fr)); gap: 10px; padding: 14px; border: 1px solid var(--separator); border-radius: 16px; background: rgba(255,255,255,.96); box-shadow: var(--shadow-float); backdrop-filter: blur(22px); }
 .more-filter-grid label span { display: block; margin-bottom: 5px; color: var(--text-secondary); font-size: 11px; }
 .filter-result-bar { min-height: 42px; margin-top: 10px; border-top: 1px solid var(--separator); border-bottom: 0; background: transparent; }
 .filter-result-actions .text-button { display: none; }
@@ -6036,6 +6041,7 @@ body[data-app-view="notes"] .notes-grid { grid-template-columns: repeat(3,minmax
 body[data-app-view="notes"] .note-card { border: 1px solid var(--separator); border-radius: var(--radius-card); box-shadow: none; }
 body[data-app-view="notes"] .note-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
 body[data-app-view="notes"] .note-cover { aspect-ratio: 16 / 9; max-height: 180px; object-fit: cover; }
+body[data-app-view="notes"] .note-card.is-diary-card .note-cover { object-position: center; }
 body[data-app-view="notes"] .note-content { padding: 15px; }
 body[data-app-view="notes"] .note-card h3 { font-size: 18px; font-weight: 650; }
 body[data-app-view="notes"] .note-card p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }

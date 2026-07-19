@@ -3277,10 +3277,16 @@ function createCard(note) {
   const summary = node.querySelector("p");
   const tags = node.querySelector(".tag-row");
 
+  const isDiary = String(note.type || "").includes("日记") || String(note.category || "").includes("日记");
   if (note.cover) {
     cover.src = note.cover;
     cover.alt = `${note.title} 封面`;
     cover.hidden = false;
+  } else if (isDiary) {
+    cover.src = "assets/diary-cover.svg";
+    cover.alt = "朝夕日记默认封面";
+    cover.hidden = false;
+    node.classList.add("is-diary-card");
   }
   category.textContent = `${note.type || "笔记"} · ${note.category}`;
   date.textContent = formatDate(note.updated);
