@@ -531,6 +531,7 @@ elements.writerVisualEditor?.addEventListener("input", handleVisualEditorInput);
 elements.writerVisualEditor?.addEventListener("paste", handleVisualEditorPaste);
 elements.writerVisualEditor?.addEventListener("click", handleVisualEditorClick);
 elements.writerVisualEditor?.addEventListener("keydown", handleVisualEditorKeydown);
+document.addEventListener("keydown", handleSelectedWriterImageShortcut, true);
 document.addEventListener("keydown", handleGlobalWriterUndo, true);
 elements.editorModeSwitch?.addEventListener("click", handleEditorModeSwitch);
 elements.writerFormatToolbar?.addEventListener("pointerdown", (event) => event.preventDefault());
@@ -1084,6 +1085,21 @@ function handleVisualEditorKeydown(event) {
   handleWriterContentKeydown(event);
 }
 
+function handleSelectedWriterImageShortcut(event) {
+  const editor = elements.writerVisualEditor;
+  if (elements.writerPanel?.getAttribute("aria-hidden") !== "false"
+    || !editor
+    || !selectedWriterImage
+    || !editor.contains(selectedWriterImage)) return;
+
+  const handled = ["Backspace", "Delete"].includes(event.key)
+    ? removeSelectedWriterImage(event)
+    : event.key === "Enter" && !event.shiftKey
+      ? insertVisualEditorParagraphAfterImage(event)
+      : false;
+  if (handled) event.stopPropagation();
+}
+
 function handleVisualEditorClick(event) {
   const editor = elements.writerVisualEditor;
   const imageBlock = event.target.closest("figure");
@@ -1148,7 +1164,13 @@ function removeSelectedWriterImage(event) {
 function insertVisualEditorParagraphAfterImage(event) {
   const editor = elements.writerVisualEditor;
   const selection = window.getSelection();
-  if (!editor || !selection || selection.rangeCount !== 1) return false;
+  if (!editor || !selection) return false;
+
+  const clickedImage = selectedWriterImage && editor.contains(selectedWriterImage)
+    ? selectedWriterImage
+    : null;
+  if (clickedImage) return insertParagraphAfterWriterImage(event, clickedImage);
+  if (selection.rangeCount !== 1) return false;
 
   const anchor = selection.anchorNode;
   const anchorElement = anchor?.nodeType === Node.ELEMENT_NODE ? anchor : anchor?.parentElement;
@@ -1156,15 +1178,18 @@ function insertVisualEditorParagraphAfterImage(event) {
   const adjacentBlocks = anchor === editor
     ? [editor.children[selection.anchorOffset - 1], editor.children[selection.anchorOffset]]
     : [];
-  const imageBlock = selectedWriterImage && editor.contains(selectedWriterImage)
-    ? selectedWriterImage
-    : [
-      anchorElement?.closest("figure"),
-      ...adjacentBlocks,
-      ...Array.from(editor.querySelectorAll("figure")).filter((figure) => range.intersectsNode(figure))
-    ].find((node) => node?.nodeName?.toLowerCase() === "figure");
+  const imageBlock = [
+    anchorElement?.closest("figure"),
+    ...adjacentBlocks,
+    ...Array.from(editor.querySelectorAll("figure")).filter((figure) => range.intersectsNode(figure))
+  ].find((node) => node?.nodeName?.toLowerCase() === "figure");
   if (!imageBlock || !editor.contains(imageBlock)) return false;
 
+  return insertParagraphAfterWriterImage(event, imageBlock);
+}
+
+function insertParagraphAfterWriterImage(event, imageBlock) {
+  const selection = window.getSelection();
   event.preventDefault();
   const paragraph = document.createElement("p");
   paragraph.append(document.createElement("br"));
