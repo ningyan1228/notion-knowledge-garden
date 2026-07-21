@@ -309,6 +309,7 @@ let writerHistoryTimer = null;
 const writerPendingImagePreviews = new Map();
 const writerHistory = [];
 let writerHistoryIndex = -1;
+let selectedWriterImage = null;
 
 elements.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLowerCase();
@@ -528,6 +529,7 @@ elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
 elements.writerVisualEditor?.addEventListener("input", handleVisualEditorInput);
 elements.writerVisualEditor?.addEventListener("paste", handleVisualEditorPaste);
+elements.writerVisualEditor?.addEventListener("click", handleVisualEditorClick);
 elements.writerVisualEditor?.addEventListener("keydown", handleVisualEditorKeydown);
 document.addEventListener("keydown", handleGlobalWriterUndo, true);
 elements.editorModeSwitch?.addEventListener("click", handleEditorModeSwitch);
@@ -906,6 +908,7 @@ function syncMarkdownFromVisual() {
 
 function syncVisualFromMarkdown() {
   if (!elements.writerVisualEditor) return;
+  setSelectedWriterImage(null);
   const blocks = markdownToPreviewBlocks(elements.writerContent?.value || "");
   elements.writerVisualEditor.innerHTML = blocks.map(blockToEditorHtml).join("") || "<p><br></p>";
 }
@@ -1076,8 +1079,73 @@ function handleWriterContentKeydown(event) {
 }
 
 function handleVisualEditorKeydown(event) {
+  if (["Backspace", "Delete"].includes(event.key) && removeSelectedWriterImage(event)) return;
   if (event.key === "Enter" && !event.shiftKey && insertVisualEditorParagraphAfterImage(event)) return;
   handleWriterContentKeydown(event);
+}
+
+function handleVisualEditorClick(event) {
+  const editor = elements.writerVisualEditor;
+  const imageBlock = event.target.closest("figure");
+  if (!editor || !imageBlock || !editor.contains(imageBlock)) {
+    setSelectedWriterImage(null);
+    return;
+  }
+
+  event.preventDefault();
+  setSelectedWriterImage(imageBlock);
+  editor.focus();
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNode(imageBlock);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function setSelectedWriterImage(imageBlock) {
+  selectedWriterImage?.classList.remove("is-selected");
+  selectedWriterImage = imageBlock || null;
+  selectedWriterImage?.classList.add("is-selected");
+}
+
+function removeSelectedWriterImage(event) {
+  const editor = elements.writerVisualEditor;
+  if (!editor) return false;
+
+  const selection = window.getSelection();
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  const imageBlock = selectedWriterImage && editor.contains(selectedWriterImage)
+    ? selectedWriterImage
+    : range && Array.from(editor.querySelectorAll("figure")).find((figure) => range.intersectsNode(figure));
+  if (!imageBlock) return false;
+
+  event.preventDefault();
+  const nextBlock = imageBlock.nextElementSibling;
+  const previousBlock = imageBlock.previousElementSibling;
+  imageBlock.remove();
+  setSelectedWriterImage(null);
+
+  let caretBlock = nextBlock?.nodeName?.toLowerCase() === "figure" ? null : nextBlock;
+  let collapseAtEnd = false;
+  if (!caretBlock && previousBlock?.nodeName?.toLowerCase() !== "figure") {
+    caretBlock = previousBlock;
+    collapseAtEnd = true;
+  }
+  if (!caretBlock) {
+    caretBlock = document.createElement("p");
+    caretBlock.append(document.createElement("br"));
+    if (nextBlock) nextBlock.before(caretBlock);
+    else editor.append(caretBlock);
+  }
+
+  const caretRange = document.createRange();
+  caretRange.selectNodeContents(caretBlock);
+  caretRange.collapse(!collapseAtEnd);
+  selection?.removeAllRanges();
+  selection?.addRange(caretRange);
+  syncMarkdownFromVisual();
+  emitWriterChanged();
+  return true;
 }
 
 function insertVisualEditorParagraphAfterImage(event) {
