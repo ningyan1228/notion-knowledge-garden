@@ -1490,9 +1490,10 @@ textarea:focus {
   max-height: 520px;
 }
 .visual-editor figure.is-selected {
-  outline: 3px solid var(--leaf);
-  outline-offset: 4px;
+  outline: 3px solid #f59e0b;
+  outline-offset: 5px;
   border-radius: 16px;
+  box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.14), 0 10px 26px rgba(146, 64, 14, 0.14);
 }
 .visual-editor [data-todo="true"] { color: var(--ink-soft); }
 .visual-editor span[data-text-color="gray"] { color: #8e8e93; }

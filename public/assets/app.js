@@ -1096,10 +1096,7 @@ function handleVisualEditorClick(event) {
   setSelectedWriterImage(imageBlock);
   editor.focus();
   const selection = window.getSelection();
-  const range = document.createRange();
-  range.selectNode(imageBlock);
   selection?.removeAllRanges();
-  selection?.addRange(range);
 }
 
 function setSelectedWriterImage(imageBlock) {
@@ -1159,11 +1156,13 @@ function insertVisualEditorParagraphAfterImage(event) {
   const adjacentBlocks = anchor === editor
     ? [editor.children[selection.anchorOffset - 1], editor.children[selection.anchorOffset]]
     : [];
-  const imageBlock = [
-    anchorElement?.closest("figure"),
-    ...adjacentBlocks,
-    ...Array.from(editor.querySelectorAll("figure")).filter((figure) => range.intersectsNode(figure))
-  ].find((node) => node?.nodeName?.toLowerCase() === "figure");
+  const imageBlock = selectedWriterImage && editor.contains(selectedWriterImage)
+    ? selectedWriterImage
+    : [
+      anchorElement?.closest("figure"),
+      ...adjacentBlocks,
+      ...Array.from(editor.querySelectorAll("figure")).filter((figure) => range.intersectsNode(figure))
+    ].find((node) => node?.nodeName?.toLowerCase() === "figure");
   if (!imageBlock || !editor.contains(imageBlock)) return false;
 
   event.preventDefault();
@@ -1176,6 +1175,7 @@ function insertVisualEditorParagraphAfterImage(event) {
   caretRange.collapse(true);
   selection.removeAllRanges();
   selection.addRange(caretRange);
+  setSelectedWriterImage(null);
   syncMarkdownFromVisual();
   emitWriterChanged();
   return true;
