@@ -1564,6 +1564,18 @@ textarea:focus {
   font-weight: 700;
 }
 
+.writer-image-caption {
+  flex: 1 1 230px;
+  min-width: 0;
+  max-width: 360px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+}
+
 .writer-preview-shell {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;

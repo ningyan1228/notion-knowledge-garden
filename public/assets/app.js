@@ -235,6 +235,7 @@ const elements = {
   writerDraftStatus: document.querySelector("#writerDraftStatus"),
   writerContentFile: document.querySelector("#writerContentFile"),
   writerContentUploadButton: document.querySelector("#writerContentUploadButton"),
+  writerImageCaption: document.querySelector("#writerImageCaption"),
   writerPublished: document.querySelector("#writerPublished"),
   writerPinned: document.querySelector("#writerPinned"),
   writerStatus: document.querySelector("#writerStatus"),
@@ -527,7 +528,7 @@ elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
 elements.writerVisualEditor?.addEventListener("input", handleVisualEditorInput);
 elements.writerVisualEditor?.addEventListener("paste", handleVisualEditorPaste);
-elements.writerVisualEditor?.addEventListener("keydown", handleWriterContentKeydown);
+elements.writerVisualEditor?.addEventListener("keydown", handleVisualEditorKeydown);
 document.addEventListener("keydown", handleGlobalWriterUndo, true);
 elements.editorModeSwitch?.addEventListener("click", handleEditorModeSwitch);
 elements.writerFormatToolbar?.addEventListener("pointerdown", (event) => event.preventDefault());
@@ -571,6 +572,13 @@ document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
     elements.globalSearch?.focus();
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s"
+    && elements.writerPanel?.getAttribute("aria-hidden") === "false") {
+    event.preventDefault();
+    const submitButton = elements.writerForm?.querySelector('button[type="submit"]');
+    if (!submitButton?.disabled) elements.writerForm?.requestSubmit();
     return;
   }
   if (event.key === "Escape") {
@@ -878,8 +886,10 @@ function handleVisualEditorInput() {
 }
 
 async function handleVisualEditorPaste(event) {
-  const data = await uploadPastedImage(event, "粘贴图片");
+  const caption = elements.writerImageCaption?.value.trim() || "";
+  const data = await uploadPastedImage(event, caption);
   if (!data) return;
+  if (elements.writerImageCaption) elements.writerImageCaption.value = "";
   insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
@@ -900,19 +910,24 @@ function syncVisualFromMarkdown() {
   elements.writerVisualEditor.innerHTML = blocks.map(blockToEditorHtml).join("") || "<p><br></p>";
 }
 
+function normalizeImageCaption(value) {
+  const caption = String(value || "").trim();
+  return ["粘贴图片", "正文图片", "笔记图片", "图片"].includes(caption) ? "" : caption;
+}
+
 function blockToEditorHtml(block) {
   const content = richTextToEditorHtml(block.richText, block.text || "");
   if (block.type === "image") {
-    const caption = escapeHtml(block.caption || "图片");
+    const caption = escapeHtml(normalizeImageCaption(block.caption));
     const source = String(block.url || "");
     const previewUrl = getWriterPendingImagePreview(source);
     if (source.startsWith("notion-upload:") && previewUrl) {
-      return `<figure class="writer-pending-image" data-image-source="${escapeHtml(source)}"><img src="${escapeHtml(previewUrl)}" alt="${caption}"><figcaption>待保存到 Notion · ${caption}</figcaption></figure>`;
+      return `<figure class="writer-pending-image" contenteditable="false" data-image-source="${escapeHtml(source)}" data-image-caption="${caption}"><img src="${escapeHtml(previewUrl)}" alt="${caption}">${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
     }
     if (source.startsWith("notion-upload:")) {
-      return `<p data-image-source="${escapeHtml(block.url)}" data-image-caption="${caption}">图片已插入，保存后即可显示：${caption}</p>`;
+      return `<p data-image-source="${escapeHtml(block.url)}" data-image-caption="${caption}">图片已插入，保存后即可显示。</p>`;
     }
-    return `<figure><img src="${escapeHtml(block.url || "")}" alt="${caption}"><figcaption>${caption}</figcaption></figure>`;
+    return `<figure contenteditable="false" data-image-caption="${caption}"><img src="${escapeHtml(block.url || "")}" alt="${caption}">${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
   }
   if (block.type === "heading_1") return `<h1>${content}</h1>`;
   if (block.type === "heading_2") return `<h2>${content}</h2>`;
@@ -965,9 +980,9 @@ function visualHtmlToMarkdown(editor) {
     if (tag === "hr") return ["---"];
     if (tag === "figure") {
       const image = node.querySelector("img");
-      const caption = node.querySelector("figcaption")?.textContent?.trim() || image?.alt || "图片";
+      const caption = node.dataset.imageCaption ?? node.querySelector("figcaption")?.textContent?.trim() ?? image?.alt ?? "";
       const source = node.dataset.imageSource;
-      if (source) return [`![${image?.alt || "图片"}](${source})`];
+      if (source) return [`![${caption}](${source})`];
       return image?.src ? [`![${caption}](${image.src})`] : [];
     }
     if (node.dataset.imageSource) return [`![${node.dataset.imageCaption || "图片"}](${node.dataset.imageSource})`];
@@ -993,8 +1008,10 @@ function insertVisualHtml(html) {
 }
 
 async function handleWriterPaste(event) {
-  const data = await uploadPastedImage(event, "粘贴图片");
+  const caption = elements.writerImageCaption?.value.trim() || "";
+  const data = await uploadPastedImage(event, caption);
   if (!data) return;
+  if (elements.writerImageCaption) elements.writerImageCaption.value = "";
   insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
 }
@@ -1056,6 +1073,44 @@ function handleWriterContentKeydown(event) {
     event.preventDefault();
     applyWriterFormat(`h${event.key}`);
   }
+}
+
+function handleVisualEditorKeydown(event) {
+  if (event.key === "Enter" && !event.shiftKey && insertVisualEditorParagraphAfterImage(event)) return;
+  handleWriterContentKeydown(event);
+}
+
+function insertVisualEditorParagraphAfterImage(event) {
+  const editor = elements.writerVisualEditor;
+  const selection = window.getSelection();
+  if (!editor || !selection || selection.rangeCount !== 1) return false;
+
+  const anchor = selection.anchorNode;
+  const anchorElement = anchor?.nodeType === Node.ELEMENT_NODE ? anchor : anchor?.parentElement;
+  const range = selection.getRangeAt(0);
+  const adjacentBlocks = anchor === editor
+    ? [editor.children[selection.anchorOffset - 1], editor.children[selection.anchorOffset]]
+    : [];
+  const imageBlock = [
+    anchorElement?.closest("figure"),
+    ...adjacentBlocks,
+    ...Array.from(editor.querySelectorAll("figure")).filter((figure) => range.intersectsNode(figure))
+  ].find((node) => node?.nodeName?.toLowerCase() === "figure");
+  if (!imageBlock || !editor.contains(imageBlock)) return false;
+
+  event.preventDefault();
+  const paragraph = document.createElement("p");
+  paragraph.append(document.createElement("br"));
+  imageBlock.after(paragraph);
+
+  const caretRange = document.createRange();
+  caretRange.selectNodeContents(paragraph);
+  caretRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(caretRange);
+  syncMarkdownFromVisual();
+  emitWriterChanged();
+  return true;
 }
 
 function handleGlobalWriterUndo(event) {
@@ -1367,8 +1422,10 @@ async function handleContentFileSelect(event) {
   event.target.value = "";
   if (!file) return;
 
-  const data = await uploadImageFile(file, "正文图片", "插入正文图片");
+  const caption = elements.writerImageCaption?.value.trim() || "";
+  const data = await uploadImageFile(file, caption, "插入正文图片");
   if (!data) return;
+  if (elements.writerImageCaption) elements.writerImageCaption.value = "";
 
   insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
@@ -3417,7 +3474,7 @@ function noteToMarkdown(note) {
 
 function markdownForBlock(block) {
   const text = String(block?.text || "").trim();
-  if (block?.type === "image") return block.url ? `![${block.caption || "图片"}](${block.url})` : "";
+  if (block?.type === "image") return block.url ? `![${normalizeImageCaption(block.caption)}](${block.url})` : "";
   if (block?.type === "divider") return "---";
   if (!text) return "";
   if (block.type === "heading_1") return `# ${text}`;
@@ -3763,7 +3820,7 @@ function markdownToPreviewBlocks(markdown) {
     const image = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/i);
     if (image) {
       flushParagraph();
-      blocks.push({ type: "image", url: image[2], caption: image[1] || "图片" });
+      blocks.push({ type: "image", url: image[2], caption: image[1] });
       continue;
     }
 
@@ -3941,12 +3998,13 @@ function renderBlock(block, headings = [], index = 0) {
     const source = String(block.url || "");
     const previewUrl = getWriterPendingImagePreview(source);
     image.src = previewUrl || source;
-    image.alt = block.caption || "笔记图片";
+    const captionText = normalizeImageCaption(block.caption);
+    image.alt = captionText || "笔记图片";
     image.loading = "lazy";
     figure.append(image);
-    if (block.caption || previewUrl) {
+    if (captionText) {
       const caption = document.createElement("figcaption");
-      caption.textContent = previewUrl ? `待保存到 Notion · ${block.caption || "图片"}` : block.caption;
+      caption.textContent = captionText;
       figure.append(caption);
     }
     return figure;
@@ -4049,8 +4107,9 @@ function blocksToMarkdown(blocks) {
     if (block.type === "divider") return "---";
     if (block.type === "code") return `\`\`\`${block.language || ""}\n${text}\n\`\`\``;
     if (block.type === "image") {
-      if (block.fileUploadId) return `![${block.caption || "笔记图片"}](notion-upload:${block.fileUploadId})`;
-      return block.url ? `![${block.caption || "笔记图片"}](${block.url})` : "";
+      const caption = normalizeImageCaption(block.caption);
+      if (block.fileUploadId) return `![${caption}](notion-upload:${block.fileUploadId})`;
+      return block.url ? `![${caption}](${block.url})` : "";
     }
     return text;
   }).filter(Boolean).join("\n\n");

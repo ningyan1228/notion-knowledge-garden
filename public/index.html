@@ -608,7 +608,7 @@
               <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
                 <button class="editor-mode-button is-active" id="visualEditorMode" type="button" data-editor-mode="visual">可视化编辑</button>
                 <button class="editor-mode-button" id="markdownEditorMode" type="button" data-editor-mode="markdown">Markdown</button>
-                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。Ctrl+Z 撤销，Ctrl+Y 重做。</small>
+                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。Ctrl+Z 撤销，Ctrl+Y 重做，Ctrl+S 保存。</small>
               </div>
               <div class="writer-format-toolbar" aria-label="正文格式工具栏">
                 <div class="writer-format-group" aria-label="文字样式">
@@ -651,6 +651,7 @@
               </div>
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
+                <input class="writer-image-caption" id="writerImageCaption" type="text" maxlength="120" placeholder="图片注释（可选，填写后用于下一张图片）" aria-label="下一张图片的注释" />
                 <small>也可以直接写 Markdown：![图片说明](图片链接)</small>
               </div>
               <input class="visually-hidden" id="writerContentFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
