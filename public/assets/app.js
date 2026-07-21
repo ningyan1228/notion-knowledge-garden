@@ -933,9 +933,8 @@ function blockToEditorHtml(block) {
     }
     return `<figure contenteditable="false" data-image-caption="${caption}"><img src="${escapeHtml(block.url || "")}" alt="${caption}">${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
   }
-  if (block.type === "heading_1") return `<h1>${content}</h1>`;
-  if (block.type === "heading_2") return `<h2>${content}</h2>`;
-  if (block.type === "heading_3") return `<h3>${content}</h3>`;
+  const headingLevel = headingLevelForType(block.type);
+  if (headingLevel) return `<h${headingLevel}>${content}</h${headingLevel}>`;
   if (block.type === "quote" || block.type === "callout") return `<blockquote>${content}</blockquote>`;
   if (block.type === "bulleted_list_item") return `<ul><li>${content}</li></ul>`;
   if (block.type === "numbered_list_item") return `<ol><li>${content}</li></ol>`;
@@ -974,9 +973,7 @@ function visualHtmlToMarkdown(editor) {
   }).join("");
   const blocks = Array.from(editor.children).flatMap((node) => {
     const tag = node.nodeName.toLowerCase();
-    if (tag === "h1") return [`# ${readInline(node)}`];
-    if (tag === "h2") return [`## ${readInline(node)}`];
-    if (tag === "h3") return [`### ${readInline(node)}`];
+    if (/^h[1-6]$/.test(tag)) return [`${"#".repeat(Number(tag.slice(1)))} ${readInline(node)}`];
     if (tag === "blockquote") return readInline(node).split("\n").map((line) => `> ${line}`);
     if (tag === "ul") return Array.from(node.children).map((item) => `- ${readInline(item)}`);
     if (tag === "ol") return Array.from(node.children).map((item, index) => `${index + 1}. ${readInline(item)}`);
@@ -1241,7 +1238,7 @@ function applyWriterFormat(format, color = "") {
     prefixSelectedLines(textarea, "- [ ] ");
   } else if (format === "code") {
     wrapBlockSelection(textarea, "```\n", "\n```", "代码内容");
-  } else if (["h1", "h2", "h3"].includes(format)) {
+  } else if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(format)) {
     prefixSelectedLines(textarea, `${"#".repeat(Number(format.slice(1)))} `, /^(#{1,6}\s*)/);
   } else if (format === "color" && color) {
     wrapSelection(textarea, `{${color}:`, "}", "彩色文字");
@@ -1266,7 +1263,7 @@ function applyVisualFormat(format, color = "") {
   else if (format === "bullet") document.execCommand("insertUnorderedList");
   else if (format === "todo") insertVisualHtml('<p data-todo="true">☐ 待办事项</p>');
   else if (format === "code") document.execCommand("formatBlock", false, "pre");
-  else if (["h1", "h2", "h3"].includes(format)) document.execCommand("formatBlock", false, format);
+  else if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(format)) document.execCommand("formatBlock", false, format);
   else if (format === "color" && color) {
     const colors = { gray: "#8e8e93", brown: "#8a5a44", orange: "#ff9500", yellow: "#ffcc00", green: "#34c759", blue: "#007aff", purple: "#af52de", pink: "#ff2d55", red: "#ff3b30" };
     document.execCommand("foreColor", false, colors[color] || "#1f2937");
@@ -3570,9 +3567,8 @@ function markdownForBlock(block) {
   if (block?.type === "image") return block.url ? `![${normalizeImageCaption(block.caption)}](${block.url})` : "";
   if (block?.type === "divider") return "---";
   if (!text) return "";
-  if (block.type === "heading_1") return `# ${text}`;
-  if (block.type === "heading_2") return `## ${text}`;
-  if (block.type === "heading_3") return `### ${text}`;
+  const headingLevel = headingLevelForType(block.type);
+  if (headingLevel) return `${"#".repeat(headingLevel)} ${text}`;
   if (block.type === "quote" || block.type === "callout") return `> ${text}`;
   if (block.type === "bulleted_list_item") return `- ${text}`;
   if (block.type === "numbered_list_item") return `1. ${text}`;
@@ -3624,9 +3620,8 @@ function printableBlocksHtml(blocks) {
     if (block?.type === "image") return block.url ? `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.caption || "笔记图片")}" referrerpolicy="no-referrer">` : "";
     if (block?.type === "divider") return "<hr>";
     if (!text) return "";
-    if (block.type === "heading_1") return `<h2>${text}</h2>`;
-    if (block.type === "heading_2") return `<h2>${text}</h2>`;
-    if (block.type === "heading_3") return `<h3>${text}</h3>`;
+    const headingLevel = headingLevelForType(block.type);
+    if (headingLevel) return `<h${headingLevel}>${text}</h${headingLevel}>`;
     if (block.type === "quote" || block.type === "callout") return `<blockquote>${text}</blockquote>`;
     if (block.type === "bulleted_list_item") return `<ul><li>${text}</li></ul>`;
     if (block.type === "numbered_list_item") return `<ol><li>${text}</li></ol>`;
@@ -3917,7 +3912,7 @@ function markdownToPreviewBlocks(markdown) {
       continue;
     }
 
-    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
     if (heading) {
       flushParagraph();
       blocks.push(previewTextBlock(`heading_${heading[1].length}`, heading[2]));
@@ -4037,7 +4032,8 @@ function renderBlocks(container, blocks) {
   let activeList = null;
   let activeListType = "";
 
-  for (const [index, block] of blocks.entries()) {
+  for (const [index, sourceBlock] of blocks.entries()) {
+    const block = normalizeMarkdownHeadingBlock(sourceBlock);
     const type = block.type || "paragraph";
     if (type === "to_do") {
       activeList = null;
@@ -4146,18 +4142,12 @@ function renderBlock(block, headings = [], index = 0) {
     figure.append(caption, pre);
     return figure;
   }
-  if (type === "heading_1" || type === "heading_2") {
-    const heading = document.createElement("h2");
+  const headingLevel = headingLevelForType(type);
+  if (headingLevel) {
+    const heading = document.createElement(`h${headingLevel}`);
     appendRichText(heading, block);
     heading.id = headingId(block.text, index);
-    headings.push({ id: heading.id, text: block.text || "", level: 2 });
-    return heading;
-  }
-  if (type === "heading_3") {
-    const heading = document.createElement("h3");
-    appendRichText(heading, block);
-    heading.id = headingId(block.text, index);
-    headings.push({ id: heading.id, text: block.text || "", level: 3 });
+    headings.push({ id: heading.id, text: block.text || "", level: headingLevel });
     return heading;
   }
   const paragraph = document.createElement("p");
@@ -4187,12 +4177,22 @@ function normalizeRichColor(color) {
   return ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"].includes(value) ? value : "";
 }
 
+function headingLevelForType(type) {
+  const match = String(type || "").match(/^heading_([1-6])$/);
+  return match ? Number(match[1]) : 0;
+}
+
+function normalizeMarkdownHeadingBlock(block) {
+  if (block?.type !== "paragraph") return block;
+  const match = String(block.text || "").trim().match(/^(#{1,6})\s+(.+)$/);
+  return match ? { ...block, type: `heading_${match[1].length}`, text: match[2] } : block;
+}
+
 function blocksToMarkdown(blocks) {
   return (blocks || []).map((block, index) => {
     const text = richBlockToMarkdown(block);
-    if (block.type === "heading_1") return `# ${text}`;
-    if (block.type === "heading_2") return `## ${text}`;
-    if (block.type === "heading_3") return `### ${text}`;
+    const headingLevel = headingLevelForType(block.type);
+    if (headingLevel) return `${"#".repeat(headingLevel)} ${text}`;
     if (block.type === "quote" || block.type === "callout") return `> ${text}`;
     if (block.type === "to_do") return `- [${block.checked ? "x" : " "}] ${text}`;
     if (block.type === "bulleted_list_item") return `- ${text}`;
@@ -4232,7 +4232,7 @@ function renderToc(headings) {
   for (const heading of headings.slice(0, 12)) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = heading.level === 3 ? "toc-child" : "";
+    button.className = heading.level > 1 ? `toc-child toc-level-${heading.level}` : "";
     button.dataset.headingId = heading.id;
     button.textContent = heading.text;
     button.addEventListener("click", () => {
@@ -4244,7 +4244,7 @@ function renderToc(headings) {
 
 function observeDetailHeadings() {
   detailHeadingObserver?.disconnect();
-  const headings = elements.detailContent?.querySelectorAll("h2[id], h3[id]") || [];
+  const headings = elements.detailContent?.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]") || [];
   if (!headings.length || !elements.detailCard) return;
   detailHeadingObserver = new IntersectionObserver((entries) => {
     const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
