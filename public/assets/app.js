@@ -4272,7 +4272,7 @@ function renderToc(headings) {
   for (const heading of headings.slice(0, 12)) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = heading.level > 1 ? `toc-child toc-level-${heading.level}` : "";
+    button.className = `toc-level-${heading.level}${heading.level > 1 ? " toc-child" : ""}`;
     button.dataset.headingId = heading.id;
     button.textContent = heading.text;
     button.addEventListener("click", () => {
