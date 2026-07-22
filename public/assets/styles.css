@@ -1256,7 +1256,7 @@ textarea:focus {
 }
 
 .detail-card {
-  width: min(1080px, calc(100% - 48px));
+  width: min(1560px, calc(100% - 48px), 88vw);
 }
 
 .writer-card {
