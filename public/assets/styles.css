@@ -3407,6 +3407,22 @@ body.notes-library-mode .library-shortcut-bar {
 }
 .article-content { font-family: ui-serif, "Songti SC", "Noto Serif SC", Georgia, serif; line-height: 2.05; }
 .article-content h2, .article-content h3 { font-family: inherit; letter-spacing: -0.02em; }
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  font-family: inherit;
+  letter-spacing: -0.02em;
+  scroll-margin-top: 28px;
+}
+.article-content h1 { color: #c62828; font-size: clamp(32px, 3vw, 44px); margin: 44px 0 16px; line-height: 1.25; }
+.article-content h2 { color: #d95f02; }
+.article-content h3 { color: #a16207; }
+.article-content h4 { color: #15803d; font-size: 20px; margin: 26px 0 9px; line-height: 1.4; }
+.article-content h5 { color: #2563eb; font-size: 18px; margin: 22px 0 8px; line-height: 1.45; }
+.article-content h6 { color: #7e22ce; font-size: 16px; margin: 20px 0 8px; line-height: 1.5; }
 .code-card figcaption { display: flex; align-items: center; justify-content: space-between; }
 .code-copy-button { border: 0; border-radius: 7px; padding: 4px 8px; color: rgba(237,245,240,.78); background: rgba(255,255,255,.08); font-size: 12px; }
 .detail-toc .toc-level-1 { color: #c62828; }
