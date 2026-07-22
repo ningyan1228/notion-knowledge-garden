@@ -300,6 +300,8 @@ let knowledgeChart = null;
 let graphRetryTimer = null;
 let graphResizeObserver = null;
 let writerDraftTimer = null;
+let writerRemoteSaveTimer = null;
+let writerRemoteSaveSignature = "";
 let detailHeadingObserver = null;
 let writerEditorMode = "visual";
 let writerHistoryTimer = null;
@@ -1318,6 +1320,7 @@ function prefixSelectedLines(textarea, prefix, replacePattern = null) {
 function handleWriterFormInput(event) {
   renderWriterPreview();
   scheduleWriterDraftSave();
+  scheduleWriterRemoteAutoSave();
   const activeEditor = writerEditorMode === "visual" ? elements.writerVisualEditor : elements.writerContent;
   if (event?.target === activeEditor) scheduleWriterHistory();
 }
@@ -1325,6 +1328,7 @@ function handleWriterFormInput(event) {
 function emitWriterChanged() {
   renderWriterPreview();
   scheduleWriterDraftSave();
+  scheduleWriterRemoteAutoSave();
   scheduleWriterHistory();
 }
 
@@ -1403,6 +1407,34 @@ function scheduleWriterDraftSave() {
   writerDraftTimer = window.setTimeout(saveWriterDraft, writerDraftDelayMs);
 }
 
+function scheduleWriterRemoteAutoSave() {
+  window.clearTimeout(writerRemoteSaveTimer);
+  if (elements.writerPanel?.getAttribute("aria-hidden") !== "false") return;
+  if (!elements.writerNoteId?.value.trim()) return;
+
+  writerRemoteSaveSignature = writerAutoSaveSignature();
+  writerRemoteSaveTimer = window.setTimeout(saveWriterAutomatically, 1500);
+}
+
+function writerAutoSaveSignature() {
+  const { savedAt, ...draft } = collectWriterDraft();
+  return JSON.stringify(draft);
+}
+
+function saveWriterAutomatically() {
+  const form = elements.writerForm;
+  const submitButton = form?.querySelector('button[type="submit"]');
+  if (!form || elements.writerPanel?.getAttribute("aria-hidden") !== "false" || !elements.writerNoteId?.value.trim()) return;
+  if (!elements.writerNoteTitle?.value.trim()) return;
+  if (submitButton?.disabled) {
+    writerRemoteSaveTimer = window.setTimeout(saveWriterAutomatically, 500);
+    return;
+  }
+
+  updateWriterDraftStatus("正在自动保存到 Notion...");
+  form.requestSubmit();
+}
+
 function saveWriterDraft() {
   if (!elements.writerForm || elements.writerPanel?.getAttribute("aria-hidden") === "true") return;
   const draft = collectWriterDraft();
@@ -1449,6 +1481,7 @@ function restoreWriterDraft() {
 
 function clearWriterDraft() {
   window.clearTimeout(writerDraftTimer);
+  window.clearTimeout(writerRemoteSaveTimer);
   localStorage.removeItem(writerDraftKey());
   updateWriterDraftStatus("已发布，草稿已清除");
 }
@@ -1678,12 +1711,14 @@ function insertAtCursor(textarea, value) {
 
 async function createNoteFromWriter(event) {
   event.preventDefault();
+  window.clearTimeout(writerRemoteSaveTimer);
   const form = event.currentTarget;
   const submitButton = form.querySelector('button[type="submit"]');
   const formData = new FormData(form);
   const adminToken = String(formData.get("token") || "").trim();
   const title = String(formData.get("title") || "").trim();
   const noteId = String(formData.get("id") || "").trim();
+  const submittedRemoteSignature = noteId ? writerAutoSaveSignature() : "";
 
   if ((!authToken && !adminToken) || !title) {
     setWriterStatus(authToken || adminToken ? "请填写标题。" : "请先登录，再填写标题。", true);
@@ -1731,6 +1766,11 @@ async function createNoteFromWriter(event) {
     }
     state.detailCache.clear();
     clearWriterDraft();
+    if (noteId && writerRemoteSaveSignature && writerRemoteSaveSignature !== submittedRemoteSignature) {
+      scheduleWriterRemoteAutoSave();
+    } else {
+      writerRemoteSaveSignature = "";
+    }
     setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}`);
     await loadNotes({ refresh: true });
   } catch (error) {
