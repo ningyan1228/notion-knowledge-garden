@@ -532,77 +532,82 @@
               <span>管理密码（旧版，可留空）</span>
               <input id="writerToken" name="token" type="password" autocomplete="current-password" placeholder="已登录时不用填写" />
             </label>
-            <label>
+            <label class="writer-primary-title full">
               <span>标题</span>
-              <input id="writerNoteTitle" name="title" type="text" required />
+              <input id="writerNoteTitle" name="title" type="text" required placeholder="给这篇笔记起个清晰的标题" />
             </label>
-            <label>
-              <span>短链接</span>
-              <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
-            </label>
-            <label>
-              <span>类型</span>
-              <select id="writerTypeSelect" name="type">
-                <option value="笔记">笔记</option>
-                <option value="日记">日记</option>
-                <option value="灵感">灵感</option>
-                <option value="复盘">复盘</option>
-              </select>
-            </label>
-            <label>
-              <span>状态</span>
-              <select id="writerStatusSelect" name="status">
-                <option value="进行中">进行中</option>
-                <option value="完成">完成</option>
-                <option value="灵感">灵感</option>
-              </select>
-            </label>
-            <label class="writer-cover-field full">
-              <span>封面链接</span>
-              <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
-              <div class="writer-upload-row">
-                <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
-                <small>会上传到 Notion，不占服务器空间。</small>
+            <details class="writer-details full">
+              <summary><span>笔记设置</span><small>分类、标签、封面与发布信息</small></summary>
+              <div class="writer-details-grid">
+                <label>
+                  <span>短链接</span>
+                  <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
+                </label>
+                <label>
+                  <span>类型</span>
+                  <select id="writerTypeSelect" name="type">
+                    <option value="笔记">笔记</option>
+                    <option value="日记">日记</option>
+                    <option value="灵感">灵感</option>
+                    <option value="复盘">复盘</option>
+                  </select>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select id="writerStatusSelect" name="status">
+                    <option value="进行中">进行中</option>
+                    <option value="完成">完成</option>
+                    <option value="灵感">灵感</option>
+                  </select>
+                </label>
+                <label>
+                  <span>学习时长（分钟）</span>
+                  <input id="writerStudyMinutes" name="studyMinutes" type="number" min="0" step="1" placeholder="30" />
+                </label>
+                <label class="writer-cover-field full">
+                  <span>封面链接</span>
+                  <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
+                  <div class="writer-upload-row">
+                    <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
+                    <small>会上传到 Notion，不占服务器空间。</small>
+                  </div>
+                  <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+                </label>
+                <label class="full">
+                  <span>摘要</span>
+                  <textarea id="writerSummary" name="summary" rows="3"></textarea>
+                </label>
+                <label>
+                  <span>分类</span>
+                  <select id="writerCategory" name="category">
+                    <option value="常识">常识</option>
+                    <option value="日记">日记</option>
+                    <option value="书单">书单</option>
+                    <option value="工作记录">工作记录</option>
+                    <option value="收益详情">收益详情</option>
+                    <option value="学习笔记">学习笔记</option>
+                    <option value="编程">编程</option>
+                    <option value="读书">读书</option>
+                    <option value="GitHub 开源项目">GitHub 开源项目</option>
+                    <option value="ChatGPT">ChatGPT</option>
+                    <option value="项目">项目</option>
+                    <option value="教程科普">教程科普</option>
+                    <option value="Codex">Codex</option>
+                    <option value="服务器与域名">服务器与域名</option>
+                    <option value="Bybit">Bybit</option>
+                  </select>
+                </label>
+                <label>
+                  <span>标签</span>
+                  <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
+                </label>
+                <label class="full">
+                  <span>文件夹</span>
+                  <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
+                  <datalist id="writerFolderOptions"></datalist>
+                </label>
               </div>
-              <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
-            </label>
-            <label>
-              <span>学习时长（分钟）</span>
-              <input id="writerStudyMinutes" name="studyMinutes" type="number" min="0" step="1" placeholder="30" />
-            </label>
-            <label class="full">
-              <span>摘要</span>
-              <textarea id="writerSummary" name="summary" rows="3"></textarea>
-            </label>
-            <label>
-              <span>分类</span>
-              <select id="writerCategory" name="category">
-                <option value="常识">常识</option>
-                <option value="日记">日记</option>
-                <option value="书单">书单</option>
-                <option value="工作记录">工作记录</option>
-                <option value="收益详情">收益详情</option>
-                <option value="学习笔记">学习笔记</option>
-                <option value="编程">编程</option>
-                <option value="读书">读书</option>
-                <option value="GitHub 开源项目">GitHub 开源项目</option>
-                <option value="ChatGPT">ChatGPT</option>
-                <option value="项目">项目</option>
-                <option value="教程科普">教程科普</option>
-                <option value="Codex">Codex</option>
-                <option value="服务器与域名">服务器与域名</option>
-                <option value="Bybit">Bybit</option>
-              </select>
-            </label>
-            <label>
-              <span>标签</span>
-              <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
-            </label>
-            <label>
-              <span>文件夹</span>
-              <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
-              <datalist id="writerFolderOptions"></datalist>
-            </label>
+            </details>
             <div class="writer-field full">
               <span class="writer-field-label">正文</span>
               <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
@@ -643,14 +648,18 @@
                   <button class="format-button color-dot purple" type="button" data-format="color" data-color="purple" aria-label="紫色文字"></button>
                 </div>
               </div>
-              <div class="visual-editor" id="writerVisualEditor" contenteditable="true" tabindex="0" spellcheck="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
-              <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
-              <div class="writer-preview-shell">
-                <div class="writer-preview-head">
-                  <span>实时预览</span>
-                  <small id="writerDraftStatus">已有笔记会自动保存，新笔记会暂存本机</small>
+              <div class="writer-workbench">
+                <div class="writer-editor-pane">
+                  <div class="visual-editor" id="writerVisualEditor" contenteditable="true" tabindex="0" spellcheck="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
+                  <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
                 </div>
-                <div class="writer-preview article-content" id="writerPreview"></div>
+                <div class="writer-preview-shell">
+                  <div class="writer-preview-head">
+                    <span>实时预览</span>
+                    <small id="writerDraftStatus">已有笔记会自动保存，新笔记会暂存本机</small>
+                  </div>
+                  <div class="writer-preview article-content" id="writerPreview"></div>
+                </div>
               </div>
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
