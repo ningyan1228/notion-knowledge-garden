@@ -256,6 +256,8 @@ const elements = {
   readingProgress: document.querySelector("#readingProgress"),
   detailToolsToggle: document.querySelector("#detailToolsToggle"),
   detailEditButton: document.querySelector("#detailEditButton"),
+  detailDeleteWidget: document.querySelector("#detailDeleteWidget"),
+  detailDeleteButton: document.querySelector("#detailDeleteButton"),
   detailExportWidget: document.querySelector("#detailExportWidget"),
   detailExportMarkdown: document.querySelector("#detailExportMarkdown"),
   detailExportPdf: document.querySelector("#detailExportPdf"),
@@ -556,6 +558,7 @@ elements.detailEditButton?.addEventListener("click", () => {
   closeDetail();
   openEditor(note);
 });
+elements.detailDeleteButton?.addEventListener("click", deleteCurrentDetailNote);
 elements.detailToolsToggle?.addEventListener("click", () => {
   const willOpen = !elements.detailCard?.classList.contains("is-tools-open");
   setDetailToolsOpen(willOpen);
@@ -3236,6 +3239,44 @@ async function toggleFavorite(note) {
   }
 }
 
+async function deleteCurrentDetailNote() {
+  const note = state.currentDetailNote;
+  if (!note || !isMyNote(note)) return;
+
+  const approved = window.confirm(`确定删除“${note.title}”？\n\n笔记会移至 Notion 回收站，可在 Notion 中恢复。`);
+  if (!approved) return;
+
+  const button = elements.detailDeleteButton;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "删除中…";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/admin/notes/${encodeURIComponent(detailNoteKey(note))}`, {
+      method: "DELETE",
+      headers: siteHeaders()
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || "删除笔记失败。");
+
+    state.notes = state.notes.filter((item) => detailNoteKey(item) !== detailNoteKey(note));
+    state.detailCache.delete(detailNoteKey(note));
+    closeDetail();
+    hydrateFilters();
+    resetNoteList();
+    render();
+    setStatus(`已删除“${note.title}”，可在 Notion 回收站恢复。`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "删除笔记失败。";
+    setStatus(message, true);
+    if (button) {
+      button.disabled = false;
+      button.textContent = "删除失败，重试";
+    }
+  }
+}
+
 async function moveCurrentDetailToFolder() {
   const note = state.currentDetailNote;
   if (!note || !isMyNote(note)) return;
@@ -3853,6 +3894,7 @@ function renderDetail(note) {
   renderDetailNavigation(note);
   const isOwner = isMyNote(note);
   if (elements.detailEditButton) elements.detailEditButton.hidden = !isOwner;
+  if (elements.detailDeleteWidget) elements.detailDeleteWidget.hidden = !isOwner;
   if (elements.detailExportWidget) elements.detailExportWidget.hidden = !isOwner;
   if (elements.detailShareWidget) elements.detailShareWidget.hidden = !isOwner;
   if (elements.detailShareButton) elements.detailShareButton.textContent = note.shareEnabled ? "重新生成并复制链接" : "创建并复制链接";
