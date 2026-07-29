@@ -7462,17 +7462,29 @@ body.is-writing .sidebar-action-group { display: none !important; }
 .detail-tools-toggle { display: none; }
 .detail[aria-hidden="false"] { z-index: 100; }
 
+/* These controls must not become floats: a float before the cover makes the
+   hero wrap around it and leaves an unnecessary empty strip beside the image. */
+.detail-card .close-button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 15;
+  float: none;
+  margin: 0;
+}
+
 @media (max-width: 1180px) {
   .detail-tools-toggle {
-    position: sticky;
+    position: absolute;
     top: 14px;
-    z-index: 12;
-    float: right;
+    right: 62px;
+    z-index: 15;
+    float: none;
     min-height: 38px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin: 14px 8px 0 0;
+    margin: 0;
     padding: 0 13px;
     border: 1px solid rgba(10, 132, 255, 0.2);
     border-radius: 999px;
