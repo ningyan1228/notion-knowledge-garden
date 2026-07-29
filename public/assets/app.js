@@ -254,6 +254,7 @@ const elements = {
   detailReadingTime: document.querySelector("#detailReadingTime"),
   detailCard: document.querySelector(".detail-card"),
   readingProgress: document.querySelector("#readingProgress"),
+  detailToolsToggle: document.querySelector("#detailToolsToggle"),
   detailEditButton: document.querySelector("#detailEditButton"),
   detailExportWidget: document.querySelector("#detailExportWidget"),
   detailExportMarkdown: document.querySelector("#detailExportMarkdown"),
@@ -554,6 +555,10 @@ elements.detailEditButton?.addEventListener("click", () => {
   const note = state.currentDetailNote;
   closeDetail();
   openEditor(note);
+});
+elements.detailToolsToggle?.addEventListener("click", () => {
+  const willOpen = !elements.detailCard?.classList.contains("is-tools-open");
+  setDetailToolsOpen(willOpen);
 });
 elements.detailFavoriteButton?.addEventListener("click", () => {
   if (state.currentDetailNote) toggleFavorite(state.currentDetailNote);
@@ -4368,15 +4373,26 @@ function relatedScore(source, target) {
 }
 
 function openPanel() {
+  const wasClosed = elements.detailPanel.getAttribute("aria-hidden") !== "false";
   elements.detailPanel.setAttribute("aria-hidden", "false");
+  if (wasClosed) setDetailToolsOpen(false);
   document.body.style.overflow = "hidden";
 }
 
 function closeDetail() {
   state.detailRequestId += 1;
   elements.detailPanel.setAttribute("aria-hidden", "true");
+  setDetailToolsOpen(false);
   document.body.style.overflow = "";
   detailHeadingObserver?.disconnect();
+}
+
+function setDetailToolsOpen(open) {
+  elements.detailCard?.classList.toggle("is-tools-open", open);
+  if (elements.detailToolsToggle) {
+    elements.detailToolsToggle.setAttribute("aria-expanded", String(open));
+    elements.detailToolsToggle.textContent = open ? "收起工具" : "阅读工具";
+  }
 }
 
 function loadingBlocks() {

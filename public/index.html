@@ -694,6 +694,7 @@
       <article class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
         <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
         <button class="icon-button close-button" type="button" aria-label="关闭" data-close-detail>×</button>
+        <button class="detail-tools-toggle" id="detailToolsToggle" type="button" aria-expanded="false" aria-controls="detailSidebar">阅读工具</button>
         <header class="detail-hero" id="detailHero">
           <img class="detail-cover" id="detailCover" alt="" hidden />
           <div class="detail-hero-shade"></div>
@@ -715,7 +716,7 @@
           <main class="detail-main">
             <div class="article-content" id="detailContent"></div>
           </main>
-          <aside class="detail-sidebar" aria-label="阅读辅助">
+          <aside class="detail-sidebar" id="detailSidebar" aria-label="阅读辅助">
             <section class="reader-widget" id="detailExportWidget">
               <span>导出</span>
               <div class="detail-export-actions">
