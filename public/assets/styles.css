@@ -7436,3 +7436,23 @@ body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-gra
    the narrow-screen dock; restore the dock only after the editor closes. */
 body.is-writing .mac-sidebar { z-index: 10 !important; }
 body.is-writing .sidebar-action-group { display: none !important; }
+
+/* Reading comes first on smaller displays.  The helper panels remain
+   available, but move below the article instead of taking a fixed column. */
+@media (max-width: 1180px) {
+  .detail-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 22px !important;
+  }
+
+  .detail-sidebar {
+    position: static !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 620px) {
+  .detail-sidebar { grid-template-columns: 1fr; }
+}
