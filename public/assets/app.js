@@ -797,6 +797,7 @@ function openWriter(preferredType = "笔记", diaryDate = "") {
   if (elements.writerModeLabel) elements.writerModeLabel.textContent = "新建笔记";
   if (elements.writerSubmitButton) elements.writerSubmitButton.textContent = "发布到 Notion";
   elements.writerPanel?.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-writing");
   const nextType = NOTE_TYPES.includes(preferredType) ? preferredType : "笔记";
   if (elements.writerTypeSelect) elements.writerTypeSelect.value = nextType;
   updateWriterPrivacyDefault();
@@ -820,6 +821,7 @@ function openWriter(preferredType = "笔记", diaryDate = "") {
 function openEditor(note) {
   state.editingNote = note;
   elements.writerPanel?.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-writing");
   if (elements.writerTitle) elements.writerTitle.textContent = "编辑这篇笔记";
   if (elements.writerModeLabel) elements.writerModeLabel.textContent = "保存修改";
   if (elements.writerSubmitButton) elements.writerSubmitButton.textContent = "保存到 Notion";
@@ -862,6 +864,7 @@ function updateWriterPrivacyDefault() {
 function closeWriter() {
   saveWriterDraft();
   elements.writerPanel?.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-writing");
   if (elements.detailPanel?.getAttribute("aria-hidden") !== "false") {
     document.body.style.overflow = "";
   }

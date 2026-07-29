@@ -7431,3 +7431,8 @@ body[data-app-view="graph"] .hero-visual.graph-panel .graph-stage .knowledge-gra
   .sidebar-action-group > button:hover { background: var(--accent-soft) !important; }
   .mac-main { padding-bottom: 84px !important; }
 }
+
+/* The writer is a full-screen task. Its fixed controls must always sit above
+   the narrow-screen dock; restore the dock only after the editor closes. */
+body.is-writing .mac-sidebar { z-index: 10 !important; }
+body.is-writing .sidebar-action-group { display: none !important; }
