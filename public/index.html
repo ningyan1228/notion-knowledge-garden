@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260719-diary-and-writer-fixes" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260818-tables" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-  <script defer src="assets/app.js?v=20260817-expired-image-recovery"></script>
+  <script defer src="assets/app.js?v=20260818-tables"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -633,6 +633,11 @@
                 </div>
                 <div class="writer-format-group" aria-label="快捷插入">
                   <button class="format-button" type="button" data-format="date">日期</button>
+                  <span class="table-insert-control" title="选择行列数后插入表格">
+                    <button class="format-button" type="button" data-format="table">表格</button>
+                    <select id="writerTableRows" aria-label="表格行数"><option value="2">2行</option><option value="3" selected>3行</option><option value="4">4行</option><option value="5">5行</option><option value="6">6行</option><option value="7">7行</option><option value="8">8行</option></select>
+                    <select id="writerTableCols" aria-label="表格列数"><option value="2">2列</option><option value="3" selected>3列</option><option value="4">4列</option><option value="5">5列</option><option value="6">6列</option><option value="7">7列</option><option value="8">8列</option></select>
+                  </span>
                   <button class="format-button" type="button" data-format="divider">分割线</button>
                   <button class="format-button" type="button" data-format="diary-template">日记模板</button>
                 </div>

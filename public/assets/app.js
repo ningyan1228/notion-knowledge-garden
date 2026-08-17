@@ -902,6 +902,13 @@ function handleVisualEditorInput() {
 }
 
 async function handleVisualEditorPaste(event) {
+  const tableRows = clipboardTableRows(event);
+  if (tableRows) {
+    event.preventDefault();
+    insertVisualHtml(tableEditorHtml(tableRows));
+    setWriterStatus(`已粘贴 ${tableRows.length} 行 × ${tableRows[0].length} 列表格。`);
+    return;
+  }
   const caption = elements.writerImageCaption?.value.trim() || "";
   const data = await uploadPastedImage(event, caption);
   if (!data) return;
@@ -954,6 +961,7 @@ function blockToEditorHtml(block) {
   if (block.type === "to_do") return `<p data-todo="true">☐ ${content}</p>`;
   if (block.type === "code") return `<pre><code>${escapeHtml(block.text || "")}</code></pre>`;
   if (block.type === "divider") return "<hr>";
+  if (block.type === "table") return tableEditorHtml(block.rows);
   return `<p>${content || "<br>"}</p>`;
 }
 
@@ -992,6 +1000,12 @@ function visualHtmlToMarkdown(editor) {
     if (tag === "ol") return Array.from(node.children).map((item, index) => `${index + 1}. ${readInline(item)}`);
     if (tag === "pre") return [`\`\`\`\n${node.textContent || ""}\n\`\`\``];
     if (tag === "hr") return ["---"];
+    if (tag === "table") {
+      const rows = Array.from(node.querySelectorAll("tr"))
+        .map((row) => Array.from(row.querySelectorAll("th, td")).map((cell) => readInline(cell)))
+        .filter((row) => row.length >= 2);
+      return rows.length >= 2 ? [tableRowsToMarkdown(normalizeTableRows(rows))] : [];
+    }
     if (tag === "figure") {
       const image = node.querySelector("img");
       const caption = node.dataset.imageCaption ?? node.querySelector("figcaption")?.textContent?.trim() ?? image?.alt ?? "";
@@ -1022,12 +1036,41 @@ function insertVisualHtml(html) {
 }
 
 async function handleWriterPaste(event) {
+  const tableRows = clipboardTableRows(event);
+  if (tableRows) {
+    event.preventDefault();
+    insertAtCursor(elements.writerContent, `\n\n${tableRowsToMarkdown(tableRows)}\n\n`);
+    setWriterStatus(`已粘贴 ${tableRows.length} 行 × ${tableRows[0].length} 列表格。`);
+    return;
+  }
   const caption = elements.writerImageCaption?.value.trim() || "";
   const data = await uploadPastedImage(event, caption);
   if (!data) return;
   if (elements.writerImageCaption) elements.writerImageCaption.value = "";
   insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+function clipboardTableRows(event) {
+  const clipboard = event.clipboardData;
+  if (!clipboard) return null;
+  const html = clipboard.getData("text/html");
+  if (html) {
+    const table = new DOMParser().parseFromString(html, "text/html").querySelector("table");
+    const rows = Array.from(table?.querySelectorAll("tr") || [])
+      .map((row) => Array.from(row.querySelectorAll("th, td")).map((cell) => String(cell.innerText || cell.textContent || "").replace(/\s+/g, " ").trim()))
+      .filter((row) => row.length);
+    if (rows.length >= 2 && rows[0].length >= 2) return normalizeTableRows(rows);
+  }
+
+  const text = clipboard.getData("text/plain");
+  const rows = String(text || "").split(/\r?\n/).filter(Boolean).map((line) => line.split("\t").map((cell) => cell.trim()));
+  return rows.length >= 2 && rows[0].length >= 2 ? normalizeTableRows(rows) : null;
+}
+
+function normalizeTableRows(rows) {
+  const width = Math.max(2, Math.max(...rows.map((row) => row.length)));
+  return rows.map((row) => Array.from({ length: width }, (_, index) => row[index] || ""));
 }
 
 function insertWriterImageMarkdown(markdown) {
@@ -1257,6 +1300,8 @@ function applyWriterFormat(format, color = "") {
     wrapSelection(textarea, `{${color}:`, "}", "彩色文字");
   } else if (format === "date") {
     insertAtCursor(textarea, formatTodayLine());
+  } else if (format === "table") {
+    insertAtCursor(textarea, tableMarkdownTemplate());
   } else if (format === "divider") {
     insertAtCursor(textarea, "\n\n---\n\n");
   } else if (format === "diary-template") {
@@ -1281,12 +1326,45 @@ function applyVisualFormat(format, color = "") {
     const colors = { gray: "#8e8e93", brown: "#8a5a44", orange: "#ff9500", yellow: "#ffcc00", green: "#34c759", blue: "#007aff", purple: "#af52de", pink: "#ff2d55", red: "#ff3b30" };
     document.execCommand("foreColor", false, colors[color] || "#1f2937");
   } else if (format === "date") document.execCommand("insertText", false, formatTodayLine().trim());
+  else if (format === "table") insertVisualHtml(tableEditorHtml());
   else if (format === "divider") insertVisualHtml("<hr><p><br></p>");
   else if (format === "diary-template") {
     setWriterMarkdown((elements.writerContent?.value || "").trim() ? `${elements.writerContent.value}\n\n${diaryTemplate()}` : diaryTemplate());
   }
   syncMarkdownFromVisual();
   emitWriterChanged();
+}
+
+function selectedTableSize() {
+  const rows = Math.min(8, Math.max(2, Number(document.querySelector("#writerTableRows")?.value || 3)));
+  const columns = Math.min(8, Math.max(2, Number(document.querySelector("#writerTableCols")?.value || 3)));
+  return { rows, columns };
+}
+
+function tableMarkdownTemplate() {
+  const { rows, columns } = selectedTableSize();
+  const header = Array.from({ length: columns }, (_, index) => `列 ${index + 1}`);
+  const body = Array.from({ length: rows - 1 }, (_, rowIndex) => header.map((_, columnIndex) => `内容 ${rowIndex + 1}-${columnIndex + 1}`));
+  return `\n\n${tableRowsToMarkdown([header, ...body])}\n\n`;
+}
+
+function tableEditorHtml(rows = null) {
+  const { rows: rowCount, columns } = selectedTableSize();
+  const cells = rows?.length ? rows : [
+    Array.from({ length: columns }, (_, index) => `列 ${index + 1}`),
+    ...Array.from({ length: rowCount - 1 }, (_, rowIndex) => Array.from({ length: columns }, (_, columnIndex) => `内容 ${rowIndex + 1}-${columnIndex + 1}`))
+  ];
+  const [header = [], ...body] = cells;
+  const toCells = (row, tag) => row.map((value) => `<${tag}>${escapeHtml(value)}</${tag}>`).join("");
+  return `<table class="writer-table"><thead><tr>${toCells(header, "th")}</tr></thead><tbody>${body.map((row) => `<tr>${toCells(row, "td")}</tr>`).join("")}</tbody></table><p><br></p>`;
+}
+
+function tableRowsToMarkdown(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) return "";
+  const cleanCell = (value) => String(value || "").replace(/\|/g, "\\|").replace(/\n+/g, " ").trim();
+  const line = (row) => `| ${row.map(cleanCell).join(" | ")} |`;
+  const width = rows[0].length;
+  return [line(rows[0]), `| ${Array.from({ length: width }, () => "---").join(" | ")} |`, ...rows.slice(1).map(line)].join("\n");
 }
 
 function wrapSelection(textarea, before, after, fallback) {
@@ -4013,7 +4091,8 @@ function markdownToPreviewBlocks(markdown) {
     codeLanguage = "";
   };
 
-  for (const rawLine of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex];
     const line = rawLine.trimEnd();
     const codeFence = line.trim().match(/^```(.*)$/);
     if (codeFence) {
@@ -4034,6 +4113,20 @@ function markdownToPreviewBlocks(markdown) {
     const trimmed = line.trim();
     if (!trimmed) {
       flushParagraph();
+      continue;
+    }
+
+    if (isMarkdownTableLine(trimmed) && isMarkdownTableDivider(lines[lineIndex + 1])) {
+      flushParagraph();
+      const rows = [parseMarkdownTableLine(trimmed)];
+      lineIndex += 2;
+      while (lineIndex < lines.length && isMarkdownTableLine(lines[lineIndex].trim())) {
+        rows.push(parseMarkdownTableLine(lines[lineIndex].trim()));
+        lineIndex += 1;
+      }
+      lineIndex -= 1;
+      if (rows.length >= 2 && rows[0].length >= 2) blocks.push({ type: "table", rows: normalizeTableRows(rows), hasColumnHeader: true });
+      else paragraph.push(line);
       continue;
     }
 
@@ -4091,6 +4184,21 @@ function markdownToPreviewBlocks(markdown) {
   if (inCode) flushCode();
   flushParagraph();
   return blocks;
+}
+
+function isMarkdownTableLine(value) {
+  const line = String(value || "").trim();
+  return /^\|?.+\|.+\|?$/.test(line);
+}
+
+function isMarkdownTableDivider(value) {
+  const cells = parseMarkdownTableLine(value);
+  return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+
+function parseMarkdownTableLine(value) {
+  return String(value || "").trim().replace(/^\|/, "").replace(/\|$/, "")
+    .split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, "|").trim());
 }
 
 function previewTextBlock(type, text, extra = {}) {
@@ -4218,6 +4326,24 @@ function renderDetailContent(blocks) {
 function renderBlock(block, headings = [], index = 0) {
   const type = block.type || "paragraph";
   if (type === "divider") return document.createElement("hr");
+  if (type === "table") {
+    const wrapper = document.createElement("div");
+    wrapper.className = "article-table-wrap";
+    const table = document.createElement("table");
+    table.className = "article-table";
+    const rows = Array.isArray(block.rows) ? block.rows : [];
+    rows.forEach((row, rowIndex) => {
+      const tr = document.createElement("tr");
+      row.forEach((cell) => {
+        const cellElement = document.createElement(rowIndex === 0 && block.hasColumnHeader !== false ? "th" : "td");
+        cellElement.textContent = String(cell || "");
+        tr.append(cellElement);
+      });
+      table.append(tr);
+    });
+    wrapper.append(table);
+    return wrapper;
+  }
   if (type === "image") {
     const figure = document.createElement("figure");
     figure.className = "article-image";
@@ -4337,6 +4463,7 @@ function blocksToMarkdown(blocks) {
     if (block.type === "numbered_list_item") return `${index + 1}. ${text}`;
     if (block.type === "divider") return "---";
     if (block.type === "code") return `\`\`\`${block.language || ""}\n${text}\n\`\`\``;
+    if (block.type === "table") return tableRowsToMarkdown(block.rows || []);
     if (block.type === "image") {
       const caption = normalizeImageCaption(block.caption);
       // Saved blocks have a signed Notion URL. Prefer it over a temporary
