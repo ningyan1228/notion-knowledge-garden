@@ -308,9 +308,9 @@ let writerRemoteSaveSignature = "";
 let detailHeadingObserver = null;
 let writerEditorMode = "visual";
 let writerHistoryTimer = null;
-// Images are uploaded to Notion before a note is saved. Keep a local preview for
-// the current editor session so their temporary `notion-upload:` reference never
-// degrades into a broken image while the user is still writing.
+// Images are uploaded to Notion before a note is saved. Keep the original data
+// URL locally for this editor session: Notion file-upload IDs expire, so we can
+// renew a pending image just before publishing.
 const writerPendingImagePreviews = new Map();
 const writerHistory = [];
 let writerHistoryIndex = -1;
@@ -1594,24 +1594,10 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
     const uploadFile = await prepareImageForUpload(file);
     setWriterStatus(uploadFile === file ? "正在把图片上传到 Notion..." : "图片已压缩，正在上传到 Notion...");
     const dataUrl = await readFileAsDataUrl(uploadFile);
-    const response = await fetch(`${apiBase}/api/admin/uploads`, {
-      method: "POST",
-      headers: siteHeaders({
-        "Content-Type": "application/json",
-        ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
-      }),
-      body: JSON.stringify({
-        filename: uploadFile.name || "notion-image.jpg",
-        mimeType: uploadFile.type,
-        dataUrl,
-        alt: altText
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "图片上传失败");
+    const data = await uploadImageDataUrl(dataUrl, uploadFile.name || "notion-image.jpg", altText, adminToken);
 
     if (adminToken && !authToken) localStorage.setItem("kgAdminToken", adminToken);
-    rememberWriterImagePreview(data?.markdown, dataUrl);
+    rememberWriterImagePreview(data?.markdown, dataUrl, uploadFile.name || "notion-image.jpg");
     return data;
   } catch (error) {
     const message = error instanceof TypeError
@@ -1622,13 +1608,55 @@ async function uploadImageFile(file, altText, actionLabel = "上传图片") {
   }
 }
 
-function rememberWriterImagePreview(markdown, previewUrl) {
+async function uploadImageDataUrl(dataUrl, filename, altText, adminToken) {
+  const response = await fetch(`${apiBase}/api/admin/uploads`, {
+    method: "POST",
+    headers: siteHeaders({
+      "Content-Type": "application/json",
+      ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
+    }),
+    body: JSON.stringify({ filename, dataUrl, alt: altText })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "图片上传失败");
+  return data;
+}
+
+function rememberWriterImagePreview(markdown, previewUrl, filename = "notion-image.jpg") {
   const match = String(markdown || "").match(/^!\[[^\]]*\]\((notion-upload:[^)]+)\)$/m);
-  if (match?.[1] && previewUrl) writerPendingImagePreviews.set(match[1], previewUrl);
+  if (match?.[1] && previewUrl) {
+    writerPendingImagePreviews.set(match[1], { previewUrl, dataUrl: previewUrl, filename });
+  }
 }
 
 function getWriterPendingImagePreview(source) {
-  return writerPendingImagePreviews.get(String(source || "")) || "";
+  const pending = writerPendingImagePreviews.get(String(source || ""));
+  return typeof pending === "string" ? pending : pending?.previewUrl || "";
+}
+
+async function refreshPendingWriterImages(payload, adminToken) {
+  const renewReference = async (source, altText) => {
+    const pending = writerPendingImagePreviews.get(source);
+    const dataUrl = typeof pending === "string" ? pending : pending?.dataUrl;
+    if (!dataUrl) return source;
+
+    setWriterStatus("正在确认图片上传状态...");
+    const filename = typeof pending === "string" ? "notion-image.jpg" : pending.filename || "notion-image.jpg";
+    const data = await uploadImageDataUrl(dataUrl, filename, altText, adminToken);
+    const nextSource = `notion-upload:${data.fileUploadId}`;
+    rememberWriterImagePreview(data.markdown, dataUrl, filename);
+    return nextSource;
+  };
+
+  const references = [...String(payload.content || "").matchAll(/!\[([^\]]*)\]\((notion-upload:[a-f0-9-]+)\)/gi)];
+  for (const [raw, caption, source] of references) {
+    const nextSource = await renewReference(source, caption);
+    if (nextSource !== source) payload.content = payload.content.replace(raw, `![${caption}](${nextSource})`);
+  }
+
+  if (String(payload.cover || "").startsWith("notion-upload:")) {
+    payload.cover = await renewReference(payload.cover, "封面图片");
+  }
 }
 
 async function prepareImageForUpload(file) {
@@ -1756,6 +1784,7 @@ async function createNoteFromWriter(event) {
   setWriterStatus(noteId ? "正在保存修改到 Notion..." : "正在同步到 Notion...");
 
   try {
+    await refreshPendingWriterImages(payload, adminToken);
     const response = await fetch(noteId ? `${apiBase}/api/admin/notes/${encodeURIComponent(noteId)}` : `${apiBase}/api/admin/notes`, {
       method: noteId ? "PUT" : "POST",
       headers: siteHeaders({
@@ -4291,8 +4320,11 @@ function blocksToMarkdown(blocks) {
     if (block.type === "code") return `\`\`\`${block.language || ""}\n${text}\n\`\`\``;
     if (block.type === "image") {
       const caption = normalizeImageCaption(block.caption);
+      // Saved blocks have a signed Notion URL. Prefer it over a temporary
+      // upload ID, which expires and must never be reused for later edits.
+      if (block.url) return `![${caption}](${block.url})`;
       if (block.fileUploadId) return `![${caption}](notion-upload:${block.fileUploadId})`;
-      return block.url ? `![${caption}](${block.url})` : "";
+      return "";
     }
     return text;
   }).filter(Boolean).join("\n\n");
