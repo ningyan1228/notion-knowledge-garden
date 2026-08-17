@@ -1635,10 +1635,11 @@ function getWriterPendingImagePreview(source) {
 }
 
 async function refreshPendingWriterImages(payload, adminToken) {
+  let skippedExpiredImages = 0;
   const renewReference = async (source, altText) => {
     const pending = writerPendingImagePreviews.get(source);
     const dataUrl = typeof pending === "string" ? pending : pending?.dataUrl;
-    if (!dataUrl) return source;
+    if (!dataUrl) return "";
 
     setWriterStatus("正在确认图片上传状态...");
     const filename = typeof pending === "string" ? "notion-image.jpg" : pending.filename || "notion-image.jpg";
@@ -1651,12 +1652,27 @@ async function refreshPendingWriterImages(payload, adminToken) {
   const references = [...String(payload.content || "").matchAll(/!\[([^\]]*)\]\((notion-upload:[a-f0-9-]+)\)/gi)];
   for (const [raw, caption, source] of references) {
     const nextSource = await renewReference(source, caption);
-    if (nextSource !== source) payload.content = payload.content.replace(raw, `![${caption}](${nextSource})`);
+    if (!nextSource) {
+      const note = `> 图片${caption ? `（${caption}）` : ""}的临时上传已过期，请重新上传。`;
+      payload.content = payload.content.replace(raw, note);
+      skippedExpiredImages += 1;
+    } else if (nextSource !== source) {
+      payload.content = payload.content.replace(raw, `![${caption}](${nextSource})`);
+    }
   }
 
   if (String(payload.cover || "").startsWith("notion-upload:")) {
-    payload.cover = await renewReference(payload.cover, "封面图片");
+    const nextCover = await renewReference(payload.cover, "封面图片");
+    if (!nextCover) {
+      payload.cover = "";
+      skippedExpiredImages += 1;
+    } else {
+      payload.cover = nextCover;
+    }
   }
+
+  if (skippedExpiredImages) setWriterStatus(`检测到 ${skippedExpiredImages} 张过期图片，正在保存文字并跳过这些图片...`);
+  return skippedExpiredImages;
 }
 
 async function prepareImageForUpload(file) {
@@ -1784,7 +1800,7 @@ async function createNoteFromWriter(event) {
   setWriterStatus(noteId ? "正在保存修改到 Notion..." : "正在同步到 Notion...");
 
   try {
-    await refreshPendingWriterImages(payload, adminToken);
+    const skippedExpiredImages = await refreshPendingWriterImages(payload, adminToken);
     const response = await fetch(noteId ? `${apiBase}/api/admin/notes/${encodeURIComponent(noteId)}` : `${apiBase}/api/admin/notes`, {
       method: noteId ? "PUT" : "POST",
       headers: siteHeaders({
@@ -1811,7 +1827,10 @@ async function createNoteFromWriter(event) {
     } else {
       writerRemoteSaveSignature = "";
     }
-    setWriterStatus(noteId ? `已保存修改：${data.note?.title || title}` : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}`);
+    const skippedNotice = skippedExpiredImages ? `；已跳过 ${skippedExpiredImages} 张过期图片，请重新上传` : "";
+    setWriterStatus(noteId
+      ? `已保存修改：${data.note?.title || title}${skippedNotice}`
+      : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}${skippedNotice}`);
     await loadNotes({ refresh: true });
   } catch (error) {
     setWriterStatus(error instanceof Error ? error.message : "保存笔记失败", true);
