@@ -1778,7 +1778,8 @@ textarea:focus {
 .writer-details-grid .full { grid-column: 1 / -1; }
 
 .writer-workbench {
-  min-height: clamp(460px, 62vh, 720px);
+  height: clamp(460px, 62vh, 720px);
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
   gap: 14px;
@@ -1846,9 +1847,9 @@ textarea:focus {
 
 .writer-actions {
   position: sticky;
-  bottom: -34px;
+  bottom: 0;
   z-index: 9;
-  margin: 0 -34px -34px;
+  margin: 0 -34px;
   padding: 14px 34px 18px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(255, 255, 255, 0.92);
@@ -1875,7 +1876,7 @@ textarea:focus {
   .writer-details-grid { grid-template-columns: 1fr; }
   .writer-details-grid .full { grid-column: auto; }
   .writer-details summary small { display: none; }
-  .writer-actions { bottom: -18px; margin: 0 -18px -18px; padding: 12px 18px 16px; }
+  .writer-actions { bottom: 0; margin: 0 -18px; padding: 12px 18px 16px; }
 }
 
 .detail-body h2 {
