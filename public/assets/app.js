@@ -945,6 +945,7 @@ function normalizeImageCaption(value) {
 
 function blockToEditorHtml(block) {
   const content = richTextToEditorHtml(block.richText, block.text || "");
+  if (block.type === "spreadsheet") return spreadsheetEditorHtml(block);
   if (block.type === "image") {
     const caption = escapeHtml(normalizeImageCaption(block.caption));
     const source = String(block.url || "");
@@ -998,6 +999,7 @@ function visualHtmlToMarkdown(editor) {
   }).join("");
   const blocks = Array.from(editor.children).flatMap((node) => {
     const tag = node.nodeName.toLowerCase();
+    if (node.dataset.spreadsheetUrl) return [spreadsheetMarker(node.dataset.spreadsheetName || "table.xlsx", node.dataset.spreadsheetUrl)];
     if (/^h[1-6]$/.test(tag)) return [`${"#".repeat(Number(tag.slice(1)))} ${readInline(node)}`];
     if (tag === "blockquote") return readInline(node).split("\n").map((line) => `> ${line}`);
     if (tag === "ul") return Array.from(node.children).map((item) => `- ${readInline(item)}`);
@@ -1389,6 +1391,21 @@ function importedTableEditorHtml(rows) {
   return splitImportedTableRows(rows).map((chunk) => tableEditorHtml(chunk)).join("");
 }
 
+function spreadsheetMarker(filename, url) {
+  return `{{excel-preview|${encodeURIComponent(String(filename || "table.xlsx"))}|${url}}}`;
+}
+
+function parseSpreadsheetMarker(value) {
+  const match = String(value || "").trim().match(/^\{\{excel-preview\|([^|]*)\|(https?:\/\/[^}]+)\}\}$/i);
+  return match ? { type: "spreadsheet", filename: decodeURIComponent(match[1] || "table.xlsx"), url: match[2] } : null;
+}
+
+function spreadsheetEditorHtml(block) {
+  const filename = escapeHtml(block?.filename || "Excel 表格");
+  const url = escapeHtml(block?.url || "");
+  return `<figure class="writer-spreadsheet-placeholder" contenteditable="false" data-spreadsheet-url="${url}" data-spreadsheet-name="${filename}"><strong>▦ Excel 表格预览</strong><span>${filename}</span><small>已保留原始文件，保存后可在笔记内直接查看。</small></figure><p><br></p>`;
+}
+
 function wrapSelection(textarea, before, after, fallback) {
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? textarea.value.length;
@@ -1671,63 +1688,38 @@ async function handleTableFileSelect(event) {
   if (!file) return;
 
   try {
-    setWriterStatus("正在读取表格...");
-    const rows = normalizeImportedTableRows(await readTableFile(file));
-    if (rows.length < 2 || rows[0].length < 2) {
-      throw new Error("表格至少需要 2 行和 2 列内容，才能导入为笔记表格。");
-    }
-
+    setWriterStatus("正在上传原始表格并保留版式...");
+    const upload = await uploadSpreadsheetFile(file);
+    const marker = spreadsheetMarker(upload.filename || file.name, upload.url);
     if (writerEditorMode === "visual") {
-      insertVisualHtml(importedTableEditorHtml(rows));
+      insertVisualHtml(spreadsheetEditorHtml({ filename: upload.filename || file.name, url: upload.url }));
     } else {
-      insertAtCursor(elements.writerContent, `\n\n${importedTableMarkdown(rows)}\n\n`);
+      insertAtCursor(elements.writerContent, `\n\n${marker}\n\n`);
     }
-    setWriterStatus(`已导入「${file.name}」：${rows.length} 行 × ${rows[0].length} 列，可直接预览和发布阅读。`);
+    setWriterStatus(`已导入「${file.name}」。笔记会以 Excel 预览方式展示原始布局。`);
   } catch (error) {
     setWriterStatus(error instanceof Error ? error.message : "表格导入失败，请换一个 Excel 或 CSV 文件重试。", true);
   }
 }
 
-function normalizeImportedTableRows(rows) {
-  const meaningfulRows = (Array.isArray(rows) ? rows : [])
-    .map((row) => (Array.isArray(row) ? row : [row]).map((cell) => String(cell ?? "").replace(/\r?\n/g, " ").trim()))
-    .filter((row) => row.some(Boolean));
-  return meaningfulRows.length ? normalizeTableRows(meaningfulRows) : [];
-}
-
-async function readTableFile(file) {
+async function uploadSpreadsheetFile(file) {
   const filename = String(file.name || "").toLowerCase();
-  if (filename.endsWith(".csv") || file.type === "text/csv") return parseCsvTable(await file.text());
-  if (!/\.(xlsx|xls)$/i.test(filename)) throw new Error("请选择 .xlsx、.xls 或 .csv 表格文件。");
-
-  const xlsx = await loadSpreadsheetLibrary();
-  const workbook = xlsx.read(await file.arrayBuffer(), { type: "array" });
-  const firstSheet = workbook.SheetNames?.[0];
-  if (!firstSheet) throw new Error("这个 Excel 文件没有可读取的工作表。");
-  return xlsx.utils.sheet_to_json(workbook.Sheets[firstSheet], { header: 1, defval: "", raw: false });
-}
-
-function parseCsvTable(text) {
-  const source = String(text || "").replace(/^\uFEFF/, "");
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === '"') {
-      if (quoted && source[index + 1] === '"') { cell += '"'; index += 1; } else quoted = !quoted;
-    } else if (char === "," && !quoted) {
-      row.push(cell); cell = "";
-    } else if ((char === "\n" || char === "\r") && !quoted) {
-      if (char === "\r" && source[index + 1] === "\n") index += 1;
-      row.push(cell); rows.push(row); row = []; cell = "";
-    } else {
-      cell += char;
-    }
-  }
-  if (cell || row.length) rows.push([...row, cell]);
-  return rows;
+  if (!/\.(xlsx|xls|csv)$/i.test(filename)) throw new Error("请选择 .xlsx、.xls 或 .csv 表格文件。");
+  if (file.size > 15 * 1024 * 1024) throw new Error("表格文件不能超过 15MB。");
+  const adminToken = elements.writerToken?.value.trim() || localStorage.getItem("kgAdminToken") || "";
+  if (!authToken && !adminToken) throw new Error("请先登录，再导入表格。");
+  const response = await fetch(`${apiBase}/api/admin/spreadsheets`, {
+    method: "POST",
+    headers: siteHeaders({
+      "Content-Type": "application/json",
+      ...(authToken ? {} : { Authorization: `Bearer ${adminToken}` })
+    }),
+    body: JSON.stringify({ filename: file.name || "table.xlsx", mimeType: file.type, dataUrl: await readFileAsDataUrl(file) })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.url) throw new Error(data.error || "表格上传失败，请稍后重试。");
+  if (adminToken && !authToken) localStorage.setItem("kgAdminToken", adminToken);
+  return data;
 }
 
 let spreadsheetLibraryPromise;
@@ -4218,6 +4210,13 @@ function markdownToPreviewBlocks(markdown) {
       continue;
     }
 
+    const spreadsheet = parseSpreadsheetMarker(trimmed);
+    if (spreadsheet) {
+      flushParagraph();
+      blocks.push(spreadsheet);
+      continue;
+    }
+
     if (isMarkdownTableLine(trimmed) && isMarkdownTableDivider(lines[lineIndex + 1])) {
       flushParagraph();
       const rows = [parseMarkdownTableLine(trimmed)];
@@ -4446,6 +4445,21 @@ function renderBlock(block, headings = [], index = 0) {
     wrapper.append(table);
     return wrapper;
   }
+  if (type === "spreadsheet") {
+    const figure = document.createElement("figure");
+    figure.className = "spreadsheet-preview";
+    const head = document.createElement("figcaption");
+    const title = document.createElement("strong");
+    title.textContent = `▦ ${block.filename || "Excel 表格"}`;
+    const hint = document.createElement("span");
+    hint.textContent = "正在载入原始表格…";
+    head.append(title, hint);
+    const viewport = document.createElement("div");
+    viewport.className = "spreadsheet-viewport";
+    figure.append(head, viewport);
+    void renderSpreadsheetPreview(viewport, hint, block);
+    return figure;
+  }
   if (type === "image") {
     const figure = document.createElement("figure");
     figure.className = "article-image";
@@ -4521,6 +4535,117 @@ function renderBlock(block, headings = [], index = 0) {
   return paragraph;
 }
 
+async function renderSpreadsheetPreview(viewport, hint, block) {
+  try {
+    const response = await fetch(block.url, { cache: "force-cache" });
+    if (!response.ok) throw new Error(`文件读取失败（${response.status}）`);
+    const xlsx = await loadSpreadsheetLibrary();
+    const workbook = xlsx.read(await response.arrayBuffer(), { type: "array", cellStyles: true, cellText: true });
+    if (!workbook.SheetNames?.length) throw new Error("工作簿没有可显示的工作表。");
+
+    const tabs = document.createElement("div");
+    tabs.className = "spreadsheet-tabs";
+    const canvas = document.createElement("div");
+    canvas.className = "spreadsheet-canvas";
+    viewport.replaceChildren(tabs, canvas);
+    const renderSheet = (sheetName) => {
+      tabs.querySelectorAll("button").forEach((button) => button.classList.toggle("is-active", button.dataset.sheet === sheetName));
+      renderSpreadsheetSheet(canvas, workbook.Sheets[sheetName], xlsx);
+    };
+    workbook.SheetNames.forEach((sheetName, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.sheet = sheetName;
+      button.textContent = sheetName;
+      button.addEventListener("click", () => renderSheet(sheetName));
+      tabs.append(button);
+      if (index === 0) renderSheet(sheetName);
+    });
+    hint.textContent = workbook.SheetNames.length > 1 ? `共 ${workbook.SheetNames.length} 个工作表` : "Excel 原始布局预览";
+  } catch (error) {
+    viewport.textContent = "表格预览暂时无法加载。";
+    hint.textContent = error instanceof Error ? error.message : "加载失败";
+  }
+}
+
+function renderSpreadsheetSheet(container, sheet, xlsx) {
+  container.replaceChildren();
+  const reference = sheet?.["!ref"] || "A1";
+  const range = xlsx.utils.decode_range(reference);
+  const rowCount = Math.min(range.e.r - range.s.r + 1, 1000);
+  const columnCount = Math.min(range.e.c - range.s.c + 1, 80);
+  const merges = new Map();
+  const covered = new Set();
+  for (const merge of sheet?.["!merges"] || []) {
+    if (merge.s.r > range.e.r || merge.s.c > range.e.c) continue;
+    const key = `${merge.s.r}:${merge.s.c}`;
+    merges.set(key, { rowspan: Math.min(merge.e.r, range.s.r + rowCount - 1) - merge.s.r + 1, colspan: Math.min(merge.e.c, range.s.c + columnCount - 1) - merge.s.c + 1 });
+    for (let row = merge.s.r; row <= Math.min(merge.e.r, range.s.r + rowCount - 1); row += 1) {
+      for (let column = merge.s.c; column <= Math.min(merge.e.c, range.s.c + columnCount - 1); column += 1) {
+        if (row !== merge.s.r || column !== merge.s.c) covered.set(`${row}:${column}`);
+      }
+    }
+  }
+
+  const table = document.createElement("table");
+  table.className = "spreadsheet-table";
+  const colgroup = document.createElement("colgroup");
+  for (let column = range.s.c; column < range.s.c + columnCount; column += 1) {
+    const col = document.createElement("col");
+    const declaredWidth = sheet?.["!cols"]?.[column]?.wpx || (sheet?.["!cols"]?.[column]?.wch || 12) * 7.4 + 18;
+    col.style.width = `${Math.max(56, Math.min(560, declaredWidth))}px`;
+    colgroup.append(col);
+  }
+  table.append(colgroup);
+  const body = document.createElement("tbody");
+  for (let row = range.s.r; row < range.s.r + rowCount; row += 1) {
+    const tr = document.createElement("tr");
+    const rowHeight = sheet?.["!rows"]?.[row]?.hpx || (sheet?.["!rows"]?.[row]?.hpt ? sheet["!rows"][row].hpt * 1.333 : 0);
+    if (rowHeight) tr.style.height = `${Math.max(20, Math.min(400, rowHeight))}px`;
+    for (let column = range.s.c; column < range.s.c + columnCount; column += 1) {
+      const key = `${row}:${column}`;
+      if (covered.has(key)) continue;
+      const cell = sheet?.[xlsx.utils.encode_cell({ r: row, c: column })];
+      const td = document.createElement("td");
+      const merge = merges.get(key);
+      if (merge) { td.rowSpan = merge.rowspan; td.colSpan = merge.colspan; }
+      td.textContent = cell?.w ?? String(cell?.v ?? "");
+      applySpreadsheetCellStyle(td, cell?.s);
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+  table.append(body);
+  container.append(table);
+  if (range.e.r - range.s.r + 1 > rowCount || range.e.c - range.s.c + 1 > columnCount) {
+    const notice = document.createElement("p");
+    notice.className = "spreadsheet-limit-note";
+    notice.textContent = "为保证页面流畅，当前预览显示前 1000 行、80 列。";
+    container.append(notice);
+  }
+}
+
+function applySpreadsheetCellStyle(cell, style) {
+  if (!style || typeof style !== "object") return;
+  const fill = spreadsheetColor(style.fill?.fgColor || style.fill?.bgColor);
+  const color = spreadsheetColor(style.font?.color);
+  if (fill) cell.style.backgroundColor = fill;
+  if (color) cell.style.color = color;
+  if (style.font?.bold || style.font?.b) cell.style.fontWeight = "700";
+  if (style.font?.italic || style.font?.i) cell.style.fontStyle = "italic";
+  if (style.font?.sz) cell.style.fontSize = `${Math.max(9, Math.min(28, Number(style.font.sz)))}pt`;
+  const horizontal = style.alignment?.horizontal;
+  if (["left", "center", "right"].includes(horizontal)) cell.style.textAlign = horizontal;
+  const vertical = style.alignment?.vertical;
+  if (["top", "center", "bottom"].includes(vertical)) cell.style.verticalAlign = vertical === "center" ? "middle" : vertical;
+  if (style.alignment?.wrapText) cell.style.whiteSpace = "pre-wrap";
+}
+
+function spreadsheetColor(color) {
+  const value = String(color?.rgb || color?.argb || "").replace(/^#/, "");
+  return /^[0-9a-f]{6}$/i.test(value) ? `#${value}` : /^[0-9a-f]{8}$/i.test(value) ? `#${value.slice(-6)}` : "";
+}
+
 function appendRichText(container, block) {
   const parts = Array.isArray(block.richText) && block.richText.length
     ? block.richText
@@ -4566,6 +4691,7 @@ function blocksToMarkdown(blocks) {
     if (block.type === "divider") return "---";
     if (block.type === "code") return `\`\`\`${block.language || ""}\n${text}\n\`\`\``;
     if (block.type === "table") return tableRowsToMarkdown(block.rows || []);
+    if (block.type === "spreadsheet") return spreadsheetMarker(block.filename, block.url);
     if (block.type === "image") {
       const caption = normalizeImageCaption(block.caption);
       // Saved blocks have a signed Notion URL. Prefer it over a temporary

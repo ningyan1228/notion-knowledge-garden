@@ -1510,6 +1510,22 @@ textarea:focus {
 .article-table th,
 .article-table td { border: 1px solid rgba(31, 41, 55, 0.12); padding: 10px 12px; vertical-align: top; text-align: left; line-height: 1.65; }
 .article-table th { color: var(--ink); background: rgba(47, 125, 100, 0.1); font-weight: 900; }
+.visual-editor .writer-spreadsheet-placeholder { display: grid; gap: 5px; width: min(100%, 720px); margin: 1em 0; border: 1px dashed rgba(33, 113, 92, 0.48); border-radius: 14px; padding: 15px 17px; color: #176f5a; background: linear-gradient(135deg, rgba(217, 244, 235, 0.88), rgba(245, 255, 251, 0.94)); }
+.visual-editor .writer-spreadsheet-placeholder strong { font-family: inherit; font-size: 16px; }
+.visual-editor .writer-spreadsheet-placeholder span { color: var(--ink); font-weight: 700; }
+.visual-editor .writer-spreadsheet-placeholder small { color: var(--muted); }
+.spreadsheet-preview { width: 100%; margin: 1.5em 0; overflow: hidden; border: 1px solid rgba(26, 80, 69, 0.22); border-radius: 14px; background: #fff; box-shadow: 0 12px 28px rgba(28, 56, 48, 0.08); }
+.spreadsheet-preview > figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 15px; border-bottom: 1px solid rgba(26, 80, 69, 0.16); color: #124e40; font-family: ui-sans-serif, system-ui, sans-serif; background: #f6fbf9; }
+.spreadsheet-preview > figcaption strong { font-size: 14px; }
+.spreadsheet-preview > figcaption span { color: #6c837b; font-size: 12px; }
+.spreadsheet-viewport { overflow: hidden; }
+.spreadsheet-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 9px 11px 0; background: #f6fbf9; }
+.spreadsheet-tabs button { flex: 0 0 auto; border: 1px solid #d9e7e1; border-bottom: 0; border-radius: 8px 8px 0 0; padding: 6px 12px; color: #526d63; background: #ecf4f0; font: 700 12px/1.2 ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+.spreadsheet-tabs button.is-active { color: #0f654f; background: #fff; }
+.spreadsheet-canvas { overflow: auto; max-height: min(72vh, 900px); padding: 0 0 4px; background: #fff; }
+.spreadsheet-table { width: max-content; min-width: 100%; border-collapse: collapse; table-layout: fixed; color: #172b4d; font-family: Calibri, "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.45; background: #fff; }
+.spreadsheet-table td { min-width: 56px; border: 1px solid #d8e0e5; padding: 7px 9px; white-space: pre-wrap; overflow-wrap: anywhere; vertical-align: middle; }
+.spreadsheet-limit-note { margin: 0; padding: 10px 13px; color: #7a6544; font: 12px/1.5 ui-sans-serif, system-ui, sans-serif; background: #fff9e8; }
 .visual-editor figure { margin: 1em 0; }
 .visual-editor figure img { display: block; width: min(100%, 680px); max-height: 420px; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; background: #f5f5f7; }
 .visual-editor figcaption { margin-top: 6px; color: var(--subtle); font-size: 12px; text-align: center; }
