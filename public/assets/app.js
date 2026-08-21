@@ -4582,7 +4582,7 @@ function renderSpreadsheetSheet(container, sheet, xlsx) {
     merges.set(key, { rowspan: Math.min(merge.e.r, range.s.r + rowCount - 1) - merge.s.r + 1, colspan: Math.min(merge.e.c, range.s.c + columnCount - 1) - merge.s.c + 1 });
     for (let row = merge.s.r; row <= Math.min(merge.e.r, range.s.r + rowCount - 1); row += 1) {
       for (let column = merge.s.c; column <= Math.min(merge.e.c, range.s.c + columnCount - 1); column += 1) {
-        if (row !== merge.s.r || column !== merge.s.c) covered.set(`${row}:${column}`);
+        if (row !== merge.s.r || column !== merge.s.c) covered.add(`${row}:${column}`);
       }
     }
   }
