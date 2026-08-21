@@ -235,6 +235,8 @@ const elements = {
   writerDraftStatus: document.querySelector("#writerDraftStatus"),
   writerContentFile: document.querySelector("#writerContentFile"),
   writerContentUploadButton: document.querySelector("#writerContentUploadButton"),
+  writerTableFile: document.querySelector("#writerTableFile"),
+  writerTableUploadButton: document.querySelector("#writerTableUploadButton"),
   writerImageCaption: document.querySelector("#writerImageCaption"),
   writerPublished: document.querySelector("#writerPublished"),
   writerPinned: document.querySelector("#writerPinned"),
@@ -544,8 +546,10 @@ elements.writerFormatToolbar?.addEventListener("click", handleFormatToolbarClick
 elements.writerCover?.addEventListener("paste", handleCoverPaste);
 elements.writerCoverUploadButton?.addEventListener("click", () => elements.writerCoverFile?.click());
 elements.writerContentUploadButton?.addEventListener("click", () => elements.writerContentFile?.click());
+elements.writerTableUploadButton?.addEventListener("click", () => elements.writerTableFile?.click());
 elements.writerCoverFile?.addEventListener("change", handleCoverFileSelect);
 elements.writerContentFile?.addEventListener("change", handleContentFileSelect);
+elements.writerTableFile?.addEventListener("change", handleTableFileSelect);
 elements.logoutButton?.addEventListener("click", openLogoutConfirm);
 elements.logoutConfirmCancel?.addEventListener("click", closeLogoutConfirm);
 elements.logoutConfirmAccept?.addEventListener("click", confirmLogout);
@@ -1367,6 +1371,24 @@ function tableRowsToMarkdown(rows) {
   return [line(rows[0]), `| ${Array.from({ length: width }, () => "---").join(" | ")} |`, ...rows.slice(1).map(line)].join("\n");
 }
 
+function splitImportedTableRows(rows, maxBodyRows = 80) {
+  const [header, ...body] = rows;
+  if (!header || !body.length) return [];
+  const chunks = [];
+  for (let index = 0; index < body.length; index += maxBodyRows) chunks.push([header, ...body.slice(index, index + maxBodyRows)]);
+  return chunks;
+}
+
+function importedTableMarkdown(rows) {
+  return splitImportedTableRows(rows)
+    .map((chunk, index) => `${index ? `> 表格续表（第 ${index + 1} 部分）\n\n` : ""}${tableRowsToMarkdown(chunk)}`)
+    .join("\n\n");
+}
+
+function importedTableEditorHtml(rows) {
+  return splitImportedTableRows(rows).map((chunk) => tableEditorHtml(chunk)).join("");
+}
+
 function wrapSelection(textarea, before, after, fallback) {
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? textarea.value.length;
@@ -1641,6 +1663,86 @@ async function handleContentFileSelect(event) {
 
   insertWriterImageMarkdown(data.markdown);
   setWriterStatus("图片已上传到 Notion，并插入正文。");
+}
+
+async function handleTableFileSelect(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  try {
+    setWriterStatus("正在读取表格...");
+    const rows = normalizeImportedTableRows(await readTableFile(file));
+    if (rows.length < 2 || rows[0].length < 2) {
+      throw new Error("表格至少需要 2 行和 2 列内容，才能导入为笔记表格。");
+    }
+
+    if (writerEditorMode === "visual") {
+      insertVisualHtml(importedTableEditorHtml(rows));
+    } else {
+      insertAtCursor(elements.writerContent, `\n\n${importedTableMarkdown(rows)}\n\n`);
+    }
+    setWriterStatus(`已导入「${file.name}」：${rows.length} 行 × ${rows[0].length} 列，可直接预览和发布阅读。`);
+  } catch (error) {
+    setWriterStatus(error instanceof Error ? error.message : "表格导入失败，请换一个 Excel 或 CSV 文件重试。", true);
+  }
+}
+
+function normalizeImportedTableRows(rows) {
+  const meaningfulRows = (Array.isArray(rows) ? rows : [])
+    .map((row) => (Array.isArray(row) ? row : [row]).map((cell) => String(cell ?? "").replace(/\r?\n/g, " ").trim()))
+    .filter((row) => row.some(Boolean));
+  return meaningfulRows.length ? normalizeTableRows(meaningfulRows) : [];
+}
+
+async function readTableFile(file) {
+  const filename = String(file.name || "").toLowerCase();
+  if (filename.endsWith(".csv") || file.type === "text/csv") return parseCsvTable(await file.text());
+  if (!/\.(xlsx|xls)$/i.test(filename)) throw new Error("请选择 .xlsx、.xls 或 .csv 表格文件。");
+
+  const xlsx = await loadSpreadsheetLibrary();
+  const workbook = xlsx.read(await file.arrayBuffer(), { type: "array" });
+  const firstSheet = workbook.SheetNames?.[0];
+  if (!firstSheet) throw new Error("这个 Excel 文件没有可读取的工作表。");
+  return xlsx.utils.sheet_to_json(workbook.Sheets[firstSheet], { header: 1, defval: "", raw: false });
+}
+
+function parseCsvTable(text) {
+  const source = String(text || "").replace(/^\uFEFF/, "");
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '"') {
+      if (quoted && source[index + 1] === '"') { cell += '"'; index += 1; } else quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      row.push(cell); cell = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && source[index + 1] === "\n") index += 1;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  if (cell || row.length) rows.push([...row, cell]);
+  return rows;
+}
+
+let spreadsheetLibraryPromise;
+function loadSpreadsheetLibrary() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (spreadsheetLibraryPromise) return spreadsheetLibraryPromise;
+  spreadsheetLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    script.async = true;
+    script.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error("表格解析组件加载失败，请刷新后重试。"));
+    script.onerror = () => reject(new Error("Excel 解析组件加载失败，请检查网络后重试，或先另存为 CSV 再导入。"));
+    document.head.append(script);
+  });
+  return spreadsheetLibraryPromise;
 }
 
 async function uploadPastedImage(event, altText) {

@@ -7,10 +7,10 @@
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260818-table-scroll" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260821-table-import" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-  <script defer src="assets/app.js?v=20260818-tables"></script>
+  <script defer src="assets/app.js?v=20260821-table-import"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -638,6 +638,7 @@
                     <select id="writerTableRows" aria-label="表格行数"><option value="2">2行</option><option value="3" selected>3行</option><option value="4">4行</option><option value="5">5行</option><option value="6">6行</option><option value="7">7行</option><option value="8">8行</option></select>
                     <select id="writerTableCols" aria-label="表格列数"><option value="2">2列</option><option value="3" selected>3列</option><option value="4">4列</option><option value="5">5列</option><option value="6">6列</option><option value="7">7列</option><option value="8">8列</option></select>
                   </span>
+                  <button class="format-button" id="writerTableUploadButton" type="button" title="导入 Excel 或 CSV 表格">导入表格</button>
                   <button class="format-button" type="button" data-format="divider">分割线</button>
                   <button class="format-button" type="button" data-format="diary-template">日记模板</button>
                 </div>
@@ -669,10 +670,11 @@
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
                 <input class="writer-image-caption" id="writerImageCaption" type="text" maxlength="120" placeholder="图片注释（可选，填写后用于下一张图片）" aria-label="下一张图片的注释" />
-                <small>也可以直接写 Markdown：![图片说明](图片链接)</small>
+                <small>支持 Excel / CSV，导入后可在笔记内直接查看。</small>
               </div>
               <input class="visually-hidden" id="writerContentFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
-              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion。</small>
+              <input class="visually-hidden" id="writerTableFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion；表格会转为可阅读的笔记内容。</small>
             </div>
             <div class="writer-options full">
               <label>
