@@ -70,6 +70,7 @@
         </div>
         <div class="visitor-mode-indicator" id="visitorModeIndicator" hidden>
           <span>访客模式 · 仅展示公开笔记</span>
+          <button class="visitor-login-button" id="visitorLoginButton" type="button">登录</button>
           <a href="https://101921.xyz/knowledge/">返回个人博客</a>
         </div>
         <label class="global-search" aria-label="搜索全部笔记">
@@ -512,6 +513,8 @@
           <span>在这台电脑上保持登录</span>
         </label>
         <button class="button primary" type="submit">进入网站</button>
+        <button class="site-lock-visitor" id="visitorModeButton" type="button">暂不登录，浏览公开笔记</button>
+        <p class="site-lock-visitor-hint">访客只能查看你已公开的笔记，随时可以回来登录。</p>
         <p class="site-lock-error" id="sitePasswordError" aria-live="polite"></p>
       </form>
     </aside>

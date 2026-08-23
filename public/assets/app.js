@@ -285,12 +285,14 @@ const elements = {
   sitePasswordInput: document.querySelector("#sitePasswordInput"),
   sitePasswordRemember: document.querySelector("#sitePasswordRemember"),
   sitePasswordError: document.querySelector("#sitePasswordError"),
+  visitorModeButton: document.querySelector("#visitorModeButton"),
   currentUserLabel: document.querySelector("#currentUserLabel"),
   logoutButton: document.querySelector("#logoutButton"),
   logoutConfirmDialog: document.querySelector("#logoutConfirmDialog"),
   logoutConfirmCancel: document.querySelector("#logoutConfirmCancel"),
   logoutConfirmAccept: document.querySelector("#logoutConfirmAccept"),
   visitorModeIndicator: document.querySelector("#visitorModeIndicator"),
+  visitorLoginButton: document.querySelector("#visitorLoginButton"),
   sharedNoteView: document.querySelector("#sharedNoteView"),
   sharedNoteCover: document.querySelector("#sharedNoteCover"),
   sharedNoteMeta: document.querySelector("#sharedNoteMeta"),
@@ -531,6 +533,8 @@ elements.writerForm?.addEventListener("submit", createNoteFromWriter);
 elements.writerForm?.addEventListener("input", handleWriterFormInput);
 elements.writerForm?.addEventListener("change", handleWriterFormInput);
 elements.sitePasswordForm?.addEventListener("submit", unlockSite);
+elements.visitorModeButton?.addEventListener("click", browseAsVisitor);
+elements.visitorLoginButton?.addEventListener("click", openLoginFromVisitor);
 elements.writerTypeSelect?.addEventListener("change", updateWriterPrivacyDefault);
 elements.writerContent?.addEventListener("paste", handleWriterPaste);
 elements.writerContent?.addEventListener("keydown", handleWriterContentKeydown);
@@ -673,6 +677,33 @@ function activateVisitorMode() {
   syncPageViewFromHash();
 }
 
+function updateVisitorModeUrl(enabled) {
+  const url = new URL(window.location.href);
+  if (enabled) url.searchParams.set("mode", "visitor");
+  else url.searchParams.delete("mode");
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function browseAsVisitor() {
+  isVisitorMode = true;
+  updateVisitorModeUrl(true);
+  hideSiteLock();
+  activateVisitorMode();
+  resetNoteList();
+  loadNotes();
+}
+
+function openLoginFromVisitor() {
+  isVisitorMode = false;
+  updateVisitorModeUrl(false);
+  document.body.classList.remove("is-visitor-mode");
+  elements.visitorModeIndicator?.setAttribute("hidden", "");
+  state.visibility = "all";
+  state.favoritesOnly = false;
+  resetNoteList();
+  showSiteLock();
+}
+
 function exitVisitorModeForOwner() {
   const hasOwnerSession = Boolean(
     authToken || currentUser?.id || currentUser?.username || currentUser?.name
@@ -723,6 +754,7 @@ async function unlockSite(event) {
     authToken = data.token;
     currentUser = data.user || null;
     persistAuth(authToken, currentUser, Boolean(elements.sitePasswordRemember?.checked));
+    updateVisitorModeUrl(false);
     exitVisitorModeForOwner();
     updateCurrentUserLabel();
     hideSiteLock();
@@ -1811,7 +1843,11 @@ async function refreshPendingWriterImages(payload, adminToken) {
   const renewReference = async (source, altText) => {
     const pending = writerPendingImagePreviews.get(source);
     const dataUrl = typeof pending === "string" ? pending : pending?.dataUrl;
-    if (!dataUrl) return "";
+    // The editor can be reopened after a refresh, so its local preview cache
+    // is not guaranteed to exist. A Notion file-upload ID remains usable once
+    // attached and must be sent to the API as-is; treating a missing preview as
+    // an expired file used to silently clear cover images during saves.
+    if (!dataUrl) return source;
 
     setWriterStatus("正在确认图片上传状态...");
     const filename = typeof pending === "string" ? "notion-image.jpg" : pending.filename || "notion-image.jpg";
@@ -1836,8 +1872,7 @@ async function refreshPendingWriterImages(payload, adminToken) {
   if (String(payload.cover || "").startsWith("notion-upload:")) {
     const nextCover = await renewReference(payload.cover, "封面图片");
     if (!nextCover) {
-      payload.cover = "";
-      skippedExpiredImages += 1;
+      throw new Error("封面图片上传记录不可用，请重新选择封面图片后再保存。");
     } else {
       payload.cover = nextCover;
     }
@@ -2005,7 +2040,13 @@ async function createNoteFromWriter(event) {
       : `已同步：${data.note?.title || title}${payload.published ? "" : "。可在“我的笔记-私密”里查看。"}${skippedNotice}`);
     await loadNotes({ refresh: true });
   } catch (error) {
-    setWriterStatus(error instanceof Error ? error.message : "保存笔记失败", true);
+    const message = error instanceof Error ? error.message : "保存笔记失败";
+    setWriterStatus(
+      /invalid status of expired|file upload.*expired/i.test(message)
+        ? "封面或正文图片的上传已过期，请重新上传该图片后再保存。"
+        : message,
+      true
+    );
   } finally {
     submitButton.disabled = false;
   }
