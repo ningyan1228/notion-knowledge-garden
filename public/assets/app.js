@@ -1021,6 +1021,7 @@ function visualHtmlToMarkdown(editor) {
   const readInline = (node) => Array.from(node.childNodes).map((child) => {
     if (child.nodeType === Node.TEXT_NODE) return child.textContent || "";
     const tag = child.nodeName.toLowerCase();
+    if (tag === "br") return "\n";
     let text = readInline(child);
     if (tag === "strong" || tag === "b") text = `**${text}**`;
     else if (tag === "code") text = `\`${text}\``;
@@ -1029,7 +1030,14 @@ function visualHtmlToMarkdown(editor) {
     if (color) text = `{${color}:${text}}`;
     return text;
   }).join("");
-  const blocks = Array.from(editor.children).flatMap((node) => {
+
+  const blockTags = new Set(["p", "div", "section", "article", "ul", "ol", "blockquote", "pre", "hr", "table", "figure", "h1", "h2", "h3", "h4", "h5", "h6"]);
+  const blocksFromNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim() || "";
+      return text ? [text] : [];
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return [];
     const tag = node.nodeName.toLowerCase();
     if (node.dataset.spreadsheetUrl) return [spreadsheetMarker(node.dataset.spreadsheetName || "table.xlsx", node.dataset.spreadsheetUrl)];
     if (/^h[1-6]$/.test(tag)) return [`${"#".repeat(Number(tag.slice(1)))} ${readInline(node)}`];
@@ -1052,9 +1060,40 @@ function visualHtmlToMarkdown(editor) {
       return image?.src ? [`![${caption}](${image.src})`] : [];
     }
     if (node.dataset.imageSource) return [`![${node.dataset.imageCaption || "图片"}](${node.dataset.imageSource})`];
+
+    // ChatGPT and several browsers paste one outer <div> containing a mix of
+    // paragraphs, lists and <br> elements. Flattening that wrapper used to
+    // erase the block boundaries, so all copied content became one paragraph
+    // after saving. Preserve each nested block as its own Markdown block.
+    if (["div", "section", "article"].includes(tag)) {
+      const childNodes = Array.from(node.childNodes);
+      const hasNestedBlocks = childNodes.some((child) => child.nodeType === Node.ELEMENT_NODE
+        && blockTags.has(child.nodeName.toLowerCase()));
+      if (hasNestedBlocks) {
+        const nested = [];
+        let inlineBuffer = "";
+        const flushInline = () => {
+          const text = inlineBuffer.trim();
+          if (text) nested.push(text);
+          inlineBuffer = "";
+        };
+        for (const child of childNodes) {
+          if (child.nodeType === Node.ELEMENT_NODE && blockTags.has(child.nodeName.toLowerCase())) {
+            flushInline();
+            nested.push(...blocksFromNode(child));
+          } else {
+            inlineBuffer += child.nodeType === Node.TEXT_NODE ? child.textContent || "" : readInline(child);
+          }
+        }
+        flushInline();
+        return nested;
+      }
+    }
+
     const text = readInline(node).replace(/^☐\s*/, "");
     return node.dataset.todo === "true" ? [`- [ ] ${text}`] : [text];
-  });
+  };
+  const blocks = Array.from(editor.childNodes).flatMap(blocksFromNode);
   return blocks.filter(Boolean).join("\n\n");
 }
 
@@ -4692,15 +4731,19 @@ function appendRichText(container, block) {
     ? block.richText
     : [{ text: block.text || "" }];
   for (const part of parts) {
-    const span = document.createElement(part.code ? "code" : "span");
-    span.textContent = part.text || "";
-    if (part.bold) span.classList.add("rt-bold");
-    if (part.italic) span.classList.add("rt-italic");
-    if (part.underline) span.classList.add("rt-underline");
-    if (part.strikethrough) span.classList.add("rt-strike");
-    const color = normalizeRichColor(part.color);
-    if (color) span.classList.add(`rt-${color}`);
-    container.append(span);
+    const lines = String(part.text || "").split("\n");
+    lines.forEach((line, index) => {
+      const span = document.createElement(part.code ? "code" : "span");
+      span.textContent = line;
+      if (part.bold) span.classList.add("rt-bold");
+      if (part.italic) span.classList.add("rt-italic");
+      if (part.underline) span.classList.add("rt-underline");
+      if (part.strikethrough) span.classList.add("rt-strike");
+      const color = normalizeRichColor(part.color);
+      if (color) span.classList.add(`rt-${color}`);
+      container.append(span);
+      if (index < lines.length - 1) container.append(document.createElement("br"));
+    });
   }
 }
 
