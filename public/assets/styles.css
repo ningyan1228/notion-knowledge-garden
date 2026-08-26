@@ -6711,10 +6711,26 @@ body.is-shared-note .ai-assistant-panel { display: none !important; }
 .mac-sidebar-card .mini-button:hover { border-color: rgba(255,59,48,.20); color: #d84a43; background: rgba(255,59,48,.08); }
 
 /* Focused pages shorten the canvas; keep the account card pinned to the same sidebar footer position. */
-@media (min-width: 921px) {
-  body[data-app-view="folders"] .mac-sidebar,
-  body[data-app-view="calendar"] .mac-sidebar,
-  body[data-app-view="growth"] .mac-sidebar {
+  @media (min-width: 921px) {
+    /* The app shell previously clipped its children. That clipping prevents
+       position: sticky from following the viewport, so the whole left rail
+       disappeared together with the long note list. Keep the shell visual,
+       but let the sidebar stick independently on desktop. */
+    .mac-app-shell { overflow: visible; }
+    .mac-sidebar {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      height: calc(100vh - 32px);
+      min-height: 0;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    body[data-app-view="folders"] .mac-sidebar,
+    body[data-app-view="calendar"] .mac-sidebar,
+    body[data-app-view="growth"] .mac-sidebar {
     height: calc(100vh - 36px);
     min-height: 720px;
   }
