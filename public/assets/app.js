@@ -1724,7 +1724,8 @@ async function handleCoverPaste(event) {
   if (!data) return;
 
   if (elements.writerCover) elements.writerCover.value = `notion-upload:${data.fileUploadId}`;
-  setWriterStatus("封面已上传到 Notion，保存笔记后生效。");
+  emitWriterChanged();
+  setWriterStatus("封面已上传到 Notion，正在保存到这篇笔记...");
 }
 
 async function handleCoverFileSelect(event) {
@@ -1736,7 +1737,8 @@ async function handleCoverFileSelect(event) {
   if (!data) return;
 
   if (elements.writerCover) elements.writerCover.value = `notion-upload:${data.fileUploadId}`;
-  setWriterStatus("封面已上传到 Notion，保存笔记后生效。");
+  emitWriterChanged();
+  setWriterStatus("封面已上传到 Notion，正在保存到这篇笔记...");
 }
 
 async function handleContentFileSelect(event) {
