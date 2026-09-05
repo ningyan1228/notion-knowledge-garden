@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>朝夕拾光</title>
     <meta name="description" content="收集每天的灵感与知识碎片。记录思考，沉淀成长。" />
-    <link rel="icon" type="image/svg+xml" href="assets/note-favicon.svg" />
-    <link rel="stylesheet" href="assets/styles.css" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" type="image/png" href="assets/morning-dusk-logo-v2.png" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260905-cover-upload" />
     <script src="assets/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-      <script defer src="assets/app.js?v=20260713-detail-panel-state-fix"></script>
+  <script defer src="assets/app.js?v=20260905-cover-upload"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -21,7 +22,7 @@
             <i class="mac-dot green"></i>
           </div>
           <a class="mac-sidebar-brand" href="#knowledgeGraph">
-            <span>朝</span>
+            <span class="brand-emblem"><img src="assets/morning-dusk-logo-v2.png" alt="" /></span>
             <div>
               <strong>朝夕拾光</strong>
               <small>Personal Knowledge OS</small>
@@ -34,22 +35,24 @@
             <a href="#folders" data-nav-icon="folders">文件空间</a>
             <a href="#calendar" data-nav-icon="calendar">日历</a>
             <span class="mac-nav-group">知识</span>
-            <a href="#knowledgeGraph" data-nav-icon="graph">知识星图</a>
+            <a href="#knowledgeGraph" data-nav-icon="graph">知识地图</a>
             <a href="#diaries" data-nav-icon="diaries">拾光日记</a>
             <a href="#growthMap" data-nav-icon="growth">成长轨迹</a>
           </nav>
-          <button class="sidebar-write-button" id="sidebarWriteButton" type="button">
-            <span aria-hidden="true">✦</span>
-            写笔记
-          </button>
-          <button class="sidebar-diary-button" id="sidebarDiaryButton" type="button">
-            <span aria-hidden="true">☾</span>
-            写日记
-          </button>
-          <button class="sidebar-refresh-button" id="sidebarRefreshButton" type="button" title="刷新当前页面">
-            <span aria-hidden="true">↻</span>
-            刷新页面
-          </button>
+          <div class="sidebar-action-group" aria-label="快捷操作">
+            <button class="sidebar-write-button" id="sidebarWriteButton" type="button">
+              <span aria-hidden="true">✦</span>
+              写笔记
+            </button>
+            <button class="sidebar-diary-button" id="sidebarDiaryButton" type="button">
+              <span aria-hidden="true">☾</span>
+              写日记
+            </button>
+            <button class="sidebar-refresh-button" id="sidebarRefreshButton" type="button" title="刷新当前页面">
+              <span aria-hidden="true">↻</span>
+              刷新页面
+            </button>
+          </div>
           <div class="mac-sidebar-card">
             <span class="account-avatar" aria-hidden="true">朝</span>
             <div class="account-copy">
@@ -62,8 +65,13 @@
         <div class="mac-main">
       <header class="topbar">
         <div class="topbar-page">
-          <a class="brand-mark" id="pageTitle" href="#knowledgeGraph">知识星图</a>
+          <a class="brand-mark" id="pageTitle" href="#knowledgeGraph">知识地图</a>
           <span id="pageSubtitle">探索你的知识连接</span>
+        </div>
+        <div class="visitor-mode-indicator" id="visitorModeIndicator" hidden>
+          <span>访客模式 · 仅展示公开笔记</span>
+          <button class="visitor-login-button" id="visitorLoginButton" type="button">登录</button>
+          <a href="https://101921.xyz/knowledge/">返回个人博客</a>
         </div>
         <label class="global-search" aria-label="搜索全部笔记">
           <input id="globalSearch" type="search" placeholder="搜索笔记" autocomplete="off" />
@@ -84,36 +92,40 @@
         </div>
         <div class="hero-visual graph-panel" aria-label="知识地图">
           <div class="graph-header">
-            <div>
-              <span>Knowledge Map</span>
-              <strong>知识星图</strong>
-            </div>
             <div class="graph-tools">
               <p id="graphHint">点击节点进入对应知识</p>
-              <button type="button" id="graphRetryButton">重试</button>
-              <button type="button" id="graphResetButton">重置</button>
+              <button type="button" id="graphRetryButton">自动布局</button>
+              <button type="button" id="graphResetButton">重置视图</button>
               <button type="button" id="graphFullscreenButton">全屏</button>
             </div>
           </div>
           <div class="graph-workspace">
             <div class="graph-stage">
               <div class="knowledge-graph" id="knowledgeGraph" role="img" aria-label="分类、标签与笔记关系图"></div>
-              <div class="graph-legend" aria-hidden="true">
-                <span><i class="legend-root"></i>中心</span>
-                <span><i class="legend-topic"></i>分类</span>
-                <span><i class="legend-tag"></i>标签</span>
-                <span><i class="legend-note"></i>笔记</span>
-              </div>
             </div>
             <aside class="graph-insight-card" aria-label="今日洞察">
-              <span>今日洞察</span>
-              <strong>你的知识正在生长</strong>
+              <div class="graph-insight-heading">
+                <span>今日概览</span>
+                <strong>知识正在生长</strong>
+              </div>
               <div class="graph-insight-metrics">
                 <div><i class="insight-reading" aria-hidden="true"></i><small>阅读</small><b id="insightReading">-</b></div>
                 <div><i class="insight-notes" aria-hidden="true"></i><small>新增笔记</small><b id="insightNewNotes">-</b></div>
                 <div><i class="insight-ideas" aria-hidden="true"></i><small>新想法</small><b id="insightIdeas">-</b></div>
+                <div><i class="insight-streak" aria-hidden="true"></i><small>连续记录</small><b id="insightStreak">-</b></div>
               </div>
-              <p>每一次记录，都会让你的知识宇宙更清晰。</p>
+              <section class="graph-active-topics" aria-label="活跃主题">
+                <h3>活跃主题</h3>
+                <div id="insightActiveTopics"></div>
+              </section>
+              <section class="graph-knowledge-tip" aria-label="知识提示">
+                <span>知识提示</span>
+                <p id="insightTip">正在整理你的知识连接。</p>
+              </section>
+              <section class="graph-recent-updates" aria-label="最近更新">
+                <h3>最近更新</h3>
+                <div id="insightRecentUpdates"></div>
+              </section>
             </aside>
           </div>
         </div>
@@ -361,7 +373,7 @@
               <header class="finder-content-header">
                 <div>
                   <div class="folder-breadcrumb" id="folderBreadcrumb"></div>
-                  <p id="folderContentMeta">双击文件夹进入，单击选中。</p>
+                  <p id="folderContentMeta">点击文件夹即可查看其中的全部笔记。</p>
                 </div>
                 <button class="finder-open-notes" id="folderOpenNotesButton" type="button">查看笔记</button>
               </header>
@@ -461,6 +473,22 @@
       </div>
     </main>
 
+    <main class="shared-note-view" id="sharedNoteView" hidden aria-live="polite">
+      <header class="shared-note-header">
+        <a class="shared-note-brand" href="./">朝夕拾光</a>
+        <span>受保护的笔记分享</span>
+      </header>
+      <article class="shared-note-card">
+        <img class="shared-note-cover" id="sharedNoteCover" alt="" hidden />
+        <p class="shared-note-meta" id="sharedNoteMeta">正在打开分享笔记…</p>
+        <h1 id="sharedNoteTitle"></h1>
+        <p class="shared-note-summary" id="sharedNoteSummary"></p>
+        <div class="tag-row" id="sharedNoteTags"></div>
+        <div class="shared-note-content article-content" id="sharedNoteContent"></div>
+        <p class="shared-note-error" id="sharedNoteError" hidden></p>
+      </article>
+    </main>
+
     <aside class="site-lock" id="siteLock" aria-hidden="true">
       <div class="site-lock-backdrop"></div>
       <form class="site-lock-card" id="sitePasswordForm" autocomplete="off">
@@ -485,6 +513,8 @@
           <span>在这台电脑上保持登录</span>
         </label>
         <button class="button primary" type="submit">进入网站</button>
+        <button class="site-lock-visitor" id="visitorModeButton" type="button">暂不登录，浏览公开笔记</button>
+        <p class="site-lock-visitor-hint">访客只能查看你已公开的笔记，随时可以回来登录。</p>
         <p class="site-lock-error" id="sitePasswordError" aria-live="polite"></p>
       </form>
     </aside>
@@ -505,83 +535,88 @@
               <span>管理密码（旧版，可留空）</span>
               <input id="writerToken" name="token" type="password" autocomplete="current-password" placeholder="已登录时不用填写" />
             </label>
-            <label>
+            <label class="writer-primary-title full">
               <span>标题</span>
-              <input id="writerNoteTitle" name="title" type="text" required />
+              <input id="writerNoteTitle" name="title" type="text" required placeholder="给这篇笔记起个清晰的标题" />
             </label>
-            <label>
-              <span>短链接</span>
-              <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
-            </label>
-            <label>
-              <span>类型</span>
-              <select id="writerTypeSelect" name="type">
-                <option value="笔记">笔记</option>
-                <option value="日记">日记</option>
-                <option value="灵感">灵感</option>
-                <option value="复盘">复盘</option>
-              </select>
-            </label>
-            <label>
-              <span>状态</span>
-              <select id="writerStatusSelect" name="status">
-                <option value="进行中">进行中</option>
-                <option value="完成">完成</option>
-                <option value="灵感">灵感</option>
-              </select>
-            </label>
-            <label class="writer-cover-field full">
-              <span>封面链接</span>
-              <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
-              <div class="writer-upload-row">
-                <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
-                <small>会上传到 Notion，不占服务器空间。</small>
+            <details class="writer-details full">
+              <summary><span>笔记设置</span><small>分类、标签、封面与发布信息</small></summary>
+              <div class="writer-details-grid">
+                <label>
+                  <span>短链接</span>
+                  <input id="writerSlug" name="slug" type="text" placeholder="可不填，自动生成" />
+                </label>
+                <label>
+                  <span>类型</span>
+                  <select id="writerTypeSelect" name="type">
+                    <option value="笔记">笔记</option>
+                    <option value="日记">日记</option>
+                    <option value="灵感">灵感</option>
+                    <option value="复盘">复盘</option>
+                  </select>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <select id="writerStatusSelect" name="status">
+                    <option value="进行中">进行中</option>
+                    <option value="完成">完成</option>
+                    <option value="灵感">灵感</option>
+                  </select>
+                </label>
+                <label>
+                  <span>学习时长（分钟）</span>
+                  <input id="writerStudyMinutes" name="studyMinutes" type="number" min="0" step="1" placeholder="30" />
+                </label>
+                <label class="writer-cover-field full">
+                  <span>封面链接</span>
+                  <input id="writerCover" name="cover" type="text" placeholder="https://...，或在这里 Ctrl+V 粘贴图片" />
+                  <div class="writer-upload-row">
+                    <button class="mini-button" id="writerCoverUploadButton" type="button">选择封面图片</button>
+                    <small>会上传到 Notion，不占服务器空间。</small>
+                  </div>
+                  <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+                </label>
+                <label class="full">
+                  <span>摘要</span>
+                  <textarea id="writerSummary" name="summary" rows="3"></textarea>
+                </label>
+                <label>
+                  <span>分类</span>
+                  <select id="writerCategory" name="category">
+                    <option value="常识">常识</option>
+                    <option value="日记">日记</option>
+                    <option value="书单">书单</option>
+                    <option value="工作记录">工作记录</option>
+                    <option value="收益详情">收益详情</option>
+                    <option value="学习笔记">学习笔记</option>
+                    <option value="编程">编程</option>
+                    <option value="读书">读书</option>
+                    <option value="GitHub 开源项目">GitHub 开源项目</option>
+                    <option value="ChatGPT">ChatGPT</option>
+                    <option value="项目">项目</option>
+                    <option value="教程科普">教程科普</option>
+                    <option value="Codex">Codex</option>
+                    <option value="服务器与域名">服务器与域名</option>
+                    <option value="Bybit">Bybit</option>
+                  </select>
+                </label>
+                <label>
+                  <span>标签</span>
+                  <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
+                </label>
+                <label class="full">
+                  <span>文件夹</span>
+                  <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
+                  <datalist id="writerFolderOptions"></datalist>
+                </label>
               </div>
-              <input class="visually-hidden" id="writerCoverFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
-            </label>
-            <label>
-              <span>学习时长（分钟）</span>
-              <input id="writerStudyMinutes" name="studyMinutes" type="number" min="0" step="1" placeholder="30" />
-            </label>
-            <label class="full">
-              <span>摘要</span>
-              <textarea id="writerSummary" name="summary" rows="3"></textarea>
-            </label>
-            <label>
-              <span>分类</span>
-              <select id="writerCategory" name="category">
-                <option value="常识">常识</option>
-                <option value="日记">日记</option>
-                <option value="书单">书单</option>
-                <option value="工作记录">工作记录</option>
-                <option value="收益详情">收益详情</option>
-                <option value="学习笔记">学习笔记</option>
-                <option value="编程">编程</option>
-                <option value="读书">读书</option>
-                <option value="GitHub 开源项目">GitHub 开源项目</option>
-                <option value="ChatGPT">ChatGPT</option>
-                <option value="项目">项目</option>
-                <option value="教程科普">教程科普</option>
-                <option value="Codex">Codex</option>
-                <option value="服务器与域名">服务器与域名</option>
-                <option value="Bybit">Bybit</option>
-              </select>
-            </label>
-            <label>
-              <span>标签</span>
-              <input id="writerTags" name="tags" type="text" placeholder="记录, 灵感" />
-            </label>
-            <label>
-              <span>文件夹</span>
-              <input id="writerFolder" name="folder" list="writerFolderOptions" maxlength="40" placeholder="例如：工作、待读、长期项目" />
-              <datalist id="writerFolderOptions"></datalist>
-            </label>
+            </details>
             <div class="writer-field full">
               <span class="writer-field-label">正文</span>
               <div class="editor-mode-switch" role="group" aria-label="正文编辑模式">
                 <button class="editor-mode-button is-active" id="visualEditorMode" type="button" data-editor-mode="visual">可视化编辑</button>
                 <button class="editor-mode-button" id="markdownEditorMode" type="button" data-editor-mode="markdown">Markdown</button>
-                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。</small>
+                <small>不会 Markdown？直接选中文字，再点击下方格式按钮即可。Ctrl+Z 撤销，Ctrl+Y 重做，Ctrl+S 保存。</small>
               </div>
               <div class="writer-format-toolbar" aria-label="正文格式工具栏">
                 <div class="writer-format-group" aria-label="文字样式">
@@ -595,9 +630,18 @@
                   <button class="format-button" type="button" data-format="h1">H1</button>
                   <button class="format-button" type="button" data-format="h2">H2</button>
                   <button class="format-button" type="button" data-format="h3">H3</button>
+                  <button class="format-button" type="button" data-format="h4">H4</button>
+                  <button class="format-button" type="button" data-format="h5">H5</button>
+                  <button class="format-button" type="button" data-format="h6">H6</button>
                 </div>
                 <div class="writer-format-group" aria-label="快捷插入">
                   <button class="format-button" type="button" data-format="date">日期</button>
+                  <span class="table-insert-control" title="选择行列数后插入表格">
+                    <button class="format-button" type="button" data-format="table">表格</button>
+                    <select id="writerTableRows" aria-label="表格行数"><option value="2">2行</option><option value="3" selected>3行</option><option value="4">4行</option><option value="5">5行</option><option value="6">6行</option><option value="7">7行</option><option value="8">8行</option></select>
+                    <select id="writerTableCols" aria-label="表格列数"><option value="2">2列</option><option value="3" selected>3列</option><option value="4">4列</option><option value="5">5列</option><option value="6">6列</option><option value="7">7列</option><option value="8">8列</option></select>
+                  </span>
+                  <button class="format-button" id="writerTableUploadButton" type="button" title="导入 Excel 或 CSV 表格">导入表格</button>
                   <button class="format-button" type="button" data-format="divider">分割线</button>
                   <button class="format-button" type="button" data-format="diary-template">日记模板</button>
                 </div>
@@ -613,21 +657,27 @@
                   <button class="format-button color-dot purple" type="button" data-format="color" data-color="purple" aria-label="紫色文字"></button>
                 </div>
               </div>
-              <div class="visual-editor" id="writerVisualEditor" contenteditable="true" tabindex="0" spellcheck="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
-              <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
-              <div class="writer-preview-shell">
-                <div class="writer-preview-head">
-                  <span>实时预览</span>
-                  <small id="writerDraftStatus">草稿会自动保存在本机</small>
+              <div class="writer-workbench">
+                <div class="writer-editor-pane">
+                  <div class="visual-editor" id="writerVisualEditor" contenteditable="true" tabindex="0" spellcheck="true" role="textbox" aria-multiline="true" aria-label="可视化正文编辑器" data-placeholder="直接输入内容；选中文字后可加粗、设置标题、加入列表或引用。"></div>
+                  <textarea class="markdown-editor" id="writerContent" name="content" rows="12" placeholder="支持 Markdown：# 标题、- 列表、> 引用、```代码```" hidden></textarea>
                 </div>
-                <div class="writer-preview article-content" id="writerPreview"></div>
+                <div class="writer-preview-shell">
+                  <div class="writer-preview-head">
+                    <span>实时预览</span>
+                    <small id="writerDraftStatus">已有笔记会自动保存，新笔记会暂存本机</small>
+                  </div>
+                  <div class="writer-preview article-content" id="writerPreview"></div>
+                </div>
               </div>
               <div class="writer-upload-row">
                 <button class="mini-button" id="writerContentUploadButton" type="button">插入正文图片</button>
-                <small>也可以直接写 Markdown：![图片说明](图片链接)</small>
+                <input class="writer-image-caption" id="writerImageCaption" type="text" maxlength="120" placeholder="图片注释（可选，填写后用于下一张图片）" aria-label="下一张图片的注释" />
+                <small>支持 Excel / CSV，导入后可在笔记内直接查看。</small>
               </div>
               <input class="visually-hidden" id="writerContentFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
-              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion。</small>
+              <input class="visually-hidden" id="writerTableFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+              <small class="writer-help">正文和封面支持 Ctrl+V 或选择图片上传，图片会上传到 Notion；表格会转为可阅读的笔记内容。</small>
             </div>
             <div class="writer-options full">
               <label>
@@ -640,10 +690,10 @@
               </label>
             </div>
             <div class="writer-actions full">
+              <p class="writer-status" id="writerStatus" aria-live="polite"></p>
               <button class="button primary" id="writerSubmitButton" type="submit">发布到 Notion</button>
               <button class="button ghost" type="button" data-close-writer>取消</button>
             </div>
-            <p class="writer-status full" id="writerStatus"></p>
           </form>
         </div>
       </article>
@@ -654,6 +704,7 @@
       <article class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
         <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
         <button class="icon-button close-button" type="button" aria-label="关闭" data-close-detail>×</button>
+        <button class="detail-tools-toggle" id="detailToolsToggle" type="button" aria-expanded="false" aria-controls="detailSidebar">阅读工具</button>
         <header class="detail-hero" id="detailHero">
           <img class="detail-cover" id="detailCover" alt="" hidden />
           <div class="detail-hero-shade"></div>
@@ -675,7 +726,27 @@
           <main class="detail-main">
             <div class="article-content" id="detailContent"></div>
           </main>
-          <aside class="detail-sidebar" aria-label="阅读辅助">
+          <aside class="detail-sidebar" id="detailSidebar" aria-label="阅读辅助">
+            <section class="reader-widget" id="detailExportWidget">
+              <span>导出</span>
+              <div class="detail-export-actions">
+                <button type="button" id="detailExportMarkdown">导出 .md</button>
+                <button type="button" id="detailExportPdf">导出 PDF</button>
+              </div>
+            </section>
+            <section class="reader-widget" id="detailShareWidget">
+              <span>分享</span>
+              <p class="detail-share-help">创建后，持有链接的人无需登录即可阅读这篇笔记。</p>
+              <div class="detail-share-actions">
+                <button type="button" id="detailShareButton">创建并复制链接</button>
+                <button type="button" id="detailDisableShareButton" hidden>关闭分享</button>
+              </div>
+              <div class="detail-share-link" id="detailShareLinkWrap" hidden>
+                <input id="detailShareLink" type="text" readonly aria-label="分享链接" />
+                <button type="button" id="detailCopyShareButton">复制</button>
+              </div>
+              <p class="detail-share-status" id="detailShareStatus" aria-live="polite" hidden></p>
+            </section>
             <section class="reader-widget">
               <button class="button ghost detail-favorite-button" id="detailFavoriteButton" type="button">☆ 收藏笔记</button>
             </section>
@@ -690,6 +761,10 @@
             </section>
             <section class="reader-widget">
               <button class="button primary detail-edit-button" id="detailEditButton" type="button">编辑笔记</button>
+            </section>
+            <section class="reader-widget detail-delete-widget" id="detailDeleteWidget">
+              <button class="button ghost detail-delete-button" id="detailDeleteButton" type="button">删除笔记</button>
+              <small>删除后会移至 Notion 回收站，可在 Notion 中恢复。</small>
             </section>
             <section class="reader-widget">
               <span>目录</span>
@@ -710,6 +785,22 @@
         </div>
       </article>
     </aside>
+
+    <div class="logout-confirm" id="logoutConfirmDialog" hidden>
+      <button class="logout-confirm-backdrop" type="button" data-close-logout-confirm aria-label="取消退出"></button>
+      <section class="logout-confirm-card" role="dialog" aria-modal="true" aria-labelledby="logoutConfirmTitle" aria-describedby="logoutConfirmDescription">
+        <span class="logout-confirm-icon" aria-hidden="true">↗</span>
+        <div>
+          <p class="logout-confirm-kicker">ACCOUNT</p>
+          <h2 id="logoutConfirmTitle">确认退出登录？</h2>
+          <p id="logoutConfirmDescription">退出后需要重新输入账号和密码才能查看和管理你的私人笔记。</p>
+        </div>
+        <div class="logout-confirm-actions">
+          <button class="logout-confirm-cancel" id="logoutConfirmCancel" type="button">取消</button>
+          <button class="logout-confirm-accept" id="logoutConfirmAccept" type="button">退出登录</button>
+        </div>
+      </section>
+    </div>
 
     <template id="noteCardTemplate">
       <article class="note-card">
