@@ -1027,7 +1027,10 @@ function visualHtmlToMarkdown(editor) {
     else if (tag === "code") text = `\`${text}\``;
     else if (tag === "em" || tag === "i") text = `*${text}*`;
     const color = child.getAttribute?.("data-text-color") || colorToName(child.getAttribute?.("color") || child.style?.color || "");
-    if (color) text = `{${color}:${text}}`;
+    // Browser foreColor may leave the old <font> around the new one.  Keep
+    // the innermost color (the most recently selected color) instead of
+    // serializing `{red:{purple:text}}` into the note.
+    if (color && !unwrapColorMarkup(text)) text = `{${color}:${text}}`;
     return text;
   }).join("");
 
@@ -1101,6 +1104,28 @@ function colorToName(value) {
   const normalized = String(value || "").replace(/\s/g, "").toLowerCase();
   const colors = { "#8e8e93": "gray", "rgb(142,142,147)": "gray", "#8a5a44": "brown", "rgb(138,90,68)": "brown", "#ff9500": "orange", "rgb(255,149,0)": "orange", "#ffcc00": "yellow", "rgb(255,204,0)": "yellow", "#34c759": "green", "rgb(52,199,89)": "green", "#007aff": "blue", "rgb(0,122,255)": "blue", "#af52de": "purple", "rgb(175,82,222)": "purple", "#ff2d55": "pink", "rgb(255,45,85)": "pink", "#ff3b30": "red", "rgb(255,59,48)": "red" };
   return colors[normalized] || "";
+}
+
+function findColorMarkerEnd(value, start = 0) {
+  const source = String(value || "");
+  if (source[start] !== "{") return -1;
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    if (source[index] === "{" && /^\{[a-zA-Z\u4e00-\u9fa5]+:/.test(source.slice(index))) depth += 1;
+    else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function unwrapColorMarkup(value) {
+  const source = String(value || "");
+  const match = source.match(/^\{([a-zA-Z\u4e00-\u9fa5]+):/);
+  if (!match) return null;
+  const end = findColorMarkerEnd(source);
+  return end === source.length - 1 ? source.slice(match[0].length, -1) : null;
 }
 
 function insertVisualHtml(html) {
@@ -1374,7 +1399,11 @@ function applyWriterFormat(format, color = "") {
   } else if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(format)) {
     prefixSelectedLines(textarea, `${"#".repeat(Number(format.slice(1)))} `, /^(#{1,6}\s*)/);
   } else if (format === "color" && color) {
-    wrapSelection(textarea, `{${color}:`, "}", "彩色文字");
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.slice(start, end) || "彩色文字";
+    const existing = unwrapColorMarkup(selected);
+    textarea.setRangeText(`{${color}:${existing ?? selected}}`, start, end, "select");
   } else if (format === "date") {
     insertAtCursor(textarea, formatTodayLine());
   } else if (format === "table") {
@@ -4422,9 +4451,10 @@ function parsePreviewRichText(text) {
     const colorMatch = rest.match(/^\{([a-zA-Z\u4e00-\u9fa5]+):/);
     if (colorMatch) {
       const contentStart = index + colorMatch[0].length;
-      const colorEnd = source.indexOf("}", contentStart);
+      const colorEnd = findColorMarkerEnd(source, index);
       if (colorEnd !== -1) {
-        push(source.slice(contentStart, colorEnd), { color: colorMatch[1] });
+        const nestedParts = parsePreviewRichText(source.slice(contentStart, colorEnd));
+        nestedParts.forEach((part) => push(part.text, { ...part, color: part.color || colorMatch[1] }));
         index = colorEnd + 1;
         continue;
       }
