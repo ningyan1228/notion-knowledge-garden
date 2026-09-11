@@ -1872,18 +1872,31 @@ textarea:focus {
   backdrop-filter: blur(14px);
 }
 
-@media (max-width: 1120px) {
+/* At this width the two panels no longer have enough room.  Let them take
+   their own rows instead of letting the preview overlap the editor. */
+@media (max-width: 1320px) {
   .writer-workbench {
+    height: auto;
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     min-height: 0;
+    overflow: visible;
+  }
+
+  .writer-editor-pane {
+    height: clamp(390px, 52vh, 600px);
   }
 
   .writer-editor-pane > .visual-editor,
   .writer-editor-pane > .markdown-editor {
-    min-height: clamp(390px, 52vh, 600px);
+    min-height: 0;
+    height: 100%;
   }
 
-  .writer-preview-shell { min-height: 280px; }
+  .writer-preview-shell {
+    height: clamp(280px, 42vh, 460px);
+    min-height: 280px;
+  }
 }
 
 @media (max-width: 680px) {
